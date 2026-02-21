@@ -1,0 +1,73 @@
+# ------------------------------
+# OS / Editor noise
+# ------------------------------
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ------------------------------
+# Env / secrets
+# ------------------------------
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+# ------------------------------
+# Logs / temp
+# ------------------------------
+*.log
+logs/
+tmp/
+temp/
+.cache/
+
+# ------------------------------
+# Python (indexer)
+# ------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.python-version
+.venv/
+venv/
+env/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# ------------------------------
+# Node / Astro (client)
+# ------------------------------
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.parcel-cache/
+.astro/
+.next/
+.nuxt/
+dist/
+coverage/
+*.tsbuildinfo
+
+# ------------------------------
+# Runtime data (local/dev)
+# ------------------------------
+*.sqlite
+*.sqlite3
+*.db
+*.pid
