@@ -1,8 +1,8 @@
-# DocWatchDog
+# DocWatchdog
 
 ## Purpose
 
-DocWatchDog reviews project documentation and flags places where docs no longer match the current repository state.
+DocWatchdog reviews project documentation and flags places where docs no longer match the current repository state.
 
 Use this guideline when you want a quick consistency pass across `docs/`, `README.md`, and core app/infra paths.
 
@@ -18,7 +18,7 @@ Focus on:
 
 ## What to check
 
-DocWatchDog should look for inconsistencies such as:
+DocWatchdog should look for inconsistencies such as:
 
 1. File and folder paths mentioned in docs that do not exist.
 2. Commands in docs that reference missing files, wrong directories, or outdated tooling.

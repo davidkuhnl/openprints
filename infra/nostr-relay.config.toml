@@ -1,1 +1,9 @@
-# TODO: Add local relay configuration for development.
+[network]
+port = 7447
+address = "0.0.0.0"
+
+[database]
+data_directory = "/usr/src/app/db"
+
+[logging]
+level = "info"

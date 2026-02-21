@@ -4,7 +4,7 @@ This file indexes project skills and agent guidelines.
 
 ## Available Skills
 
-- **DocWatchDog**  
+- **DocWatchdog**  
   Source of truth: `docs/agent-guidelines/doc-watchdog.md`  
   Purpose: review docs and flag inconsistencies against the current repository state.
 
