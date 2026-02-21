@@ -198,17 +198,197 @@ Current Phase: **Phase 0 - Repo + Docs Setup**
 
 Next Phase: **Phase 1 - Event Publishing Test Harness**
 
-- `[~]` Phase 0 - Repo + Docs Setup
-- `[>]` Phase 1 - Event Publishing Test Harness
-- `[ ]` Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)
-- `[ ]` Phase 3 - REST API
-- `[ ]` Phase 4 - Client MVP (List + Detail Pages)
-- `[ ]` Phase 5 - Design Publishing Flow
-- `[ ]` Phase 6 - Endorsements ("I printed this")
-- `[ ]` Phase 7 - Lightning Zaps
-- `[ ]` Phase 8 - Blossom Support
-- `[ ]` Phase 9 - Announcement Notes
-- `[ ]` Phase 10 - Public Release + OpenSats Grant Application
+### [x] Phase 0 — Repo + Docs Setup
+
+**Goal:** Establish the repository layout, core documentation, and a minimal local dev environment so contributors can clone, read, and run the relay without building app code yet.
+
+**Includes:**
+
+- Monorepo structure: `apps/indexer/`, `apps/client/`, `packages/shared/`, `infra/`, `docs/`
+- Key docs: `README.md`, `docs/dev-setup.md`, `docs/architecture.md`, `docs/event-schema.md`
+- Docker Compose skeleton with a local Nostr relay (e.g. `nostr-rs-relay`) and config
+- Scaffolded app directories with `TODO.md` stubs; no full indexer or client implementation yet
+- Bootstrap script (e.g. `scripts/setup.sh`) for prerequisites and optional in-repo setup
+
+**Done when:**
+
+- New contributor can clone, run `./scripts/setup.sh`, start the relay with `docker compose up`, and follow dev-setup without hitting missing pieces
+- Roadmap and phase list are accurate (e.g. ProgressWatchdog check passes)
+
+---
+
+### [~] Phase 1 — Event Publishing Test Harness
+
+**Goal:** Prove end-to-end design event flow: build a CLI or small tool that constructs, signs, and publishes `kind 33001` design events to a relay, plus a subscriber script that receives and prints them.
+
+**Includes:**
+
+- Script or CLI to build a valid `33001` event (tags, content, `created_at`)
+- Signing via NIP-07 (browser extension) or Nostr Connect / nsec
+- Publish to configurable relay(s); optional: publish from indexer/client env
+- Subscriber script (e.g. Python or Node) that connects to the relay, subscribes to `kind 33001`, and logs or prints received events
+- Documentation or inline comments so a reviewer can run “publish one design, see it in the subscriber” locally
+
+**Done when:**
+
+- One design event can be published to the local relay and observed by the subscriber; event shape matches the intended schema (e.g. `d` tag, content hash, metadata)
+
+---
+
+### [>] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
+
+**Goal:** Implement the Python indexer core: subscribe to relevant Nostr events from one or more relays, reduce them into a normalized model, and persist to SQLite.
+
+**Includes:**
+
+- Async Nostr client (e.g. `nostr-sdk` or custom) subscribing to kinds `33001`, and later `33002`/`9735` as needed
+- Reducer logic: map raw events to internal design/endorsement/zap models; handle replaceable events (newest `created_at` wins per `pubkey` + `d`)
+- SQLite schema for designs (and any supporting tables)
+- Configurable relay list and basic error/backoff handling
+- Optional: minimal health or metrics endpoint for “indexer is running”
+
+**Done when:**
+
+- Indexer runs against local relay; new design events from Phase 1 appear in the DB in reduced form; replaceable updates overwrite correctly
+
+---
+
+### [ ] Phase 3 — REST API
+
+**Goal:** Expose the indexed data via a FastAPI REST API so the client and other tools can query designs by ID, list, and search.
+
+**Includes:**
+
+- FastAPI app mounted under a base path (e.g. `/api` or root)
+- Endpoints: `GET /designs` (list/filter), `GET /designs/{id}` (single design), `GET /search` (or query params on `/designs`) for text/search
+- Responses shaped for client consumption (JSON; include key design metadata and tags)
+- API documented (OpenAPI/Swagger or a short doc in `docs/`) so frontend and grant reviewers can call it
+
+**Done when:**
+
+- Client or `curl` can list designs, fetch one by ID, and run a basic search; data matches what the indexer has stored
+
+---
+
+### [ ] Phase 4 — Client MVP (List + Detail Pages)
+
+**Goal:** Ship an Astro-based web client that lists designs and shows a detail page, using the indexer’s REST API, with SSR for speed and SEO.
+
+**Includes:**
+
+- Astro app with React islands where useful (e.g. interactive filters or components)
+- List page: fetch designs from API, display cards or table with title, creator, date, etc.
+- Detail page: fetch single design by ID, show full metadata and any available preview/links
+- Data fetching from indexer API (env-configurable base URL); SSR so content is in the initial HTML
+- Basic routing and layout; mobile-friendly where feasible
+
+**Done when:**
+
+- A user can open the client, see a list of designs from the local indexer, click through to a detail page, and see correct data without hand-editing URLs
+
+---
+
+### [ ] Phase 5 — Design Publishing Flow
+
+**Goal:** Let users create and publish new designs from the client: upload file → compute hash → build `33001` event → sign (NIP-07 / Nostr Connect) → publish to relay(s).
+
+**Includes:**
+
+- “Create design” or “Publish” flow in the client: form for metadata (title, description, tags, license, etc.) and file upload
+- File upload to configured storage (e.g. S3/R2/minio); compute and store `sha256` (or agreed hash)
+- Build `kind 33001` event with correct tags and content; optional content hash in event
+- Signing via NIP-07 or Nostr Connect; then broadcast to configured relay(s)
+- Feedback in UI: “Published” or link to relay/event; basic error handling (relay down, signer rejected)
+
+**Done when:**
+
+- A user can complete the flow in the browser; the new design appears on the relay, is indexed by the indexer, and shows up in the client list/detail
+
+---
+
+### [ ] Phase 6 — Endorsements ("I printed this")
+
+**Goal:** Support “I printed this” endorsements as `kind 33002` events, and surface aggregated ratings or counts in the API and client.
+
+**Includes:**
+
+- Event schema and reducer support for `33002`: link to design (e.g. `e` or `a` tag), optional rating/comment
+- Indexer: subscribe to `33002`, reduce into endorsements table or embedded counts; optional aggregation (e.g. average rating per design)
+- REST API: expose endorsement counts or ratings per design (e.g. in `GET /designs/{id}` or a small aggregate endpoint)
+- Client: “I printed this” button or form; sign and publish `33002`; show endorsement count or rating on list/detail
+
+**Done when:**
+
+- Users can endorse a design from the client; endorsements appear in the indexer and are visible (e.g. count or rating) on the design in the API and UI
+
+---
+
+### [ ] Phase 7 — Lightning Zaps
+
+**Goal:** Integrate Lightning zaps so users can send sats to creators; use `lnurl` (and later zap receipts) in the protocol and UI.
+
+**Includes:**
+
+- Schema and tags: `lnurl` (or equivalent) for creator Lightning address / zap target; later support for zap receipt events (`kind 9735`) if needed
+- Indexer: ingest zap receipts for attribution and “zapped” counts per design or creator
+- Client: “Zap” button or flow that opens wallet or lnurl flow; optional display of “zapped” or total sats per design/creator
+- Documentation for how creators set up their Lightning/zap target and how it appears in OpenPrints
+
+**Done when:**
+
+- A user can zap a creator from a design page; zaps are recorded and visible (e.g. count or total) where intended; no central custody of funds
+
+---
+
+### [ ] Phase 8 — Blossom Support
+
+**Goal:** Add optional decentralized file storage via Blossom so creators can host design files without relying only on S3/R2.
+
+**Includes:**
+
+- Blossom (NIP-96 or current spec) integration: upload blob, get URL/content hash; optional resolution from hash to URL in client or indexer
+- Toggle or option in the “create design” flow: “Use Blossom” vs existing storage; store blob URL/hash in design event and metadata
+- Indexer and API: surface Blossom-backed URLs where present; client can resolve and download from Blossom when chosen
+- Docs: how to run or use a Blossom server for local dev and production
+
+**Done when:**
+
+- Creators can choose Blossom for new designs; files are stored and retrievable via Blossom; list/detail and API show correct links
+
+---
+
+### [ ] Phase 9 — Announcement Notes
+
+**Goal:** Have the indexer post `kind:1` announcement notes when new designs are indexed, from its own pubkey, so the ecosystem can discover new designs via the indexer’s feed.
+
+**Includes:**
+
+- Indexer logic: after reducing a new/replaced design event, optionally create a short `kind:1` note (e.g. title, link to client, design id or relay event id)
+- Sign and publish the note to configured relay(s) using the indexer’s key (no user keys)
+- Config flag or env to enable/disable announcements; rate limiting or batching if needed to avoid spam
+- Clear attribution: note is from “OpenPrints indexer” (e.g. in content or profile) so users understand the source
+
+**Done when:**
+
+- New designs indexed by the indexer result in a `kind:1` note on the relay when enabled; notes are readable and correctly attributed
+
+---
+
+### [ ] Phase 10 — Public Release + OpenSats Grant Application
+
+**Goal:** Prepare for public launch and funding: clean repo, deploy to production domain, and submit an OpenSats grant application.
+
+**Includes:**
+
+- Repo cleanup: README, LICENSE, contributing guide, security/contact info; remove or document any placeholder/TODO that’s no longer accurate
+- Deploy indexer and client to production (e.g. `openprints.dev`); HTTPS, env config, and basic ops docs
+- Optional: public relay list, status page, or short “About” for the project
+- OpenSats grant application: narrative, milestones, budget; align with phased deliverables (e.g. Phases 0–7 as “MVP”, 8–9 as enhancements)
+- Tag or release v1.0 (or similar) when ready for “public release”
+
+**Done when:**
+
+- Site is live at `openprints.dev` (or agreed domain); repo is presentable to contributors and funders; OpenSats application submitted (or ready to submit) with clear scope and milestones
 
 ---
 

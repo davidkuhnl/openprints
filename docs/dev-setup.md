@@ -11,6 +11,7 @@ Install the following tools before starting:
 - Git
 - Docker + Docker Compose
 - Python **3.11+**
+- [uv](https://github.com/astral-sh/uv) (Python package manager; used for scripts and indexer)
 - Node.js **20+**
 - npm or pnpm
 
@@ -21,6 +22,7 @@ git --version
 docker --version
 docker compose version
 python --version
+uv --version
 node --version
 npm --version
 # or
@@ -66,7 +68,19 @@ git clone https://github.com/<your-org-or-user>/openprints.git
 cd openprints
 ```
 
-## 4) Start the dev stack (Relay + DB + Indexer)
+## 4) Bootstrap (check prerequisites and in-repo setup)
+
+From the repo root, run:
+
+```bash
+./scripts/setup.sh
+```
+
+This checks that Git, Docker, Docker Compose, Python 3.11+, uv, Node 20+, and npm or pnpm are available. If something is missing, it prints install hints. It also runs idempotent setup for any apps that are present (e.g. `uv sync` in `apps/indexer`, `npm install` / `pnpm install` in `apps/client`).
+
+**TODO:** When the indexer and client apps are added, document any extra one-time install steps here (or ensure `./scripts/setup.sh` covers them and keep this section as a pointer to the script).
+
+## 5) Start the dev stack (Relay + DB + Indexer)
 
 The local infrastructure stack is defined in `infra/docker-compose.yml`.
 
@@ -91,7 +105,7 @@ Expected services (names may vary by compose config):
 
 If the indexer service is initially a placeholder, that is fine. At this stage, getting the stack up cleanly is the first goal.
 
-## 5) Running the indexer locally (without Docker)
+## 6) Running the indexer locally (without Docker)
 
 If you want faster iteration on backend code, run the indexer directly on your machine.
 
@@ -120,7 +134,7 @@ curl http://localhost:8000/designs
 
 Early endpoints may return stub data; that is expected while the reducer/indexing flow is still being built out.
 
-## 6) Running the Astro client
+## 7) Running the Astro client
 
 In a separate terminal:
 
@@ -146,7 +160,7 @@ http://localhost:4321
 
 At first, the UI may be a placeholder or very simple page while API integration is in progress.
 
-## 7) Connecting to the local Nostr relay
+## 8) Connecting to the local Nostr relay
 
 Use a local relay WebSocket URL such as:
 
@@ -157,21 +171,22 @@ The indexer keeps a relay URL list and subscribes to those relays for relevant e
 
 The client will eventually use signer flows (NIP-07 / Nostr Connect), but may begin with minimal relay awareness and API-first reads.
 
-## 8) Typical dev workflow
+## 9) Typical dev workflow
 
 Happy-path development loop:
 
-1. Start infra from `infra/` with `docker compose up`.
-2. Run indexer either:
+1. Run `./scripts/setup.sh` once (or after pulling changes that add app deps).
+2. Start infra from `infra/` with `docker compose up` (or `docker compose up -d` to run in the background).
+3. Run indexer either:
    - in Docker (via compose), or
    - locally in `apps/indexer` for rapid backend iteration.
-3. Run Astro client in `apps/client`.
-4. Edit code in:
+4. Run Astro client in `apps/client`.
+5. Edit code in:
    - `apps/indexer` (event ingestion, reducer logic, API)
    - `apps/client` (design list/detail UI and data fetching)
-5. Verify behavior in browser and via API calls.
+6. Verify behavior in browser and via API calls.
 
-## 9) Environment variables
+## 10) Environment variables
 
 OpenPrints will use `.env` files for local configuration. Typical variables include:
 
@@ -198,7 +213,7 @@ PUBLIC_DEFAULT_RELAY_URL=ws://localhost:<relay-port>
 
 Never commit real secrets to git. Keep sensitive local values in untracked `.env` files.
 
-## 10) Testing (planned)
+## 11) Testing (planned)
 
 Testing strategy will expand as features land:
 
@@ -206,9 +221,19 @@ Testing strategy will expand as features land:
 - **Integration tests** that bring up relay + indexer and assert API outputs.
 - **Basic UI tests** for key pages and flows in the Astro client.
 
-## 11) Troubleshooting
+## 12) Troubleshooting
 
-Common local issues:
+### Verify the relay
+
+Use the scripts in `scripts/` to confirm the relay is up and speaking Nostr:
+
+1. **HTTP health check** (no extra deps): `./scripts/test-relay-up.sh`
+2. **Nostr WebSocket (recommended)**: `./scripts/test-relay-ws.sh` (interactive; choose Python via [uv](https://github.com/astral-sh/uv) or Node)
+3. **Nostr WebSocket (Node direct)**: `node scripts/test-relay-node.mjs` (requires Node WebSocket support)
+
+See `scripts/README.md` for details and optional env vars (`RELAY_BASE_URL`, `RELAY_WS_URL`).
+
+### Common local issues
 
 - **Relay will not start**
   - Check `docker compose logs <relay-service-name>`.
