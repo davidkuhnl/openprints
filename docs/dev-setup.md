@@ -151,6 +151,8 @@ make cli-build | make cli-publish
 make cli-subscribe
 ```
 
+Payload handoff contract (`build` -> `publish`) is documented in `docs/cli-payload-contract.md`.
+
 Troubleshooting fallback (if entrypoint resolution is broken in your environment):
 
 ```bash

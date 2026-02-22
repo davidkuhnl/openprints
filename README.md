@@ -226,6 +226,7 @@ Next Phase: **Phase 1 - Event Publishing Test Harness**
 - Script or CLI to build a valid `33001` event (tags, content, `created_at`)
 - CLI scaffold location: `apps/indexer/openprints_cli/` (primary run command: `cd apps/indexer && uv run openprints-cli`, or `make cli`; troubleshooting fallback: `uv run python -m openprints_cli`)
 - Stub flow supports file handoff and piping (`build | publish`, or `build --output payload.json` -> `publish --input payload.json`)
+- Build/publish handoff contract is defined in `docs/cli-payload-contract.md` (`artifact_version`, draft/signed states, and validation error format)
 - Signing via NIP-07 (browser extension) or Nostr Connect / nsec
 - Publish to configurable relay(s); optional: publish from indexer/client env
 - Subscriber script (e.g. Python or Node) that connects to the relay, subscribes to `kind 33001`, and logs or prints received events
