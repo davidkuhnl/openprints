@@ -1,0 +1,16 @@
+# Copy to: apps/indexer/openprints.indexer.toml
+# Then run: make cli-index
+
+[index]
+# Optional single relay:
+# relay = "ws://localhost:7447"
+
+# Optional multi-relay list:
+relays = ["ws://localhost:7447"]
+
+kind = 33301
+queue_maxsize = 1000
+timeout = 8.0
+max_retries = 12
+duration = 0.0
+log_level = "WARNING"

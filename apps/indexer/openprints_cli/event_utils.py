@@ -7,8 +7,10 @@ import json
 
 from coincurve import PublicKeyXOnly
 
+from openprints_cli.event_types import DraftEvent, SignedEvent
 
-def canonical_event_serialization(event: dict, pubkey: str) -> bytes:
+
+def canonical_event_serialization(event: DraftEvent | SignedEvent, pubkey: str) -> bytes:
     """Serialize event for hashing (id) and signing. Order and format must match NIP-01."""
     payload = [
         0,
@@ -21,13 +23,13 @@ def canonical_event_serialization(event: dict, pubkey: str) -> bytes:
     return json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
-def compute_event_id(event: dict, pubkey: str) -> str:
+def compute_event_id(event: DraftEvent | SignedEvent, pubkey: str) -> str:
     """Compute the Nostr event id (SHA256 of canonical serialization) as hex."""
     serialized = canonical_event_serialization(event, pubkey)
     return hashlib.sha256(serialized).hexdigest()
 
 
-def verify_event_signature(event: dict) -> str | None:
+def verify_event_signature(event: SignedEvent) -> str | None:
     """
     Verify event id and Schnorr signature. Returns None if valid, else an error message.
     Event must already contain id, pubkey, sig.

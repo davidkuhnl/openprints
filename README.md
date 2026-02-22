@@ -469,6 +469,7 @@ make cli-keygen
 make cli-sign
 make cli-publish
 make cli-subscribe
+make cli-index
 make cli-hash
 cat apps/indexer/tests/fixtures/stub_design.stl | make cli-hash-stdin
 ```
@@ -486,6 +487,12 @@ Example: `OPENPRINTS_LOG_LEVEL=INFO OPENPRINTS_LOG_FORMAT=json make cli-subscrib
 `EOSE` marks backlog completion only; with `SUBSCRIBE_LIMIT=0`, subscribe keeps waiting for new events until timeout/interrupt.
 Relay disconnect is treated as a graceful summary event (`status: disconnected`); reconnect/backoff is the next planned improvement.
 Multi-relay subscribe fan-out (with dedupe) is planned.
+`make cli-index` runs the indexer pipeline scaffold (relay workers + shared queue + reducer).
+Config file support: copy `apps/indexer/openprints.indexer.toml.example` to `apps/indexer/openprints.indexer.toml`.
+CLI override examples: `make cli-index INDEX_RELAY=ws://localhost:7447` or `make cli-index RELAYS=ws://localhost:7447,wss://relay.example INDEX_DURATION=20`.
+Additional knobs: `INDEX_CONFIG`, `INDEX_KIND`, `INDEX_QUEUE_MAXSIZE`, `INDEX_TIMEOUT`, `INDEX_MAX_RETRIES`, `INDEX_DURATION`.
+Setting precedence: CLI/Make overrides -> env vars -> config file -> built-in defaults.
+`log_level` can be set in `openprints.indexer.toml`; `OPENPRINTS_LOG_LEVEL` env var still takes precedence.
 Multi-relay publish fan-out is planned (current behavior is single relay per invocation).
 One-step export example: `export "$(cd apps/indexer && uv run openprints-cli keygen --env)"`.
 

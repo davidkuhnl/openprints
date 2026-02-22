@@ -3,9 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from openprints_cli.event_types import DraftEvent, SignedEvent
+
 
 class Signer(Protocol):
-    def sign_event(self, event: dict) -> dict:
+    def sign_event(self, event: DraftEvent) -> SignedEvent:
         """Return a signed event with pubkey, id, and sig fields."""
 
 

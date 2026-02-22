@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from bech32 import bech32_decode, convertbits
 from coincurve import PrivateKey
 
+from openprints_cli.event_types import DraftEvent, SignedEvent
 from openprints_cli.event_utils import compute_event_id
 from openprints_cli.signers.base import SignerError
 
@@ -33,7 +34,7 @@ class DevNsecSigner:
         secret = _decode_nsec(nsec)
         return cls(_private_key=PrivateKey(secret))
 
-    def sign_event(self, event: dict) -> dict:
+    def sign_event(self, event: DraftEvent) -> SignedEvent:
         pubkey = self._private_key.public_key_xonly.format().hex()
         event_id = compute_event_id(event, pubkey)
         signature = self._private_key.sign_schnorr(

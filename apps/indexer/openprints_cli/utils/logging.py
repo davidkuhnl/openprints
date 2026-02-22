@@ -10,6 +10,21 @@ _LOGGING_CONFIGURED = False
 _BASE_RECORD_FIELDS = set(logging.makeLogRecord({}).__dict__.keys())
 
 
+class _TextFormatter(logging.Formatter):
+    """Formatter that appends extra= key/value pairs to the log line."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        base = super().format(record)
+        extras = [
+            f"{k}={v}"
+            for k, v in sorted(record.__dict__.items())
+            if k not in _BASE_RECORD_FIELDS and not k.startswith("_")
+        ]
+        if not extras:
+            return base
+        return base + " " + " ".join(extras)
+
+
 class _JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         payload: dict[str, object] = {
@@ -40,7 +55,7 @@ def configure_logging() -> None:
         handler.setFormatter(_JsonFormatter())
     else:
         handler.setFormatter(
-            logging.Formatter(
+            _TextFormatter(
                 "%(asctime)s %(levelname)-8s %(name)s %(message)s",
                 datefmt="%Y-%m-%dT%H:%M:%S",
             )

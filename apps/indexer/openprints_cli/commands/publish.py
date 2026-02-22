@@ -2,10 +2,12 @@ import asyncio
 import json
 import time
 from argparse import Namespace
+from typing import cast
 
 import websockets
 
 from openprints_cli.errors import invalid_json, invalid_value
+from openprints_cli.event_types import SignedEvent
 from openprints_cli.event_utils import verify_event_signature
 from openprints_cli.payload_contract import validate_payload
 from openprints_cli.utils.input import read_text_input
@@ -13,7 +15,9 @@ from openprints_cli.utils.output import print_json
 from openprints_cli.utils.relay import resolve_relay_url
 
 
-async def _publish_event_to_relay(relay: str, event: dict, timeout_s: float) -> dict[str, object]:
+async def _publish_event_to_relay(
+    relay: str, event: SignedEvent, timeout_s: float
+) -> dict[str, object]:
     event_id = str(event.get("id", ""))
     request = ["EVENT", event]
 
@@ -81,7 +85,8 @@ def run_publish(args: Namespace) -> int:
         )
         return 1
 
-    sig_error = verify_event_signature(payload["event"])
+    event = cast(SignedEvent, payload["event"])
+    sig_error = verify_event_signature(event)
     if sig_error is not None:
         print_json({"ok": False, "errors": [invalid_value("event", sig_error)]})
         return 1
@@ -98,9 +103,7 @@ def run_publish(args: Namespace) -> int:
     last_transport_error: str | None = None
     for attempt in range(retries + 1):
         try:
-            relay_result = asyncio.run(
-                _publish_event_to_relay(relay, payload["event"], args.timeout)
-            )
+            relay_result = asyncio.run(_publish_event_to_relay(relay, event, args.timeout))
         except Exception as exc:
             last_transport_error = f"publish transport error: {exc}"
             if attempt < retries:

@@ -2,6 +2,7 @@ import argparse
 
 from .commands.build import run_build
 from .commands.hash import run_hash
+from .commands.index import run_index
 from .commands.keygen import run_keygen
 from .commands.publish import run_publish
 from .commands.sign import run_sign
@@ -127,6 +128,62 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Relay connect/receive timeout in seconds (default: 8.0).",
     )
     subscribe_parser.set_defaults(func=run_subscribe)
+
+    index_parser = subparsers.add_parser(
+        "index",
+        help="Run indexer ingestion pipeline stub (no DB writes yet)",
+    )
+    index_parser.add_argument(
+        "--config",
+        default=None,
+        help=(
+            "Optional path to indexer TOML config (default: ./openprints.indexer.toml "
+            "if present). CLI flags override config."
+        ),
+    )
+    index_parser.add_argument(
+        "--relay",
+        action="append",
+        default=None,
+        help=(
+            "Relay websocket URL; repeat flag for multiple relays. "
+            "Falls back to env/config/default when omitted."
+        ),
+    )
+    index_parser.add_argument(
+        "--kind",
+        type=int,
+        default=None,
+        help="Event kind to ingest (falls back to env/config/default: 33301).",
+    )
+    index_parser.add_argument(
+        "--queue-maxsize",
+        type=int,
+        default=None,
+        help="Shared ingest queue max size (falls back to env/config/default: 1000).",
+    )
+    index_parser.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help="Relay receive/connect timeout in seconds (falls back to env/config/default: 8.0).",
+    )
+    index_parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=None,
+        help=(
+            "Consecutive relay worker failures before giving up "
+            "(falls back to env/config/default: 12, 0=infinite)."
+        ),
+    )
+    index_parser.add_argument(
+        "--duration",
+        type=float,
+        default=None,
+        help="Run seconds before clean stop (falls back to env/config/default: 0=until interrupt).",
+    )
+    index_parser.set_defaults(func=run_index)
 
     hash_parser = subparsers.add_parser("hash", help="Compute SHA-256 for a file or stdin")
     hash_parser.add_argument(

@@ -15,6 +15,7 @@ def test_cli_help_shows_subcommands(monkeypatch, capsys) -> None:
     assert "sign" in captured.out
     assert "publish" in captured.out
     assert "subscribe" in captured.out
+    assert "index" in captured.out
     assert "hash" in captured.out
     assert "keygen" in captured.out
 

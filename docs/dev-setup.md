@@ -152,6 +152,7 @@ make cli-keygen
 make cli-sign
 make cli-publish
 make cli-subscribe
+make cli-index
 ```
 
 Payload handoff contract (`build` -> `sign` -> `publish`) is documented in `docs/cli-payload-contract.md`.
@@ -203,6 +204,23 @@ Subscribe relay selection (single relay for now):
 - Relay disconnect is treated as a graceful shutdown event (`status: disconnected`) in the summary output.
 - Planned reconnect/backoff logic will be implemented at this disconnect hook.
 - Planned enhancement: subscribe fan-out and deduplicated stream across multiple relays in one command.
+
+Indexer pipeline scaffold (multi-relay aware, no DB writes yet):
+
+- `make cli-index` runs the in-process indexer pipeline stub (relay workers + shared queue + single reducer).
+- Config file (optional): copy `apps/indexer/openprints.indexer.toml.example` to `apps/indexer/openprints.indexer.toml`.
+- Single relay via CLI override: `make cli-index INDEX_RELAY=ws://localhost:7447`
+- Multiple relays: `make cli-index RELAYS=ws://localhost:7447,wss://relay.example`
+- Runtime knobs:
+  - `INDEX_CONFIG` (optional config path; defaults to `apps/indexer/openprints.indexer.toml` when present)
+  - `INDEX_KIND` (default `33301`)
+  - `INDEX_QUEUE_MAXSIZE` (default `1000`)
+  - `INDEX_TIMEOUT` (default `8.0`)
+  - `INDEX_MAX_RETRIES` (default `12`, use `0` for infinite retry loop)
+  - `INDEX_DURATION` in seconds (default `0`, run until interrupted)
+  - `log_level` in config (`CRITICAL|ERROR|WARNING|INFO|DEBUG`)
+- Precedence for each setting: CLI flag/Make variable -> env var -> config file -> built-in default.
+- Logging level precedence: `OPENPRINTS_LOG_LEVEL` env var overrides config `log_level`.
 
 Troubleshooting fallback (if entrypoint resolution is broken in your environment):
 

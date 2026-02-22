@@ -162,7 +162,10 @@ def run_subscribe(args: Namespace) -> int:
     except ConnectionClosed as exc:
         # Graceful shutdown path when relay disconnects. This is where future
         # reconnect logic will be plugged in for long-lived subscribers.
-        logger.info("subscribe_relay_disconnected", extra={"relay": relay, "message": str(exc)})
+        logger.info(
+            "subscribe_relay_disconnected",
+            extra={"relay": relay, "disconnect_reason": str(exc)},
+        )
         print_json(
             {
                 "ok": True,
