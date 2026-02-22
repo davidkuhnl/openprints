@@ -71,3 +71,7 @@ coverage/
 *.sqlite3
 *.db
 *.pid
+payload.json
+*.payload.json
+signed.json
+*.signed.json

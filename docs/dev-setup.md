@@ -73,10 +73,11 @@ cd openprints
 From the repo root, run:
 
 ```bash
-./scripts/setup.sh
+make setup
 ```
 
-This checks that Git, Docker, Docker Compose, Python 3.11+, uv, Node 20+, and npm or pnpm are available. If something is missing, it prints install hints. It also runs idempotent setup for any apps that are present (e.g. `uv sync` in `apps/indexer`, `npm install` / `pnpm install` in `apps/client`).
+This is the primary setup entrypoint. It delegates to `scripts/setup.sh`, checks prerequisites (Git, Docker, Docker Compose, Python 3.11+, uv, Node 20+, npm/pnpm), and runs idempotent in-repo setup for available apps.
+It also installs the repository pre-commit git hook (using local `pre-commit` if available, otherwise `uvx pre-commit`).
 
 **TODO:** When the indexer and client apps are added, document any extra one-time install steps here (or ensure `./scripts/setup.sh` covers them and keep this section as a pointer to the script).
 
@@ -87,14 +88,13 @@ The local infrastructure stack is defined in `infra/docker-compose.yml`.
 Start services:
 
 ```bash
-cd infra
-docker compose up --build
+make relay-up
 ```
 
 Stop services:
 
 ```bash
-docker compose down
+make relay-down
 ```
 
 Expected services (names may vary by compose config):
@@ -132,7 +132,88 @@ curl http://localhost:8000/health
 curl http://localhost:8000/designs
 ```
 
-Early endpoints may return stub data; that is expected while the reducer/indexing flow is still being built out.
+### OpenPrints CLI scaffold (uv)
+
+Current CLI scaffold location:
+
+- `apps/indexer/openprints_cli/`
+
+Run it from repo root:
+
+```bash
+make cli
+```
+
+Current CLI commands:
+
+```bash
+make cli-build
+make cli-keygen
+make cli-sign
+make cli-publish
+make cli-subscribe
+```
+
+Payload handoff contract (`build` -> `sign` -> `publish`) is documented in `docs/cli-payload-contract.md`.
+
+For dev signing, export a local signer key before `make cli-sign`:
+
+```bash
+export OPENPRINTS_DEV_NSEC="<your-local-dev-nsec>"
+```
+
+To generate a local dev keypair:
+
+```bash
+make cli-keygen
+```
+
+To generate and export in one step:
+
+```bash
+export "$(cd apps/indexer && uv run openprints-cli keygen --env)"
+echo "$OPENPRINTS_DEV_NSEC" | cut -c1-5  # should print: nsec1
+```
+
+Run `make cli-sign` in the same terminal session where `OPENPRINTS_DEV_NSEC` is exported.
+
+Chained workflow (target state, once sign/publish implementations are fully pipeline-safe):
+
+```bash
+make cli-build | make cli-sign | make cli-publish
+```
+
+Current note: the one-relay roundtrip is implemented (`build -> sign -> publish -> subscribe`). For scriptability and debugging, file handoff is still a good default.
+
+Publish relay selection (single relay for now):
+
+- `make cli-publish RELAY=ws://localhost:7447`
+- Example with retries: `make cli-publish RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`
+- If `RELAY` is not provided, CLI falls back to `OPENPRINTS_RELAY_URL`, then first entry in `OPENPRINTS_RELAY_URLS`, then default `ws://localhost:7447`.
+- `publish` output is machine-readable JSON with `ok`, `errors`, and `relay_results`.
+- Planned enhancement: publish fan-out to multiple relays in one command (instead of current single-relay behavior).
+- Retries are for transport/timeouts only; relay `OK=false` is intentionally treated as a hard failure (no retry).
+
+Subscribe relay selection (single relay for now):
+
+- `make cli-subscribe RELAY=ws://localhost:7447`
+- Example: `make cli-subscribe RELAY=ws://localhost:7447 SUBSCRIBE_KIND=33301 SUBSCRIBE_LIMIT=1 SUBSCRIBE_TIMEOUT=8`
+- `subscribe` prints matching events as JSON lines to stdout and emits an execution summary to stderr.
+- `EOSE` does not stop live mode: with `SUBSCRIBE_LIMIT=0`, subscription keeps waiting for new events until timeout/interrupt.
+- Relay disconnect is treated as a graceful shutdown event (`status: disconnected`) in the summary output.
+- Planned reconnect/backoff logic will be implemented at this disconnect hook.
+- Planned enhancement: subscribe fan-out and deduplicated stream across multiple relays in one command.
+
+Troubleshooting fallback (if entrypoint resolution is broken in your environment):
+
+```bash
+cd apps/indexer
+uv run python -m openprints_cli
+```
+
+Note: the console script name is `openprints-cli` (hyphen), not `openprints_cli`.
+
+Early indexer/client endpoints may remain minimal while reducer/indexing work is built out in Phase 2.
 
 ## 7) Running the Astro client
 
@@ -175,8 +256,8 @@ The client will eventually use signer flows (NIP-07 / Nostr Connect), but may be
 
 Happy-path development loop:
 
-1. Run `./scripts/setup.sh` once (or after pulling changes that add app deps).
-2. Start infra from `infra/` with `docker compose up` (or `docker compose up -d` to run in the background).
+1. Run `make setup` once (or after pulling changes that add app deps).
+2. Start infra with `make relay-up`.
 3. Run indexer either:
    - in Docker (via compose), or
    - locally in `apps/indexer` for rapid backend iteration.
@@ -225,13 +306,15 @@ Testing strategy will expand as features land:
 
 ### Verify the relay
 
-Use the scripts in `scripts/` to confirm the relay is up and speaking Nostr:
+Use make targets from repo root:
 
-1. **HTTP health check** (no extra deps): `./scripts/test-relay-up.sh`
-2. **Nostr WebSocket (recommended)**: `./scripts/test-relay-ws.sh` (interactive; choose Python via [uv](https://github.com/astral-sh/uv) or Node)
-3. **Nostr WebSocket (Node direct)**: `node scripts/test-relay-node.mjs` (requires Node WebSocket support)
+```bash
+make relay-test-up
+make relay-test-ws
+make relay-check
+```
 
-See `scripts/README.md` for details and optional env vars (`RELAY_BASE_URL`, `RELAY_WS_URL`).
+See `scripts/README.md` for lower-level script usage and optional env vars (`RELAY_BASE_URL`, `RELAY_WS_URL`).
 
 ### Common local issues
 

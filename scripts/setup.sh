@@ -3,7 +3,7 @@
 # Usage: ./scripts/setup.sh
 # Run from repo root.
 
-set -e
+set -euo pipefail
 SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 REPO_ROOT="${REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 cd "$REPO_ROOT"
@@ -87,8 +87,6 @@ echo "Prerequisites OK (git, docker, python, uv, node, npm/pnpm)."
 echo ""
 
 # --- In-repo setup (idempotent) ---
-# TODO: When apps/indexer has pyproject.toml or requirements.txt, run:
-#   (cd apps/indexer && uv sync) or (cd apps/indexer && uv pip install -r requirements.txt)
 if [[ -f "$REPO_ROOT/apps/indexer/pyproject.toml" ]]; then
   echo "Setting up indexer (uv sync)..."
   (cd "$REPO_ROOT/apps/indexer" && uv sync)
@@ -99,7 +97,6 @@ elif [[ -f "$REPO_ROOT/apps/indexer/requirements.txt" ]]; then
   echo "Indexer deps ready."
 fi
 
-# TODO: When apps/client has package.json, run npm/pnpm install
 if [[ -f "$REPO_ROOT/apps/client/package.json" ]]; then
   echo "Setting up client..."
   if [[ -f "$REPO_ROOT/apps/client/pnpm-lock.yaml" ]]; then
@@ -110,5 +107,31 @@ if [[ -f "$REPO_ROOT/apps/client/package.json" ]]; then
   echo "Client deps ready."
 fi
 
+# --- Git hooks (pre-commit) ---
+if [[ -d "$REPO_ROOT/.git" ]]; then
+  echo "Installing pre-commit hook..."
+  if command -v pre-commit &>/dev/null; then
+    if pre-commit install; then
+      echo "pre-commit hook installed via local pre-commit binary."
+    else
+      echo "Warning: pre-commit install failed. You can run it manually later."
+    fi
+  else
+    # Use uv in project context so setup stays reproducible without global tool installs.
+    if [[ -f "$REPO_ROOT/apps/indexer/pyproject.toml" ]]; then
+      if (cd "$REPO_ROOT/apps/indexer" && uv run --with pre-commit pre-commit install); then
+        echo "pre-commit hook installed via uv (project context)."
+      else
+        echo "Warning: pre-commit install via uv failed. You can run it manually later."
+      fi
+    else
+      echo "Skipping pre-commit hook install: no project context available for uv fallback."
+    fi
+  fi
+else
+  echo "Skipping pre-commit hook install (not a git checkout)."
+fi
+
 echo ""
-echo "Setup complete. Next: start the relay (cd infra && docker compose up -d), then run ./scripts/test-relay-up.sh and ./scripts/test-relay-ws.sh to verify."
+echo "Setup complete."
+echo "Next: run 'make relay-up' then 'make relay-check' to verify relay health."

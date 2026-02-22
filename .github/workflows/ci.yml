@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  indexer-quality:
+    name: Indexer quality checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Sync dependencies
+        working-directory: apps/indexer
+        run: uv sync --group dev
+
+      - name: Ruff format check
+        working-directory: apps/indexer
+        run: uv run ruff format --check .
+
+      - name: Ruff lint
+        working-directory: apps/indexer
+        run: uv run ruff check .
+
+      - name: Tests with coverage
+        working-directory: apps/indexer
+        run: uv run pytest --cov=openprints_cli --cov-branch --cov-report=term-missing --cov-fail-under=85

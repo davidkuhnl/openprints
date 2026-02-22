@@ -21,6 +21,7 @@ This document defines the project intent, long-term architecture, and initial de
 - [Technology Choices](#technology-choices)
 - [Repository Structure](#repository-structure)
 - [Development Roadmap](#development-roadmap)
+- [Refactor Backlog (Low-Context Tasks)](#refactor-backlog-low-context-tasks)
 - [Local Development Setup](#local-development-setup)
 - [Domains & Branding](#domains--branding)
 - [License](#license)
@@ -194,9 +195,9 @@ openprints/
 
 Legend: `[x]` done, `[~]` current, `[>]` next, `[ ]` upcoming, `[!]` blocked
 
-Current Phase: **Phase 0 - Repo + Docs Setup**
+Current Phase: **Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)**
 
-Next Phase: **Phase 1 - Event Publishing Test Harness**
+Next Phase: **Phase 3 - REST API**
 
 ### [x] Phase 0 — Repo + Docs Setup
 
@@ -217,17 +218,33 @@ Next Phase: **Phase 1 - Event Publishing Test Harness**
 
 ---
 
-### [~] Phase 1 — Event Publishing Test Harness
+### [x] Phase 1 — Event Publishing Test Harness
 
-**Goal:** Prove end-to-end design event flow: build a CLI or small tool that constructs, signs, and publishes `kind 33001` design events to a relay, plus a subscriber script that receives and prints them.
+**Goal:** Prove end-to-end design event flow: build a CLI or small tool that constructs, signs, and publishes `kind 33301` design events to a relay, plus a subscriber script that receives and prints them.
 
 **Includes:**
 
-- Script or CLI to build a valid `33001` event (tags, content, `created_at`)
+- Script or CLI to build a valid `33301` event (tags, content, `created_at`)
+- CLI scaffold location: `apps/indexer/openprints_cli/` (primary run command: `cd apps/indexer && uv run openprints-cli`, or `make cli`; troubleshooting fallback: `uv run python -m openprints_cli`)
+- CLI flow supports file handoff and piping (`build | sign | publish`, or `build --output draft.json` -> `sign --input draft.json` -> `publish --input signed.json`)
+- Build/publish handoff contract is defined in `docs/cli-payload-contract.md` (`artifact_version`, draft/signed states, and validation error format)
+- Build/publish validation errors are centralized in `apps/indexer/openprints_cli/error_codes.py` + `apps/indexer/openprints_cli/errors.py`
 - Signing via NIP-07 (browser extension) or Nostr Connect / nsec
 - Publish to configurable relay(s); optional: publish from indexer/client env
-- Subscriber script (e.g. Python or Node) that connects to the relay, subscribes to `kind 33001`, and logs or prints received events
+- Subscriber script (e.g. Python or Node) that connects to the relay, subscribes to `kind 33301`, and logs or prints received events
 - Documentation or inline comments so a reviewer can run “publish one design, see it in the subscriber” locally
+
+**Current progress in this phase:**
+
+- [x] CLI scaffolding is in place (`build`, `sign`, `publish`, `subscribe` subcommands)
+- [x] Payload contract and validation are implemented and documented
+- [x] `build` now emits a real draft event (inputs for `name`/`format`/`url`, file or SHA-256, and auto-generated `d` id)
+- [x] Reusable hashing utilities and CLI hash helpers are in place (`hash` subcommand + make targets)
+- [x] Automated quality checks are wired (`ruff`, `pytest`, coverage gate, pre-commit, CI)
+- [x] `sign` performs dev `nsec` signing (`draft` -> `signed`)
+- [x] `publish` sends signed events to a configured single relay and handles `OK` responses
+- [x] `subscribe` receives events from a configured single relay (live mode supported with `SUBSCRIBE_LIMIT=0`)
+- [>] Next milestone: multi-relay fan-out (publish/subscribe), reconnect/backoff hardening, and dedupe across relays
 
 **Done when:**
 
@@ -235,13 +252,13 @@ Next Phase: **Phase 1 - Event Publishing Test Harness**
 
 ---
 
-### [>] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
+### [~] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
 
 **Goal:** Implement the Python indexer core: subscribe to relevant Nostr events from one or more relays, reduce them into a normalized model, and persist to SQLite.
 
 **Includes:**
 
-- Async Nostr client (e.g. `nostr-sdk` or custom) subscribing to kinds `33001`, and later `33002`/`9735` as needed
+- Async Nostr client (e.g. `nostr-sdk` or custom) subscribing to kinds `33301`, and later `33311`/`9735` as needed
 - Reducer logic: map raw events to internal design/endorsement/zap models; handle replaceable events (newest `created_at` wins per `pubkey` + `d`)
 - SQLite schema for designs (and any supporting tables)
 - Configurable relay list and basic error/backoff handling
@@ -392,6 +409,21 @@ Next Phase: **Phase 1 - Event Publishing Test Harness**
 
 ---
 
+## Refactor Backlog (Low-Context Tasks)
+
+Small cleanup tasks intended to be safe, independent, and easy to pick up in short sessions.
+
+- [ ] Centralize CLI response-envelope builders (`ok`, `errors`, `relay_results`) to avoid repeated JSON key literals across commands.
+- [ ] Add typed response models (`TypedDict` or dataclasses) for command outputs (`publish`, `subscribe`, `sign`, `build`).
+- [ ] Keep protocol/wire-level literals inline (Nostr message fields), but document which keys are intentionally protocol constants.
+- [ ] Extract shared JSON print helpers for success/error output formatting to reduce boilerplate.
+- [ ] Add a consistency-sweep test to assert common output shape across CLI commands.
+- [ ] Review command modules for tiny duplicate helpers and move stable shared logic into `openprints_cli/utils/`.
+
+Guideline: prefer refactors that preserve behavior and improve consistency/readability; avoid mixed feature work in the same PR.
+
+---
+
 # Local Development Setup
 
 This repository includes a complete local environment:
@@ -407,6 +439,67 @@ Services include:
 - Astro client (dev mode)  
 
 Detailed instructions live in `docs/dev-setup.md`.
+
+---
+
+## Quality Checks (Indexer)
+
+Recommended shortcuts (from repo root):
+
+```bash
+make setup
+make lint
+make test
+make check
+```
+
+`make setup` runs the full bootstrap (`scripts/setup.sh`): prerequisite checks, app dependency sync, and pre-commit hook installation.
+
+Additional shortcuts:
+
+```bash
+make relay-up
+make relay-down
+make relay-test-up
+make relay-test-ws
+make relay-check
+make cli
+make cli-build
+make cli-keygen
+make cli-sign
+make cli-publish
+make cli-subscribe
+make cli-hash
+cat apps/indexer/tests/fixtures/stub_design.stl | make cli-hash-stdin
+```
+
+`make cli-build` accepts optional overrides via `NAME=... FORMAT=... URL=... FILE=... SHA256=... CONTENT=... DESIGN_ID=...`.
+`make cli-keygen` generates a local dev keypair (`nsec`/`npub`) for testing flows.
+`make cli-sign` uses the dev signer and expects `OPENPRINTS_DEV_NSEC` in your environment.
+`make cli-publish` targets `RELAY=...` (default `ws://localhost:7447`) and also supports env fallback (`OPENPRINTS_RELAY_URL` or `OPENPRINTS_RELAY_URLS`).
+`make cli-publish` now returns machine-readable JSON (`ok`, `errors`, `relay_results`).
+Example with timeout/retry knobs: `make cli-publish RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`.
+Retries are intended for transport/timeouts only; relay `OK=false` intentionally hard-fails without retry.
+`make cli-subscribe` supports `RELAY`, `SUBSCRIBE_KIND`, `SUBSCRIBE_LIMIT`, `SUBSCRIBE_TIMEOUT` and currently subscribes to one relay.
+`EOSE` marks backlog completion only; with `SUBSCRIBE_LIMIT=0`, subscribe keeps waiting for new events until timeout/interrupt.
+Relay disconnect is treated as a graceful summary event (`status: disconnected`); reconnect/backoff is the next planned improvement.
+Multi-relay subscribe fan-out (with dedupe) is planned.
+Multi-relay publish fan-out is planned (current behavior is single relay per invocation).
+One-step export example: `export "$(cd apps/indexer && uv run openprints-cli keygen --env)"`.
+
+Target list/help (source of truth):
+
+```bash
+make help
+```
+
+Raw equivalents are intentionally kept out of the main README to keep this guide concise. Power-user details can be inferred from `Makefile` targets.
+
+Pre-commit hook config lives at `.pre-commit-config.yaml`.
+
+CI runs these checks in `.github/workflows/ci.yml` on pull requests and pushes to `main`.
+
+To require CI before merge, enable branch protection/rulesets in GitHub and mark the CI status check as required.
 
 ---
 
