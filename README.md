@@ -225,7 +225,7 @@ Next Phase: **Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)**
 
 - Script or CLI to build a valid `33301` event (tags, content, `created_at`)
 - CLI scaffold location: `apps/indexer/openprints_cli/` (primary run command: `cd apps/indexer && uv run openprints-cli`, or `make cli`; troubleshooting fallback: `uv run python -m openprints_cli`)
-- Stub flow supports file handoff and piping (`build | publish`, or `build --output payload.json` -> `publish --input payload.json`)
+- Stub flow supports file handoff and piping (`build | sign | publish`, or `build --output draft.json` -> `sign --input draft.json` -> `publish --input signed.json`)
 - Build/publish handoff contract is defined in `docs/cli-payload-contract.md` (`artifact_version`, draft/signed states, and validation error format)
 - Build/publish validation errors are centralized in `apps/indexer/openprints_cli/error_codes.py` + `apps/indexer/openprints_cli/errors.py`
 - Signing via NIP-07 (browser extension) or Nostr Connect / nsec
@@ -235,11 +235,13 @@ Next Phase: **Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)**
 
 **Current progress in this phase:**
 
-- [x] CLI scaffolding is in place (`build`, `publish`, `subscribe` subcommands)
+- [x] CLI scaffolding is in place (`build`, `sign`, `publish`, `subscribe` subcommands)
 - [x] Payload contract and validation are implemented and documented
+- [x] `build` now emits a real draft event (inputs for `name`/`format`/`url`, file or SHA-256, and auto-generated `d` id)
+- [x] Reusable hashing utilities and CLI hash helpers are in place (`hash` subcommand + make targets)
 - [x] Automated quality checks are wired (`ruff`, `pytest`, coverage gate, pre-commit, CI)
-- [~] `publish` currently validates payloads and prints output, but does not yet send `EVENT` to a relay
-- [>] Next milestone: implement relay publish path, then verify round-trip with subscriber against local relay
+- [~] `sign`/`publish` are currently stubs: `sign` does not yet produce cryptographic signatures and `publish` does not yet send `EVENT` to a relay
+- [>] Next milestone: implement real signing (`draft` -> `signed`), then relay publish + subscriber round-trip verification
 
 **Done when:**
 
@@ -445,13 +447,18 @@ make relay-test-ws
 make relay-check
 make cli
 make cli-build
+make cli-keygen
+make cli-sign
 make cli-publish
 make cli-subscribe
 make cli-hash
 cat apps/indexer/tests/fixtures/stub_design.stl | make cli-hash-stdin
 ```
 
-`make cli-build` accepts optional overrides via `NAME=... FORMAT=... URL=... FILE=... CONTENT=... DESIGN_ID=...`.
+`make cli-build` accepts optional overrides via `NAME=... FORMAT=... URL=... FILE=... SHA256=... CONTENT=... DESIGN_ID=...`.
+`make cli-keygen` generates a local dev keypair (`nsec`/`npub`) for testing flows.
+`make cli-sign` uses the dev signer and expects `OPENPRINTS_DEV_NSEC` in your environment.
+One-step export example: `export "$(cd apps/indexer && uv run openprints-cli keygen --env)"`.
 
 Target list/help (source of truth):
 

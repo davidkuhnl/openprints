@@ -12,9 +12,11 @@ def test_cli_help_shows_subcommands(monkeypatch, capsys) -> None:
     assert result == 0
     assert "openprints-cli" in captured.out
     assert "build" in captured.out
+    assert "sign" in captured.out
     assert "publish" in captured.out
     assert "subscribe" in captured.out
     assert "hash" in captured.out
+    assert "keygen" in captured.out
 
 
 def test_main_dispatches_build(monkeypatch, capsys) -> None:

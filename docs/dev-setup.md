@@ -147,11 +147,43 @@ make cli
 Current stub commands:
 
 ```bash
-make cli-build | make cli-publish
+make cli-build
+make cli-keygen
+make cli-sign
+make cli-publish
 make cli-subscribe
 ```
 
-Payload handoff contract (`build` -> `publish`) is documented in `docs/cli-payload-contract.md`.
+Payload handoff contract (`build` -> `sign` -> `publish`) is documented in `docs/cli-payload-contract.md`.
+
+For dev signing, export a local signer key before `make cli-sign`:
+
+```bash
+export OPENPRINTS_DEV_NSEC="<your-local-dev-nsec>"
+```
+
+To generate a local dev keypair:
+
+```bash
+make cli-keygen
+```
+
+To generate and export in one step:
+
+```bash
+export "$(cd apps/indexer && uv run openprints-cli keygen --env)"
+echo "$OPENPRINTS_DEV_NSEC" | cut -c1-5  # should print: nsec1
+```
+
+Run `make cli-sign` in the same terminal session where `OPENPRINTS_DEV_NSEC` is exported.
+
+Chained workflow (target state, once sign/publish implementations are fully pipeline-safe):
+
+```bash
+make cli-build | make cli-sign | make cli-publish
+```
+
+Current note: while `sign` and `publish` are still stubs, prefer explicit step-by-step runs (or file handoff) for reliable behavior.
 
 Troubleshooting fallback (if entrypoint resolution is broken in your environment):
 

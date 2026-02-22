@@ -73,3 +73,5 @@ coverage/
 *.pid
 payload.json
 *.payload.json
+signed.json
+*.signed.json

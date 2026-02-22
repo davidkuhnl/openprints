@@ -46,6 +46,6 @@ def run_publish(args: Namespace) -> int:
         print(json.dumps({"ok": False, "errors": errors}, indent=2))
         return 1
 
-    print("publish: would sign and publish this payload to configured relays:")
+    print("publish: would publish this payload to configured relays (assumes signed input):")
     print(json.dumps(payload, indent=2))
     return 0

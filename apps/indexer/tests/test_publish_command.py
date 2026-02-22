@@ -20,7 +20,7 @@ def test_publish_reads_payload_from_file(tmp_path: Path, capsys) -> None:
     captured = capsys.readouterr()
 
     assert result == 0
-    assert "publish: would sign and publish this payload" in captured.out
+    assert "publish: would publish this payload to configured relays" in captured.out
     assert '"artifact_version": 1' in captured.out
 
 
@@ -35,7 +35,7 @@ def test_publish_reads_payload_from_stdin(monkeypatch, capsys) -> None:
     captured = capsys.readouterr()
 
     assert result == 0
-    assert "publish: would sign and publish this payload" in captured.out
+    assert "publish: would publish this payload to configured relays" in captured.out
     assert '"kind": 33301' in captured.out
 
 

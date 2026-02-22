@@ -1,4 +1,4 @@
-.PHONY: help setup setup-fast lint test check relay-up relay-down relay-logs relay-test-up relay-test-ws relay-check cli cli-build cli-publish cli-subscribe cli-hash cli-hash-stdin
+.PHONY: help setup setup-fast lint test check relay-up relay-down relay-logs relay-test-up relay-test-ws relay-check cli cli-build cli-sign cli-publish cli-subscribe cli-hash cli-hash-stdin cli-keygen
 
 INDEXER_DIR := apps/indexer
 INFRA_DIR := infra
@@ -25,10 +25,12 @@ help:
 	@echo "  make relay-check    - run relay HTTP + websocket checks"
 	@echo "  make cli            - run openprints-cli scaffold"
 	@echo "  make cli-build      - run openprints-cli build using NAME/FORMAT/URL and FILE or SHA256 vars"
+	@echo "  make cli-sign       - run openprints-cli sign (stdin, requires OPENPRINTS_DEV_NSEC)"
 	@echo "  make cli-publish    - run openprints-cli publish (stdin)"
 	@echo "  make cli-subscribe  - run openprints-cli subscribe"
 	@echo "  make cli-hash       - run openprints-cli hash --file \$$FILE"
 	@echo "  make cli-hash-stdin - run openprints-cli hash for piped stdin"
+	@echo "  make cli-keygen     - generate a local dev nsec/npub keypair"
 
 setup:
 	@./scripts/setup.sh
@@ -68,6 +70,9 @@ cli:
 cli-build:
 	@cd $(INDEXER_DIR) && EXTRA_DESIGN_ID="" ; HASH_ARG="--file \"$(FILE)\"" ; if [ -n "$(DESIGN_ID)" ]; then EXTRA_DESIGN_ID="--design-id \"$(DESIGN_ID)\""; fi ; if [ -n "$(SHA256)" ]; then HASH_ARG="--sha256 \"$(SHA256)\""; fi ; eval "uv run openprints-cli build --name \"$(NAME)\" --format \"$(FORMAT)\" --url \"$(URL)\" --content \"$(CONTENT)\" $$HASH_ARG $$EXTRA_DESIGN_ID"
 
+cli-sign:
+	@cd $(INDEXER_DIR) && uv run openprints-cli sign
+
 cli-publish:
 	@cd $(INDEXER_DIR) && uv run openprints-cli publish
 
@@ -79,3 +84,6 @@ cli-hash:
 
 cli-hash-stdin:
 	@cd $(INDEXER_DIR) && uv run openprints-cli hash --file -
+
+cli-keygen:
+	@cd $(INDEXER_DIR) && uv run openprints-cli keygen

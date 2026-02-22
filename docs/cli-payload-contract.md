@@ -1,8 +1,23 @@
 # OpenPrints CLI Payload Contract
 
-This document defines the handoff contract between `openprints-cli build` and `openprints-cli publish`.
+This document defines the handoff contract across `openprints-cli build`, `openprints-cli sign`, and `openprints-cli publish`.
 
 The contract is intentionally separate from Nostr protocol fields so the CLI artifact can evolve safely over time.
+
+Current intended stub workflow:
+
+- `build` emits a `draft` artifact
+- `sign` consumes `draft` and emits `signed`
+- `publish` consumes `signed` and sends to relay(s)
+
+Current signer backend in CLI:
+
+- `dev-nsec` (local development key from `OPENPRINTS_DEV_NSEC`)
+- `remote` is reserved as an extension point and not implemented yet
+
+Utility commands:
+
+- `openprints-cli keygen` can generate local dev `nsec`/`npub` values for testing.
 
 ## v1 Envelope
 
@@ -68,7 +83,7 @@ When `meta.state = "signed"`:
 
 ## Structured Validation Errors
 
-`publish` returns machine-readable validation errors:
+`sign` and `publish` return machine-readable validation errors:
 
 ```json
 {
