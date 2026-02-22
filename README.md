@@ -481,6 +481,8 @@ cat apps/indexer/tests/fixtures/stub_design.stl | make cli-hash-stdin
 Example with timeout/retry knobs: `make cli-publish RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`.
 Retries are intended for transport/timeouts only; relay `OK=false` intentionally hard-fails without retry.
 `make cli-subscribe` supports `RELAY`, `SUBSCRIBE_KIND`, `SUBSCRIBE_LIMIT`, `SUBSCRIBE_TIMEOUT` and currently subscribes to one relay.
+Subscriber internal logs are level-gated and written to stderr. To enable them, set `OPENPRINTS_LOG_LEVEL` (`INFO` or `DEBUG`); optional formatting via `OPENPRINTS_LOG_FORMAT=text|json`.
+Example: `OPENPRINTS_LOG_LEVEL=INFO OPENPRINTS_LOG_FORMAT=json make cli-subscribe`.
 `EOSE` marks backlog completion only; with `SUBSCRIBE_LIMIT=0`, subscribe keeps waiting for new events until timeout/interrupt.
 Relay disconnect is treated as a graceful summary event (`status: disconnected`); reconnect/backoff is the next planned improvement.
 Multi-relay subscribe fan-out (with dedupe) is planned.
