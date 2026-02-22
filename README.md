@@ -194,9 +194,9 @@ openprints/
 
 Legend: `[x]` done, `[~]` current, `[>]` next, `[ ]` upcoming, `[!]` blocked
 
-Current Phase: **Phase 0 - Repo + Docs Setup**
+Current Phase: **Phase 1 - Event Publishing Test Harness**
 
-Next Phase: **Phase 1 - Event Publishing Test Harness**
+Next Phase: **Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)**
 
 ### [x] Phase 0 — Repo + Docs Setup
 
@@ -219,18 +219,27 @@ Next Phase: **Phase 1 - Event Publishing Test Harness**
 
 ### [~] Phase 1 — Event Publishing Test Harness
 
-**Goal:** Prove end-to-end design event flow: build a CLI or small tool that constructs, signs, and publishes `kind 33001` design events to a relay, plus a subscriber script that receives and prints them.
+**Goal:** Prove end-to-end design event flow: build a CLI or small tool that constructs, signs, and publishes `kind 33301` design events to a relay, plus a subscriber script that receives and prints them.
 
 **Includes:**
 
-- Script or CLI to build a valid `33001` event (tags, content, `created_at`)
+- Script or CLI to build a valid `33301` event (tags, content, `created_at`)
 - CLI scaffold location: `apps/indexer/openprints_cli/` (primary run command: `cd apps/indexer && uv run openprints-cli`, or `make cli`; troubleshooting fallback: `uv run python -m openprints_cli`)
 - Stub flow supports file handoff and piping (`build | publish`, or `build --output payload.json` -> `publish --input payload.json`)
 - Build/publish handoff contract is defined in `docs/cli-payload-contract.md` (`artifact_version`, draft/signed states, and validation error format)
+- Build/publish validation errors are centralized in `apps/indexer/openprints_cli/error_codes.py` + `apps/indexer/openprints_cli/errors.py`
 - Signing via NIP-07 (browser extension) or Nostr Connect / nsec
 - Publish to configurable relay(s); optional: publish from indexer/client env
-- Subscriber script (e.g. Python or Node) that connects to the relay, subscribes to `kind 33001`, and logs or prints received events
+- Subscriber script (e.g. Python or Node) that connects to the relay, subscribes to `kind 33301`, and logs or prints received events
 - Documentation or inline comments so a reviewer can run “publish one design, see it in the subscriber” locally
+
+**Current progress in this phase:**
+
+- [x] CLI scaffolding is in place (`build`, `publish`, `subscribe` subcommands)
+- [x] Payload contract and validation are implemented and documented
+- [x] Automated quality checks are wired (`ruff`, `pytest`, coverage gate, pre-commit, CI)
+- [~] `publish` currently validates payloads and prints output, but does not yet send `EVENT` to a relay
+- [>] Next milestone: implement relay publish path, then verify round-trip with subscriber against local relay
 
 **Done when:**
 
@@ -244,7 +253,7 @@ Next Phase: **Phase 1 - Event Publishing Test Harness**
 
 **Includes:**
 
-- Async Nostr client (e.g. `nostr-sdk` or custom) subscribing to kinds `33001`, and later `33002`/`9735` as needed
+- Async Nostr client (e.g. `nostr-sdk` or custom) subscribing to kinds `33301`, and later `33311`/`9735` as needed
 - Reducer logic: map raw events to internal design/endorsement/zap models; handle replaceable events (newest `created_at` wins per `pubkey` + `d`)
 - SQLite schema for designs (and any supporting tables)
 - Configurable relay list and basic error/backoff handling
@@ -438,6 +447,8 @@ make cli
 make cli-build
 make cli-publish
 make cli-subscribe
+make cli-hash
+cat apps/indexer/tests/fixtures/stub_design.stl | make cli-hash-stdin
 ```
 
 Target list/help (source of truth):

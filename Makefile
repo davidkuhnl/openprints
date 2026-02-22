@@ -1,7 +1,8 @@
-.PHONY: help setup setup-fast lint test check relay-up relay-down relay-logs relay-test-up relay-test-ws relay-check cli cli-build cli-publish cli-subscribe
+.PHONY: help setup setup-fast lint test check relay-up relay-down relay-logs relay-test-up relay-test-ws relay-check cli cli-build cli-publish cli-subscribe cli-hash cli-hash-stdin
 
 INDEXER_DIR := apps/indexer
 INFRA_DIR := infra
+FILE ?= tests/fixtures/stub_design.stl
 
 help:
 	@echo "Available targets:"
@@ -20,6 +21,8 @@ help:
 	@echo "  make cli-build      - run openprints-cli build"
 	@echo "  make cli-publish    - run openprints-cli publish (stdin)"
 	@echo "  make cli-subscribe  - run openprints-cli subscribe"
+	@echo "  make cli-hash       - run openprints-cli hash --file \$$FILE"
+	@echo "  make cli-hash-stdin - run openprints-cli hash for piped stdin"
 
 setup:
 	@./scripts/setup.sh
@@ -64,3 +67,9 @@ cli-publish:
 
 cli-subscribe:
 	@cd $(INDEXER_DIR) && uv run openprints-cli subscribe
+
+cli-hash:
+	@cd $(INDEXER_DIR) && uv run openprints-cli hash --file "$(FILE)"
+
+cli-hash-stdin:
+	@cd $(INDEXER_DIR) && uv run openprints-cli hash --file -

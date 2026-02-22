@@ -1,6 +1,7 @@
 import argparse
 
 from .commands.build import run_build
+from .commands.hash import run_hash
 from .commands.publish import run_publish
 from .commands.subscribe import run_subscribe
 
@@ -27,6 +28,14 @@ def _build_parser() -> argparse.ArgumentParser:
 
     subscribe_parser = subparsers.add_parser("subscribe", help="Subscribe to relay events")
     subscribe_parser.set_defaults(func=run_subscribe)
+
+    hash_parser = subparsers.add_parser("hash", help="Compute SHA-256 for a file or stdin")
+    hash_parser.add_argument(
+        "--file",
+        default="-",
+        help="Input file path, or '-' for stdin (default).",
+    )
+    hash_parser.set_defaults(func=run_hash)
 
     return parser
 
