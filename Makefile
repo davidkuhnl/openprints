@@ -1,11 +1,12 @@
-.PHONY: help setup lint test check relay-up relay-down relay-logs relay-test-up relay-test-ws relay-check cli cli-build cli-publish cli-subscribe
+.PHONY: help setup setup-fast lint test check relay-up relay-down relay-logs relay-test-up relay-test-ws relay-check cli cli-build cli-publish cli-subscribe
 
 INDEXER_DIR := apps/indexer
 INFRA_DIR := infra
 
 help:
 	@echo "Available targets:"
-	@echo "  make setup          - sync indexer dev dependencies with uv"
+	@echo "  make setup          - run full bootstrap (prereqs, app deps, git hooks)"
+	@echo "  make setup-fast     - sync indexer dev dependencies with uv"
 	@echo "  make lint           - run ruff format check + ruff lint (indexer)"
 	@echo "  make test           - run pytest with coverage gate (indexer)"
 	@echo "  make check          - run lint and test"
@@ -21,6 +22,9 @@ help:
 	@echo "  make cli-subscribe  - run openprints-cli subscribe"
 
 setup:
+	@./scripts/setup.sh
+
+setup-fast:
 	@cd $(INDEXER_DIR) && uv sync --group dev
 
 lint:

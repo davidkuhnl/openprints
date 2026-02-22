@@ -423,6 +423,8 @@ make test
 make check
 ```
 
+`make setup` runs the full bootstrap (`scripts/setup.sh`): prerequisite checks, app dependency sync, and pre-commit hook installation.
+
 Additional shortcuts:
 
 ```bash

@@ -16,6 +16,8 @@ make relay-test-ws
 make relay-check
 ```
 
+`make setup` is the full bootstrap entrypoint and includes pre-commit hook installation.
+
 ## Script-level usage (power users)
 
 These scripts are the lower-level commands behind Make targets:

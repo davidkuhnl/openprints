@@ -77,12 +77,7 @@ make setup
 ```
 
 This is the primary setup entrypoint. It delegates to `scripts/setup.sh`, checks prerequisites (Git, Docker, Docker Compose, Python 3.11+, uv, Node 20+, npm/pnpm), and runs idempotent in-repo setup for available apps.
-
-Optional (recommended) once you have `pre-commit` installed:
-
-```bash
-pre-commit install
-```
+It also installs the repository pre-commit git hook (using local `pre-commit` if available, otherwise `uvx pre-commit`).
 
 **TODO:** When the indexer and client apps are added, document any extra one-time install steps here (or ensure `./scripts/setup.sh` covers them and keep this section as a pointer to the script).
 
