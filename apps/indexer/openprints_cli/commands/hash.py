@@ -4,7 +4,7 @@ import sys
 from argparse import Namespace
 from pathlib import Path
 
-from openprints_cli.utils.hash import sha256_bytes, sha256_file
+from openprints_cli.utils.sha256 import sha256_bytes, sha256_file
 
 
 def run_hash(args: Namespace) -> int:

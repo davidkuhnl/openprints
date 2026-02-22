@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import json
 import secrets
 import sys
 from argparse import Namespace
 
 from bech32 import bech32_encode, convertbits
 from coincurve import PrivateKey
+
+from openprints_cli.utils.output import print_json
 
 
 def _to_bech32(hrp: str, raw: bytes) -> str:
@@ -24,16 +25,13 @@ def run_keygen(args: Namespace) -> int:
     npub = _to_bech32("npub", bytes.fromhex(pubkey))
 
     if args.json:
-        print(
-            json.dumps(
-                {
-                    "nsec": nsec,
-                    "npub": npub,
-                    "pubkey": pubkey,
-                    "env_var": args.env_name,
-                },
-                indent=2,
-            )
+        print_json(
+            {
+                "nsec": nsec,
+                "npub": npub,
+                "pubkey": pubkey,
+                "env_var": args.env_name,
+            }
         )
     elif args.env:
         print(f"{args.env_name}={nsec}")

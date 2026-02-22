@@ -68,6 +68,21 @@ def test_subscribe_connection_closed_is_graceful(monkeypatch, capsys) -> None:
     assert summary["relay_results"][0]["status"] == "disconnected"
 
 
+def test_subscribe_keyboard_interrupt_is_graceful(monkeypatch, capsys) -> None:
+    async def _interrupt(relay: str, kind: int, timeout_s: float, limit: int) -> dict[str, object]:
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(subscribe_cmd, "_subscribe_once", _interrupt)
+
+    result = run_subscribe(_args(relay="ws://localhost:7447"))
+    captured = capsys.readouterr()
+
+    assert result == 0
+    summary = json.loads(captured.err)
+    assert summary["ok"] is True
+    assert summary["relay_results"][0]["status"] == "interrupted"
+
+
 class _FakeWebSocket:
     def __init__(self, recv_items: list[object]) -> None:
         self.recv_items = recv_items
@@ -174,17 +189,17 @@ def test_subscribe_once_limit_zero_continues_after_eose_until_timeout(monkeypatc
 def test_subscribe_resolve_relay_url_fallbacks(monkeypatch) -> None:
     monkeypatch.delenv("OPENPRINTS_RELAY_URL", raising=False)
     monkeypatch.delenv("OPENPRINTS_RELAY_URLS", raising=False)
-    relay, errors = subscribe_cmd._resolve_relay_url(_args())
+    relay, errors = subscribe_cmd.resolve_relay_url(_args())
     assert errors == []
     assert relay == "ws://localhost:7447"
 
     monkeypatch.setenv("OPENPRINTS_RELAY_URL", "ws://env-relay:7447")
-    relay, errors = subscribe_cmd._resolve_relay_url(_args())
+    relay, errors = subscribe_cmd.resolve_relay_url(_args())
     assert errors == []
     assert relay == "ws://env-relay:7447"
 
     monkeypatch.delenv("OPENPRINTS_RELAY_URL", raising=False)
     monkeypatch.setenv("OPENPRINTS_RELAY_URLS", "ws://first:7447,ws://second:7447")
-    relay, errors = subscribe_cmd._resolve_relay_url(_args())
+    relay, errors = subscribe_cmd.resolve_relay_url(_args())
     assert errors == []
     assert relay == "ws://first:7447"

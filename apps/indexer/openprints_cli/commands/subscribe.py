@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import secrets
 import sys
 from argparse import Namespace
@@ -11,23 +10,8 @@ import websockets  # type: ignore[reportMissingImports]
 from websockets.exceptions import ConnectionClosed  # type: ignore[reportMissingImports]
 
 from openprints_cli.errors import invalid_value
-
-
-def _resolve_relay_url(args: Namespace) -> tuple[str | None, list[dict[str, str]]]:
-    relay = (args.relay or "").strip()
-    if not relay:
-        relay = os.environ.get("OPENPRINTS_RELAY_URL", "").strip()
-    if not relay:
-        relay_list = os.environ.get("OPENPRINTS_RELAY_URLS", "").strip()
-        if relay_list:
-            relay = relay_list.split(",")[0].strip()
-    if not relay:
-        relay = "ws://localhost:7447"
-
-    if not (relay.startswith("ws://") or relay.startswith("wss://")):
-        return None, [invalid_value("relay", "relay URL must start with ws:// or wss://")]
-
-    return relay, []
+from openprints_cli.utils.output import print_json
+from openprints_cli.utils.relay import resolve_relay_url
 
 
 async def _subscribe_once(
@@ -59,9 +43,7 @@ async def _subscribe_once(
             try:
                 message = json.loads(raw)
             except json.JSONDecodeError:
-                print(
-                    json.dumps({"relay": relay, "type": "MALFORMED", "raw": raw}), file=sys.stderr
-                )
+                print_json({"relay": relay, "type": "MALFORMED", "raw": raw}, stream=sys.stderr)
                 continue
 
             if not isinstance(message, list) or not message:
@@ -70,25 +52,25 @@ async def _subscribe_once(
             msg_type = message[0]
             if msg_type == "EVENT" and len(message) >= 3 and message[1] == sub_id:
                 event = message[2]
-                print(json.dumps(event, separators=(",", ":"), ensure_ascii=False))
+                print_json(event, compact=True, ensure_ascii=False)
                 events_seen += 1
             elif msg_type == "EOSE" and len(message) >= 2 and message[1] == sub_id:
                 eose_seen = True
                 # Keep streaming after EOSE in live mode (limit=0). EOSE only marks
                 # completion of the initial backlog, not the end of subscription.
             elif msg_type == "NOTICE" and len(message) >= 2:
-                print(
-                    json.dumps({"relay": relay, "type": "NOTICE", "message": str(message[1])}),
-                    file=sys.stderr,
+                print_json(
+                    {"relay": relay, "type": "NOTICE", "message": str(message[1])},
+                    stream=sys.stderr,
                 )
 
     return {"relay": relay, "events_seen": events_seen, "eose_seen": eose_seen}
 
 
 def run_subscribe(args: Namespace) -> int:
-    relay, relay_errors = _resolve_relay_url(args)
+    relay, relay_errors = resolve_relay_url(args)
     if relay_errors:
-        print(json.dumps({"ok": False, "errors": relay_errors}, indent=2))
+        print_json({"ok": False, "errors": relay_errors})
         return 1
 
     try:
@@ -100,49 +82,51 @@ def run_subscribe(args: Namespace) -> int:
                 limit=args.limit,
             )
         )
+    except KeyboardInterrupt:
+        print_json(
+            {
+                "ok": True,
+                "relay_results": [
+                    {
+                        "relay": relay,
+                        "events_seen": 0,
+                        "eose_seen": False,
+                        "status": "interrupted",
+                        "message": "subscription interrupted by user",
+                    }
+                ],
+            },
+            stream=sys.stderr,
+        )
+        return 0
     except ConnectionClosed as exc:
         # Graceful shutdown path when relay disconnects. This is where future
         # reconnect logic will be plugged in for long-lived subscribers.
-        print(
-            json.dumps(
-                {
-                    "ok": True,
-                    "relay_results": [
-                        {
-                            "relay": relay,
-                            "events_seen": 0,
-                            "eose_seen": False,
-                            "status": "disconnected",
-                            "message": str(exc),
-                        }
-                    ],
-                },
-                indent=2,
-            ),
-            file=sys.stderr,
+        print_json(
+            {
+                "ok": True,
+                "relay_results": [
+                    {
+                        "relay": relay,
+                        "events_seen": 0,
+                        "eose_seen": False,
+                        "status": "disconnected",
+                        "message": str(exc),
+                    }
+                ],
+            },
+            stream=sys.stderr,
         )
         return 0
     except Exception as exc:
-        print(
-            json.dumps(
-                {
-                    "ok": False,
-                    "errors": [invalid_value("relay", f"subscribe transport error: {exc}")],
-                    "relay_results": [{"relay": relay, "events_seen": 0, "eose_seen": False}],
-                },
-                indent=2,
-            )
+        print_json(
+            {
+                "ok": False,
+                "errors": [invalid_value("relay", f"subscribe transport error: {exc}")],
+                "relay_results": [{"relay": relay, "events_seen": 0, "eose_seen": False}],
+            }
         )
         return 1
 
-    print(
-        json.dumps(
-            {
-                "ok": True,
-                "relay_results": [result],
-            },
-            indent=2,
-        ),
-        file=sys.stderr,
-    )
+    print_json({"ok": True, "relay_results": [result]}, stream=sys.stderr)
     return 0

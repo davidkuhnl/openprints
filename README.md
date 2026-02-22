@@ -21,6 +21,7 @@ This document defines the project intent, long-term architecture, and initial de
 - [Technology Choices](#technology-choices)
 - [Repository Structure](#repository-structure)
 - [Development Roadmap](#development-roadmap)
+- [Refactor Backlog (Low-Context Tasks)](#refactor-backlog-low-context-tasks)
 - [Local Development Setup](#local-development-setup)
 - [Domains & Branding](#domains--branding)
 - [License](#license)
@@ -405,6 +406,21 @@ Next Phase: **Phase 3 - REST API**
 **Done when:**
 
 - Site is live at `openprints.dev` (or agreed domain); repo is presentable to contributors and funders; OpenSats application submitted (or ready to submit) with clear scope and milestones
+
+---
+
+## Refactor Backlog (Low-Context Tasks)
+
+Small cleanup tasks intended to be safe, independent, and easy to pick up in short sessions.
+
+- [ ] Centralize CLI response-envelope builders (`ok`, `errors`, `relay_results`) to avoid repeated JSON key literals across commands.
+- [ ] Add typed response models (`TypedDict` or dataclasses) for command outputs (`publish`, `subscribe`, `sign`, `build`).
+- [ ] Keep protocol/wire-level literals inline (Nostr message fields), but document which keys are intentionally protocol constants.
+- [ ] Extract shared JSON print helpers for success/error output formatting to reduce boilerplate.
+- [ ] Add a consistency-sweep test to assert common output shape across CLI commands.
+- [ ] Review command modules for tiny duplicate helpers and move stable shared logic into `openprints_cli/utils/`.
+
+Guideline: prefer refactors that preserve behavior and improve consistency/readability; avoid mixed feature work in the same PR.
 
 ---
 

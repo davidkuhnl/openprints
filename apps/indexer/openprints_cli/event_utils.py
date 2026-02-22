@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import json
 
+from coincurve import PublicKeyXOnly
+
 
 def canonical_event_serialization(event: dict, pubkey: str) -> bytes:
     """Serialize event for hashing (id) and signing. Order and format must match NIP-01."""
@@ -30,8 +32,6 @@ def verify_event_signature(event: dict) -> str | None:
     Verify event id and Schnorr signature. Returns None if valid, else an error message.
     Event must already contain id, pubkey, sig.
     """
-    from coincurve import PublicKeyXOnly
-
     pubkey_hex = event.get("pubkey")
     if not pubkey_hex or not isinstance(pubkey_hex, str) or len(pubkey_hex) != 64:
         return "event.pubkey missing or invalid (expected 64-char hex)"

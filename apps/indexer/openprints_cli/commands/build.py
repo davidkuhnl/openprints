@@ -1,4 +1,3 @@
-import json
 import re
 import sys
 import time
@@ -8,7 +7,8 @@ from uuid import UUID, uuid4
 
 from openprints_cli.errors import invalid_value
 from openprints_cli.payload_contract import ARTIFACT_VERSION, validate_payload
-from openprints_cli.utils.hash import sha256_file
+from openprints_cli.utils.output import print_json, serialize_json
+from openprints_cli.utils.sha256 import sha256_file
 
 SHA256_HEX_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
@@ -40,10 +40,10 @@ def _normalize_design_id(raw_value: str | None) -> tuple[str | None, bool, list[
     try:
         parsed = UUID(candidate)
     except ValueError:
-        return None, generated, [invalid_value("design_id", "design_id must be a valid uuid-v4")]
+        return None, generated, [invalid_value("design_id", "design_id must be a valid UUID")]
 
     if parsed.version != 4:
-        return None, generated, [invalid_value("design_id", "design_id must be a valid uuid-v4")]
+        return None, generated, [invalid_value("design_id", "design_id must be a UUID version 4")]
 
     return f"openprints:{parsed}", generated, []
 
@@ -85,15 +85,15 @@ def _build_draft_payload(args: Namespace) -> tuple[dict | None, bool, list[dict[
 def run_build(args: Namespace) -> int:
     payload, design_id_generated, build_errors = _build_draft_payload(args)
     if build_errors:
-        print(json.dumps({"ok": False, "errors": build_errors}, indent=2), file=sys.stderr)
+        print_json({"ok": False, "errors": build_errors}, stream=sys.stderr)
         return 1
 
     errors = validate_payload(payload)
     if errors:
-        print(json.dumps({"ok": False, "errors": errors}, indent=2), file=sys.stderr)
+        print_json({"ok": False, "errors": errors}, stream=sys.stderr)
         return 1
 
-    serialized = json.dumps(payload, indent=2)
+    serialized = serialize_json(payload)
 
     if args.output == "-":
         print(serialized)
