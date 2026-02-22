@@ -4,7 +4,7 @@ This document defines the handoff contract across `openprints-cli build`, `openp
 
 The contract is intentionally separate from Nostr protocol fields so the CLI artifact can evolve safely over time.
 
-Current intended stub workflow:
+Current workflow:
 
 - `build` emits a `draft` artifact
 - `sign` consumes `draft` and emits `signed`
@@ -18,6 +18,66 @@ Current signer backend in CLI:
 Utility commands:
 
 - `openprints-cli keygen` can generate local dev `nsec`/`npub` values for testing.
+
+## Publish Output Contract (Current)
+
+`publish` returns machine-readable JSON:
+
+Current scope: `publish` sends to one relay per invocation.
+Planned enhancement: multi-relay fan-out with per-relay results in a single invocation.
+Retry behavior (current):
+
+- Transport failures/timeouts can be retried (`--retries`, `--retry-backoff-ms`).
+- Relay-level `OK=false` is a deliberate hard failure and is **not retried**.
+
+## Subscribe Runtime Notes (Current)
+
+- `subscribe` connects to one relay per invocation.
+- It emits matching events as JSON lines to stdout.
+- It emits an execution summary (`ok`, `relay_results`) to stderr.
+- `EOSE` marks end-of-stored-events only; in live mode (`--limit 0`) the subscription remains open for new events until timeout/interrupt.
+- Relay disconnect is treated as a graceful summary event (`status: disconnected`) rather than a hard validation error.
+- Planned reconnect/backoff behavior will be implemented at this disconnect hook.
+- Planned enhancement: multi-relay subscribe fan-out with event-id deduplication.
+
+- Success:
+
+```json
+{
+  "ok": true,
+  "relay_results": [
+    {
+      "relay": "ws://localhost:7447",
+      "event_id": "<event id>",
+      "accepted": true,
+      "message": "ok"
+    }
+  ]
+}
+```
+
+- Failure:
+
+```json
+{
+  "ok": false,
+  "errors": [
+    {
+      "code": "INVALID_VALUE",
+      "path": "relay",
+      "message": "<error message>"
+    }
+  ],
+  "relay_results": [
+    {
+      "relay": "ws://localhost:7447",
+      "event_id": "<event id>",
+      "accepted": false,
+      "message": "<relay or transport error>"
+    }
+  ]
+}
+```
 
 ## v1 Envelope
 

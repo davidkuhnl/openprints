@@ -9,6 +9,13 @@ FORMAT ?= stl
 URL ?= https://example.invalid/stub.stl
 CONTENT ?= Built via make cli-build
 DESIGN_ID ?=
+RELAY ?= ws://localhost:7447
+PUBLISH_TIMEOUT ?= 8.0
+PUBLISH_RETRIES ?= 0
+PUBLISH_RETRY_BACKOFF_MS ?= 400
+SUBSCRIBE_KIND ?= 33301
+SUBSCRIBE_LIMIT ?= 1
+SUBSCRIBE_TIMEOUT ?= 8.0
 
 help:
 	@echo "Available targets:"
@@ -26,8 +33,8 @@ help:
 	@echo "  make cli            - run openprints-cli scaffold"
 	@echo "  make cli-build      - run openprints-cli build using NAME/FORMAT/URL and FILE or SHA256 vars"
 	@echo "  make cli-sign       - run openprints-cli sign (stdin, requires OPENPRINTS_DEV_NSEC)"
-	@echo "  make cli-publish    - run openprints-cli publish (stdin)"
-	@echo "  make cli-subscribe  - run openprints-cli subscribe"
+	@echo "  make cli-publish    - run openprints-cli publish to RELAY=\$$RELAY with timeout/retry vars"
+	@echo "  make cli-subscribe  - run openprints-cli subscribe on RELAY=\$$RELAY"
 	@echo "  make cli-hash       - run openprints-cli hash --file \$$FILE"
 	@echo "  make cli-hash-stdin - run openprints-cli hash for piped stdin"
 	@echo "  make cli-keygen     - generate a local dev nsec/npub keypair"
@@ -74,10 +81,10 @@ cli-sign:
 	@cd $(INDEXER_DIR) && uv run openprints-cli sign
 
 cli-publish:
-	@cd $(INDEXER_DIR) && uv run openprints-cli publish
+	@cd $(INDEXER_DIR) && uv run openprints-cli publish --relay "$(RELAY)" --timeout "$(PUBLISH_TIMEOUT)" --retries "$(PUBLISH_RETRIES)" --retry-backoff-ms "$(PUBLISH_RETRY_BACKOFF_MS)"
 
 cli-subscribe:
-	@cd $(INDEXER_DIR) && uv run openprints-cli subscribe
+	@cd $(INDEXER_DIR) && uv run openprints-cli subscribe --relay "$(RELAY)" --kind "$(SUBSCRIBE_KIND)" --limit "$(SUBSCRIBE_LIMIT)" --timeout "$(SUBSCRIBE_TIMEOUT)"
 
 cli-hash:
 	@cd $(INDEXER_DIR) && uv run openprints-cli hash --file "$(FILE)"

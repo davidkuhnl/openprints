@@ -144,7 +144,7 @@ Run it from repo root:
 make cli
 ```
 
-Current stub commands:
+Current CLI commands:
 
 ```bash
 make cli-build
@@ -183,7 +183,26 @@ Chained workflow (target state, once sign/publish implementations are fully pipe
 make cli-build | make cli-sign | make cli-publish
 ```
 
-Current note: while `sign` and `publish` are still stubs, prefer explicit step-by-step runs (or file handoff) for reliable behavior.
+Current note: the one-relay roundtrip is implemented (`build -> sign -> publish -> subscribe`). For scriptability and debugging, file handoff is still a good default.
+
+Publish relay selection (single relay for now):
+
+- `make cli-publish RELAY=ws://localhost:7447`
+- Example with retries: `make cli-publish RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`
+- If `RELAY` is not provided, CLI falls back to `OPENPRINTS_RELAY_URL`, then first entry in `OPENPRINTS_RELAY_URLS`, then default `ws://localhost:7447`.
+- `publish` output is machine-readable JSON with `ok`, `errors`, and `relay_results`.
+- Planned enhancement: publish fan-out to multiple relays in one command (instead of current single-relay behavior).
+- Retries are for transport/timeouts only; relay `OK=false` is intentionally treated as a hard failure (no retry).
+
+Subscribe relay selection (single relay for now):
+
+- `make cli-subscribe RELAY=ws://localhost:7447`
+- Example: `make cli-subscribe RELAY=ws://localhost:7447 SUBSCRIBE_KIND=33301 SUBSCRIBE_LIMIT=1 SUBSCRIBE_TIMEOUT=8`
+- `subscribe` prints matching events as JSON lines to stdout and emits an execution summary to stderr.
+- `EOSE` does not stop live mode: with `SUBSCRIBE_LIMIT=0`, subscription keeps waiting for new events until timeout/interrupt.
+- Relay disconnect is treated as a graceful shutdown event (`status: disconnected`) in the summary output.
+- Planned reconnect/backoff logic will be implemented at this disconnect hook.
+- Planned enhancement: subscribe fan-out and deduplicated stream across multiple relays in one command.
 
 Troubleshooting fallback (if entrypoint resolution is broken in your environment):
 
@@ -194,7 +213,7 @@ uv run python -m openprints_cli
 
 Note: the console script name is `openprints-cli` (hyphen), not `openprints_cli`.
 
-Early endpoints may return stub data; that is expected while the reducer/indexing flow is still being built out.
+Early indexer/client endpoints may remain minimal while reducer/indexing work is built out in Phase 2.
 
 ## 7) Running the Astro client
 

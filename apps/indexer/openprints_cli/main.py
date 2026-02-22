@@ -55,6 +55,29 @@ def _build_parser() -> argparse.ArgumentParser:
         default="-",
         help="Input path for payload JSON, or '-' for stdin (default).",
     )
+    publish_parser.add_argument(
+        "--relay",
+        default=None,
+        help="Relay websocket URL (ws:// or wss://). Falls back to env if omitted.",
+    )
+    publish_parser.add_argument(
+        "--timeout",
+        type=float,
+        default=8.0,
+        help="Relay connect/ack timeout in seconds (default: 8.0).",
+    )
+    publish_parser.add_argument(
+        "--retries",
+        type=int,
+        default=0,
+        help="Number of retry attempts for transport/timeouts (default: 0).",
+    )
+    publish_parser.add_argument(
+        "--retry-backoff-ms",
+        type=int,
+        default=400,
+        help="Delay between retry attempts in milliseconds (default: 400).",
+    )
     publish_parser.set_defaults(func=run_publish)
 
     sign_parser = subparsers.add_parser("sign", help="Sign a draft payload")
@@ -77,6 +100,32 @@ def _build_parser() -> argparse.ArgumentParser:
     sign_parser.set_defaults(func=run_sign)
 
     subscribe_parser = subparsers.add_parser("subscribe", help="Subscribe to relay events")
+    subscribe_parser.add_argument(
+        "--relay",
+        default=None,
+        help="Relay websocket URL (ws:// or wss://). Falls back to env if omitted.",
+    )
+    subscribe_parser.add_argument(
+        "--kind",
+        type=int,
+        default=33301,
+        help="Event kind to subscribe to (default: 33301).",
+    )
+    subscribe_parser.add_argument(
+        "--limit",
+        type=int,
+        default=1,
+        help=(
+            "Stop after receiving this many matching events (default: 1). "
+            "Use 0 for stream until timeout/interrupt."
+        ),
+    )
+    subscribe_parser.add_argument(
+        "--timeout",
+        type=float,
+        default=8.0,
+        help="Relay connect/receive timeout in seconds (default: 8.0).",
+    )
     subscribe_parser.set_defaults(func=run_subscribe)
 
     hash_parser = subparsers.add_parser("hash", help="Compute SHA-256 for a file or stdin")

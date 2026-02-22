@@ -194,9 +194,9 @@ openprints/
 
 Legend: `[x]` done, `[~]` current, `[>]` next, `[ ]` upcoming, `[!]` blocked
 
-Current Phase: **Phase 1 - Event Publishing Test Harness**
+Current Phase: **Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)**
 
-Next Phase: **Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)**
+Next Phase: **Phase 3 - REST API**
 
 ### [x] Phase 0 — Repo + Docs Setup
 
@@ -217,7 +217,7 @@ Next Phase: **Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)**
 
 ---
 
-### [~] Phase 1 — Event Publishing Test Harness
+### [x] Phase 1 — Event Publishing Test Harness
 
 **Goal:** Prove end-to-end design event flow: build a CLI or small tool that constructs, signs, and publishes `kind 33301` design events to a relay, plus a subscriber script that receives and prints them.
 
@@ -225,7 +225,7 @@ Next Phase: **Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)**
 
 - Script or CLI to build a valid `33301` event (tags, content, `created_at`)
 - CLI scaffold location: `apps/indexer/openprints_cli/` (primary run command: `cd apps/indexer && uv run openprints-cli`, or `make cli`; troubleshooting fallback: `uv run python -m openprints_cli`)
-- Stub flow supports file handoff and piping (`build | sign | publish`, or `build --output draft.json` -> `sign --input draft.json` -> `publish --input signed.json`)
+- CLI flow supports file handoff and piping (`build | sign | publish`, or `build --output draft.json` -> `sign --input draft.json` -> `publish --input signed.json`)
 - Build/publish handoff contract is defined in `docs/cli-payload-contract.md` (`artifact_version`, draft/signed states, and validation error format)
 - Build/publish validation errors are centralized in `apps/indexer/openprints_cli/error_codes.py` + `apps/indexer/openprints_cli/errors.py`
 - Signing via NIP-07 (browser extension) or Nostr Connect / nsec
@@ -240,8 +240,10 @@ Next Phase: **Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)**
 - [x] `build` now emits a real draft event (inputs for `name`/`format`/`url`, file or SHA-256, and auto-generated `d` id)
 - [x] Reusable hashing utilities and CLI hash helpers are in place (`hash` subcommand + make targets)
 - [x] Automated quality checks are wired (`ruff`, `pytest`, coverage gate, pre-commit, CI)
-- [~] `sign`/`publish` are currently stubs: `sign` does not yet produce cryptographic signatures and `publish` does not yet send `EVENT` to a relay
-- [>] Next milestone: implement real signing (`draft` -> `signed`), then relay publish + subscriber round-trip verification
+- [x] `sign` performs dev `nsec` signing (`draft` -> `signed`)
+- [x] `publish` sends signed events to a configured single relay and handles `OK` responses
+- [x] `subscribe` receives events from a configured single relay (live mode supported with `SUBSCRIBE_LIMIT=0`)
+- [>] Next milestone: multi-relay fan-out (publish/subscribe), reconnect/backoff hardening, and dedupe across relays
 
 **Done when:**
 
@@ -249,7 +251,7 @@ Next Phase: **Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)**
 
 ---
 
-### [>] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
+### [~] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
 
 **Goal:** Implement the Python indexer core: subscribe to relevant Nostr events from one or more relays, reduce them into a normalized model, and persist to SQLite.
 
@@ -458,6 +460,15 @@ cat apps/indexer/tests/fixtures/stub_design.stl | make cli-hash-stdin
 `make cli-build` accepts optional overrides via `NAME=... FORMAT=... URL=... FILE=... SHA256=... CONTENT=... DESIGN_ID=...`.
 `make cli-keygen` generates a local dev keypair (`nsec`/`npub`) for testing flows.
 `make cli-sign` uses the dev signer and expects `OPENPRINTS_DEV_NSEC` in your environment.
+`make cli-publish` targets `RELAY=...` (default `ws://localhost:7447`) and also supports env fallback (`OPENPRINTS_RELAY_URL` or `OPENPRINTS_RELAY_URLS`).
+`make cli-publish` now returns machine-readable JSON (`ok`, `errors`, `relay_results`).
+Example with timeout/retry knobs: `make cli-publish RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`.
+Retries are intended for transport/timeouts only; relay `OK=false` intentionally hard-fails without retry.
+`make cli-subscribe` supports `RELAY`, `SUBSCRIBE_KIND`, `SUBSCRIBE_LIMIT`, `SUBSCRIBE_TIMEOUT` and currently subscribes to one relay.
+`EOSE` marks backlog completion only; with `SUBSCRIBE_LIMIT=0`, subscribe keeps waiting for new events until timeout/interrupt.
+Relay disconnect is treated as a graceful summary event (`status: disconnected`); reconnect/backoff is the next planned improvement.
+Multi-relay subscribe fan-out (with dedupe) is planned.
+Multi-relay publish fan-out is planned (current behavior is single relay per invocation).
 One-step export example: `export "$(cd apps/indexer && uv run openprints-cli keygen --env)"`.
 
 Target list/help (source of truth):

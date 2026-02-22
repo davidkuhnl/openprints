@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import hashlib
-import json
 from dataclasses import dataclass
 
 from bech32 import bech32_decode, convertbits
 from coincurve import PrivateKey
 
+from openprints_cli.event_utils import compute_event_id
 from openprints_cli.signers.base import SignerError
 
 
@@ -25,18 +24,6 @@ def _decode_nsec(nsec: str) -> bytes:
     return secret
 
 
-def _canonical_event_serialization(event: dict, pubkey: str) -> bytes:
-    payload = [
-        0,
-        pubkey,
-        event["created_at"],
-        event["kind"],
-        event["tags"],
-        event["content"],
-    ]
-    return json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-
-
 @dataclass(slots=True)
 class DevNsecSigner:
     _private_key: PrivateKey
@@ -48,8 +35,7 @@ class DevNsecSigner:
 
     def sign_event(self, event: dict) -> dict:
         pubkey = self._private_key.public_key_xonly.format().hex()
-        serialized = _canonical_event_serialization(event, pubkey)
-        event_id = hashlib.sha256(serialized).hexdigest()
+        event_id = compute_event_id(event, pubkey)
         signature = self._private_key.sign_schnorr(
             bytes.fromhex(event_id),
             aux_randomness=b"\x00" * 32,
