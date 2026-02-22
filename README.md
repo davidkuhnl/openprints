@@ -451,6 +451,8 @@ make cli-hash
 cat apps/indexer/tests/fixtures/stub_design.stl | make cli-hash-stdin
 ```
 
+`make cli-build` accepts optional overrides via `NAME=... FORMAT=... URL=... FILE=... CONTENT=... DESIGN_ID=...`.
+
 Target list/help (source of truth):
 
 ```bash

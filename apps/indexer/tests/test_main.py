@@ -18,7 +18,22 @@ def test_cli_help_shows_subcommands(monkeypatch, capsys) -> None:
 
 
 def test_main_dispatches_build(monkeypatch, capsys) -> None:
-    monkeypatch.setattr(sys, "argv", ["openprints-cli", "build"])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "openprints-cli",
+            "build",
+            "--name",
+            "Stub Design",
+            "--format",
+            "stl",
+            "--url",
+            "https://example.invalid/stub.stl",
+            "--sha256",
+            "fc1b7cc223d252f88ddf568a83fe5a446a21d9358cb69cb3d6374c181cc4f3cd",
+        ],
+    )
     result = main()
     captured = capsys.readouterr()
 

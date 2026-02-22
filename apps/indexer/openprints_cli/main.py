@@ -11,6 +11,34 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command")
 
     build_parser = subparsers.add_parser("build", help="Build a design event payload")
+    build_parser.add_argument("--name", required=True, help="Human-readable design name.")
+    build_parser.add_argument(
+        "--design-id",
+        default=None,
+        help="Optional design id (uuid or openprints:uuid). If omitted, a uuid-v4 is generated.",
+    )
+    build_parser.add_argument(
+        "--format", required=True, help="Design file format (for example stl)."
+    )
+    build_parser.add_argument(
+        "--url", required=True, help="Public URL where the design file is hosted."
+    )
+    build_parser.add_argument(
+        "--content",
+        default="",
+        help="Optional Markdown description to include in event.content.",
+    )
+    build_hash_input = build_parser.add_mutually_exclusive_group(required=True)
+    build_hash_input.add_argument(
+        "--file",
+        default=None,
+        help="Path to local file to hash as event.tags[sha256].",
+    )
+    build_hash_input.add_argument(
+        "--sha256",
+        default=None,
+        help="Precomputed SHA-256 digest for event.tags[sha256].",
+    )
     build_parser.add_argument(
         "--output",
         default="-",

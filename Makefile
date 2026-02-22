@@ -3,6 +3,12 @@
 INDEXER_DIR := apps/indexer
 INFRA_DIR := infra
 FILE ?= tests/fixtures/stub_design.stl
+SHA256 ?=
+NAME ?= Stub Design
+FORMAT ?= stl
+URL ?= https://example.invalid/stub.stl
+CONTENT ?= Built via make cli-build
+DESIGN_ID ?=
 
 help:
 	@echo "Available targets:"
@@ -18,7 +24,7 @@ help:
 	@echo "  make relay-test-ws  - run interactive relay websocket check"
 	@echo "  make relay-check    - run relay HTTP + websocket checks"
 	@echo "  make cli            - run openprints-cli scaffold"
-	@echo "  make cli-build      - run openprints-cli build"
+	@echo "  make cli-build      - run openprints-cli build using NAME/FORMAT/URL and FILE or SHA256 vars"
 	@echo "  make cli-publish    - run openprints-cli publish (stdin)"
 	@echo "  make cli-subscribe  - run openprints-cli subscribe"
 	@echo "  make cli-hash       - run openprints-cli hash --file \$$FILE"
@@ -60,7 +66,7 @@ cli:
 	@cd $(INDEXER_DIR) && uv run openprints-cli
 
 cli-build:
-	@cd $(INDEXER_DIR) && uv run openprints-cli build
+	@cd $(INDEXER_DIR) && EXTRA_DESIGN_ID="" ; HASH_ARG="--file \"$(FILE)\"" ; if [ -n "$(DESIGN_ID)" ]; then EXTRA_DESIGN_ID="--design-id \"$(DESIGN_ID)\""; fi ; if [ -n "$(SHA256)" ]; then HASH_ARG="--sha256 \"$(SHA256)\""; fi ; eval "uv run openprints-cli build --name \"$(NAME)\" --format \"$(FORMAT)\" --url \"$(URL)\" --content \"$(CONTENT)\" $$HASH_ARG $$EXTRA_DESIGN_ID"
 
 cli-publish:
 	@cd $(INDEXER_DIR) && uv run openprints-cli publish
