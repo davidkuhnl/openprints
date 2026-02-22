@@ -25,3 +25,9 @@ Zap receipts (`kind 9735`) can be much higher volume than design or endorsement 
 - **Scale stage:** split zap ingestion into a standalone worker/service so zap bursts cannot starve design indexing.
 
 This preserves correctness and responsiveness for design updates while still allowing full zap aggregation.
+
+## CLI/TUI Harness Note (Future)
+
+For Phase 1 publish/receive testing, OpenPrints should prioritize a scriptable CLI harness (build/publish/subscribe commands).
+
+If an interactive terminal UX is added later, use a thin TUI layer on top of the same core CLI modules. `Textual` is the preferred candidate for that future TUI layer.

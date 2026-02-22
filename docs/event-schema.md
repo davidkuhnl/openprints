@@ -2,7 +2,7 @@
 
 
 # TODO:
-- [] for the name of the design - what does human readable mean? What about accents and weird chars? What are the limitations
+- [x] for the name of the design - what does human readable mean? What about accents and weird chars? What are the limitations
 - [x] do the tags support arrays?
     - yes by duplicating the tag key
 - [x] should the endorsement be append only? What if I want to "unlike"? And if so, I need to only allow one per pubkey

@@ -224,6 +224,8 @@ Next Phase: **Phase 1 - Event Publishing Test Harness**
 **Includes:**
 
 - Script or CLI to build a valid `33001` event (tags, content, `created_at`)
+- CLI scaffold location: `apps/indexer/openprints_cli/` (primary run command: `cd apps/indexer && uv run openprints-cli`, or `make cli`; troubleshooting fallback: `uv run python -m openprints_cli`)
+- Stub flow supports file handoff and piping (`build | publish`, or `build --output payload.json` -> `publish --input payload.json`)
 - Signing via NIP-07 (browser extension) or Nostr Connect / nsec
 - Publish to configurable relay(s); optional: publish from indexer/client env
 - Subscriber script (e.g. Python or Node) that connects to the relay, subscribes to `kind 33001`, and logs or prints received events
@@ -407,6 +409,47 @@ Services include:
 - Astro client (dev mode)  
 
 Detailed instructions live in `docs/dev-setup.md`.
+
+---
+
+## Quality Checks (Indexer)
+
+Recommended shortcuts (from repo root):
+
+```bash
+make setup
+make lint
+make test
+make check
+```
+
+Additional shortcuts:
+
+```bash
+make relay-up
+make relay-down
+make relay-test-up
+make relay-test-ws
+make relay-check
+make cli
+make cli-build
+make cli-publish
+make cli-subscribe
+```
+
+Target list/help (source of truth):
+
+```bash
+make help
+```
+
+Raw equivalents are intentionally kept out of the main README to keep this guide concise. Power-user details can be inferred from `Makefile` targets.
+
+Pre-commit hook config lives at `.pre-commit-config.yaml`.
+
+CI runs these checks in `.github/workflows/ci.yml` on pull requests and pushes to `main`.
+
+To require CI before merge, enable branch protection/rulesets in GitHub and mark the CI status check as required.
 
 ---
 

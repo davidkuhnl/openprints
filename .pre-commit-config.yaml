@@ -1,0 +1,18 @@
+repos:
+  - repo: local
+    hooks:
+      - id: indexer-ruff-check
+        name: indexer ruff check
+        entry: bash -lc 'cd apps/indexer && uv run ruff check .'
+        language: system
+        pass_filenames: false
+      - id: indexer-ruff-format-check
+        name: indexer ruff format check
+        entry: bash -lc 'cd apps/indexer && uv run ruff format --check .'
+        language: system
+        pass_filenames: false
+      - id: indexer-tests
+        name: indexer tests
+        entry: bash -lc 'cd apps/indexer && uv run pytest --cov=openprints_cli --cov-branch --cov-report=term-missing --cov-fail-under=85'
+        language: system
+        pass_filenames: false

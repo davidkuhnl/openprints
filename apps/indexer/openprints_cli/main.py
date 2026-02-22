@@ -1,0 +1,42 @@
+import argparse
+
+from .commands.build import run_build
+from .commands.publish import run_publish
+from .commands.subscribe import run_subscribe
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="openprints-cli")
+    subparsers = parser.add_subparsers(dest="command")
+
+    build_parser = subparsers.add_parser("build", help="Build a design event payload")
+    build_parser.add_argument(
+        "--output",
+        default="-",
+        help="Output path for payload JSON, or '-' for stdout (default).",
+    )
+    build_parser.set_defaults(func=run_build)
+
+    publish_parser = subparsers.add_parser("publish", help="Publish an event to relay(s)")
+    publish_parser.add_argument(
+        "--input",
+        default="-",
+        help="Input path for payload JSON, or '-' for stdin (default).",
+    )
+    publish_parser.set_defaults(func=run_publish)
+
+    subscribe_parser = subparsers.add_parser("subscribe", help="Subscribe to relay events")
+    subscribe_parser.set_defaults(func=run_subscribe)
+
+    return parser
+
+
+def main() -> int:
+    parser = _build_parser()
+    args = parser.parse_args()
+
+    if not hasattr(args, "func"):
+        parser.print_help()
+        return 0
+
+    return int(args.func(args))

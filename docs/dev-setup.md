@@ -73,10 +73,16 @@ cd openprints
 From the repo root, run:
 
 ```bash
-./scripts/setup.sh
+make setup
 ```
 
-This checks that Git, Docker, Docker Compose, Python 3.11+, uv, Node 20+, and npm or pnpm are available. If something is missing, it prints install hints. It also runs idempotent setup for any apps that are present (e.g. `uv sync` in `apps/indexer`, `npm install` / `pnpm install` in `apps/client`).
+This is the primary setup entrypoint. It delegates to `scripts/setup.sh`, checks prerequisites (Git, Docker, Docker Compose, Python 3.11+, uv, Node 20+, npm/pnpm), and runs idempotent in-repo setup for available apps.
+
+Optional (recommended) once you have `pre-commit` installed:
+
+```bash
+pre-commit install
+```
 
 **TODO:** When the indexer and client apps are added, document any extra one-time install steps here (or ensure `./scripts/setup.sh` covers them and keep this section as a pointer to the script).
 
@@ -87,14 +93,13 @@ The local infrastructure stack is defined in `infra/docker-compose.yml`.
 Start services:
 
 ```bash
-cd infra
-docker compose up --build
+make relay-up
 ```
 
 Stop services:
 
 ```bash
-docker compose down
+make relay-down
 ```
 
 Expected services (names may vary by compose config):
@@ -131,6 +136,34 @@ curl http://localhost:8000/health
 # or
 curl http://localhost:8000/designs
 ```
+
+### OpenPrints CLI scaffold (uv)
+
+Current CLI scaffold location:
+
+- `apps/indexer/openprints_cli/`
+
+Run it from repo root:
+
+```bash
+make cli
+```
+
+Current stub commands:
+
+```bash
+make cli-build | make cli-publish
+make cli-subscribe
+```
+
+Troubleshooting fallback (if entrypoint resolution is broken in your environment):
+
+```bash
+cd apps/indexer
+uv run python -m openprints_cli
+```
+
+Note: the console script name is `openprints-cli` (hyphen), not `openprints_cli`.
 
 Early endpoints may return stub data; that is expected while the reducer/indexing flow is still being built out.
 
@@ -175,8 +208,8 @@ The client will eventually use signer flows (NIP-07 / Nostr Connect), but may be
 
 Happy-path development loop:
 
-1. Run `./scripts/setup.sh` once (or after pulling changes that add app deps).
-2. Start infra from `infra/` with `docker compose up` (or `docker compose up -d` to run in the background).
+1. Run `make setup` once (or after pulling changes that add app deps).
+2. Start infra with `make relay-up`.
 3. Run indexer either:
    - in Docker (via compose), or
    - locally in `apps/indexer` for rapid backend iteration.
@@ -225,13 +258,15 @@ Testing strategy will expand as features land:
 
 ### Verify the relay
 
-Use the scripts in `scripts/` to confirm the relay is up and speaking Nostr:
+Use make targets from repo root:
 
-1. **HTTP health check** (no extra deps): `./scripts/test-relay-up.sh`
-2. **Nostr WebSocket (recommended)**: `./scripts/test-relay-ws.sh` (interactive; choose Python via [uv](https://github.com/astral-sh/uv) or Node)
-3. **Nostr WebSocket (Node direct)**: `node scripts/test-relay-node.mjs` (requires Node WebSocket support)
+```bash
+make relay-test-up
+make relay-test-ws
+make relay-check
+```
 
-See `scripts/README.md` for details and optional env vars (`RELAY_BASE_URL`, `RELAY_WS_URL`).
+See `scripts/README.md` for lower-level script usage and optional env vars (`RELAY_BASE_URL`, `RELAY_WS_URL`).
 
 ### Common local issues
 
