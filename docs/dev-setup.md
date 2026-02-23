@@ -205,10 +205,11 @@ Subscribe relay selection (single relay for now):
 - Planned reconnect/backoff logic will be implemented at this disconnect hook.
 - Planned enhancement: subscribe fan-out and deduplicated stream across multiple relays in one command.
 
-Indexer pipeline scaffold (multi-relay aware, no DB writes yet):
+Indexer pipeline (multi-relay, SQLite optional):
 
-- `make cli-index` runs the in-process indexer pipeline stub (relay workers + shared queue + single reducer).
+- `make cli-index` runs the in-process indexer (relay workers + shared queue + reducer). With a configured `database_path`, events are persisted to SQLite.
 - Config file (optional): `make setup` creates `openprints.indexer.toml` from `.example` when missing; the file is not committed (edit locally as needed).
+- Database: set `database_path = "openprints.db"` in config (or env `OPENPRINTS_INDEX_DATABASE_PATH`) to persist; omit or set to `"log"` for log-only. Wipe with `make cli-db-wipe` (requires `--force`; uses same config).
 - Single relay via CLI override: `make cli-index INDEX_RELAY=ws://localhost:7447`
 - Multiple relays: `make cli-index RELAYS=ws://localhost:7447,wss://relay.example`
 - Runtime knobs:
@@ -221,6 +222,29 @@ Indexer pipeline scaffold (multi-relay aware, no DB writes yet):
   - `log_level` in config (`CRITICAL|ERROR|WARNING|INFO|DEBUG`)
 - Precedence for each setting: CLI flag/Make variable -> env var -> config file -> built-in default.
 - Logging level precedence: `OPENPRINTS_LOG_LEVEL` env var overrides config `log_level`.
+
+**Inspecting the indexer database**
+
+When `database_path` is set, the indexer writes to two tables:
+
+- **`designs`** — current state per design (one row per `pubkey` + `design_id`): `latest_event_id`, `name`, `format`, `sha256`, `url`, `content`, `tags_json`, `version_count`, timestamps.
+- **`design_versions`** — append-only event history: one row per ingested event (`event_id` PK). `designs.latest_event_id` references `design_versions.event_id`.
+
+Quick inspection from the repo root:
+
+- `make cli-db-stats` — prints DB path, row counts for `designs` and `design_versions`, and the latest N designs (default 10). Use `INDEX_CONFIG` if your config lives elsewhere. Example: `make cli-db-stats` or `make cli-db-stats INDEX_CONFIG=openprints.indexer.toml`.
+
+Direct SQL (from `apps/indexer` if your path is relative):
+
+```bash
+cd apps/indexer
+sqlite3 openprints.db "SELECT COUNT(*) FROM designs; SELECT COUNT(*) FROM design_versions;"
+sqlite3 openprints.db "SELECT pubkey, design_id, name, latest_published_at FROM designs ORDER BY latest_published_at DESC LIMIT 5;"
+```
+
+Full schema and reducer rules are in `docs/indexer-schema.md`.
+
+**End-to-end test drive:** Run `make test-drive` (or `./scripts/test-drive.sh`) from the repo root. It exports a dev key, starts the relay, checks health, optionally wipes the indexer DB, then prompts you to start the indexer in another terminal and run DB stats. It publishes two designs and an update to the first, prompting you to check stats after each step. At the end it runs `make relay-down-wipe` and `make cli-db-wipe`.
 
 Troubleshooting fallback (if entrypoint resolution is broken in your environment):
 

@@ -8,6 +8,9 @@
 # Optional multi-relay list:
 relays = ["ws://localhost:7447"]
 
+# Optional SQLite database path (omit or set to "log" for log-only, no persistence):
+# database_path = "openprints.db"
+
 kind = 33301
 queue_maxsize = 1000
 timeout = 8.0

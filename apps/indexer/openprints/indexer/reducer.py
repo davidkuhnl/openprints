@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from openprints.common.design_id import is_valid_openprints_design_id
 from openprints.common.event_utils import tag_values
 
-from .store import DesignCurrentRow, DesignVersionRow, LogOnlyIndexStore
+from .store import DesignCurrentRow, DesignVersionRow, IndexStore, LogOnlyIndexStore
 from .types import IngestEnvelope
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class ReducerStats:
 
 
 class ReducerWorker:
-    def __init__(self, store: LogOnlyIndexStore | None = None) -> None:
+    def __init__(self, store: IndexStore | None = None) -> None:
         self._store = store or LogOnlyIndexStore()
         self.stats = ReducerStats()
         self._seen_event_ids: set[str] = set()

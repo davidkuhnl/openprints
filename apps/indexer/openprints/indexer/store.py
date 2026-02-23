@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from typing import Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,14 @@ class DesignCurrentRow:
     url: str | None
     content: str | None
     tags_json: str
+
+
+class IndexStore(Protocol):
+    """Protocol for indexer storage backends (log-only, SQLite, etc.)."""
+
+    async def upsert_design_version(self, row: DesignVersionRow) -> None: ...
+
+    async def upsert_design_current(self, row: DesignCurrentRow) -> None: ...
 
 
 class LogOnlyIndexStore:

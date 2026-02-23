@@ -264,6 +264,17 @@ Next Phase: **Phase 3 - REST API**
 - Configurable relay list and basic error/backoff handling
 - Optional: minimal health or metrics endpoint for “indexer is running”
 
+**Current progress in this phase:**
+
+- [x] Async relay workers (multi-relay, configurable list, backoff/retries)
+- [x] Reducer (design versions + current row, replaceable by `created_at` per `pubkey` + `d`)
+- [x] Store interface and in-memory/log-only implementation
+- [x] `index` CLI and TOML config
+- [x] SQLite schema and persistent store (`designs`, `design_versions`); FK `designs.latest_event_id` → `design_versions.event_id`; events persisted to DB
+- [x] `openprints db wipe --force` and `openprints db stats`; `make cli-db-wipe`, `make cli-db-stats`; DB inspection documented in `docs/dev-setup.md`
+- [x] End-to-end test drive (`make test-drive` / `scripts/test-drive.sh`): relay wipe, relay up, key, DB wipe option, indexer + stats, publish 2 designs + update, tear down
+- [ ] Optional: minimal health endpoint
+
 **Done when:**
 
 - Indexer runs against local relay; new design events from Phase 1 appear in the DB in reduced form; replaceable updates overwrite correctly
@@ -471,6 +482,8 @@ make cli-sign
 make cli-publish
 make cli-subscribe
 make cli-index
+make cli-db-stats
+make cli-db-wipe
 make cli-hash
 cat apps/indexer/tests/fixtures/stub_design.stl | make cli-hash-stdin
 ```
@@ -494,6 +507,7 @@ CLI override examples: `make cli-index INDEX_RELAY=ws://localhost:7447` or `make
 Additional knobs: `INDEX_CONFIG`, `INDEX_KIND`, `INDEX_QUEUE_MAXSIZE`, `INDEX_TIMEOUT`, `INDEX_MAX_RETRIES`, `INDEX_DURATION`.
 Setting precedence: CLI/Make overrides -> env vars -> config file -> built-in defaults.
 `log_level` can be set in `openprints.indexer.toml`; `OPENPRINTS_LOG_LEVEL` env var still takes precedence.
+With `database_path` set in config, the indexer persists to SQLite. `make cli-db-stats` prints DB path, row counts, and latest designs; `make cli-db-wipe` wipes the DB (requires `--force`; use `INDEX_CONFIG` for config path). See `docs/dev-setup.md` for inspecting the database.
 Multi-relay publish fan-out is planned (current behavior is single relay per invocation).
 One-step export example: `export "$(cd apps/indexer && uv run openprints-cli keygen --env)"`.
 

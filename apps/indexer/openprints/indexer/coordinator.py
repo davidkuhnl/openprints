@@ -5,7 +5,7 @@ import logging
 
 from .reducer import ReducerWorker
 from .relay_worker import RelayWorker
-from .store import LogOnlyIndexStore
+from .store import IndexStore
 from .types import IngestEnvelope
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ class IndexerCoordinator:
         timeout_s: float = 8.0,
         queue_maxsize: int = 1000,
         max_retries: int = 12,
-        store: LogOnlyIndexStore | None = None,
+        store: IndexStore | None = None,
     ) -> None:
         self.relays = relays
         self.kind = kind
