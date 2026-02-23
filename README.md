@@ -419,6 +419,7 @@ Small cleanup tasks intended to be safe, independent, and easy to pick up in sho
 - [ ] Extract shared JSON print helpers for success/error output formatting to reduce boilerplate.
 - [ ] Add a consistency-sweep test to assert common output shape across CLI commands.
 - [ ] Review command modules for tiny duplicate helpers and move stable shared logic into `openprints.common.utils/`.
+- [ ] Clean up config value ingestions - config vs env vs args
 
 Guideline: prefer refactors that preserve behavior and improve consistency/readability; avoid mixed feature work in the same PR.
 
