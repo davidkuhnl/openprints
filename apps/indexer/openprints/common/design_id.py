@@ -1,7 +1,8 @@
-"""Openprints design id: openprints:uuid-v4, shared by build and indexer."""
+"""Design id: protocol (openprints:uuid-v4) and API composite id (URL-safe encode/decode)."""
 
 from __future__ import annotations
 
+import base64
 from uuid import UUID, uuid4
 
 from openprints.common.errors import invalid_value
@@ -38,3 +39,27 @@ def normalize_design_id(raw: str | None) -> tuple[str | None, bool, list[dict[st
         return None, generated, [invalid_value("design_id", "design_id must be a UUID version 4")]
 
     return f"openprints:{parsed}", generated, []
+
+
+# --- API composite id (pubkey + design_id) for GET /designs/{id} ---
+
+
+def api_id_encode(pubkey: str, design_id: str) -> str:
+    """Encode (pubkey, design_id) to a URL-safe opaque id for GET /designs/{id}."""
+    raw = f"{pubkey}\n{design_id}"
+    return base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii").rstrip("=")
+
+
+def api_id_decode(api_id: str) -> tuple[str, str] | None:
+    """Decode API id to (pubkey, design_id). Returns None if invalid."""
+    try:
+        padding = 4 - (len(api_id) % 4)
+        if padding != 4:
+            api_id += "=" * padding
+        raw = base64.urlsafe_b64decode(api_id.encode("ascii")).decode("utf-8")
+        if "\n" not in raw:
+            return None
+        pubkey, design_id = raw.split("\n", 1)
+        return (pubkey, design_id)
+    except Exception:
+        return None

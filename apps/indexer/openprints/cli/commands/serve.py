@@ -6,6 +6,7 @@ import logging
 import os
 
 from openprints.common.utils.logging import configure_logging
+from openprints.indexer.config import load_indexer_config
 
 
 def run_serve(args) -> int:
@@ -31,7 +32,8 @@ def run_serve(args) -> int:
     if port is None or port < 1 or port > 65535:
         from openprints.common.utils.output import print_json
 
-        print_json({"ok": False, "error": "Invalid port; use 1-65535 or OPENPRINTS_API_PORT."})
+        err = "Invalid port. Use config api_port, OPENPRINTS_API_PORT, or --port (1-65535)."
+        print_json({"ok": False, "error": err})
         return 1
 
     # Incremental config so uvicorn.run doesn't replace our root setup
@@ -65,8 +67,17 @@ def _resolve_port(args) -> int | None:
             return int(raw)
         except (TypeError, ValueError):
             return None
-    raw = os.environ.get("OPENPRINTS_API_PORT", "8080").strip()
-    try:
-        return int(raw)
-    except ValueError:
-        return None
+    raw = os.environ.get("OPENPRINTS_API_PORT", "").strip()
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            return None
+    config, _errors, _path = load_indexer_config(None)
+    raw = config.get("api_port")
+    if raw is not None:
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+    return 8080

@@ -190,7 +190,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     serve_parser = subparsers.add_parser(
         "serve",
-        help="Run the HTTP API. DB from indexer config; port: OPENPRINTS_API_PORT (default 8080).",
+        help="Run HTTP API. Port from config api_port or OPENPRINTS_API_PORT (default 8080).",
     )
     serve_parser.add_argument(
         "--config",
@@ -201,7 +201,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--port",
         type=int,
         default=None,
-        help="Port to bind (default: 8080 or OPENPRINTS_API_PORT).",
+        help="Port to bind (default: config api_port or OPENPRINTS_API_PORT or 8080).",
     )
     serve_parser.add_argument(
         "--host",

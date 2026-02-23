@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query
 
 from openprints.api.deps import get_store
-from openprints.api.design_id import design_id_decode, design_id_encode
+from openprints.common.design_id import api_id_decode, api_id_encode
 
 router = APIRouter(prefix="/designs", tags=["designs"])
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/designs", tags=["designs"])
 def _row_to_item(row):
     """Turn DesignCurrentRow into API response dict with id."""
     return {
-        "id": design_id_encode(row.pubkey, row.design_id),
+        "id": api_id_encode(row.pubkey, row.design_id),
         "pubkey": row.pubkey,
         "design_id": row.design_id,
         "latest_event_id": row.latest_event_id,
@@ -72,7 +72,7 @@ async def list_designs(
 @router.get("/{design_api_id}")
 async def get_design(design_api_id: str) -> dict:
     """Return a single design by its API id (opaque id from list designs)."""
-    pair = design_id_decode(design_api_id)
+    pair = api_id_decode(design_api_id)
     if pair is None:
         raise HTTPException(status_code=400, detail="Invalid design id format.")
     store = get_store()
