@@ -195,9 +195,9 @@ openprints/
 
 Legend: `[x]` done, `[~]` current, `[>]` next, `[ ]` upcoming, `[!]` blocked
 
-Current Phase: **Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)**
+Current Phase: **Phase 3 - REST API**
 
-Next Phase: **Phase 3 - REST API**
+Next Phase: **Phase 4 - Client MVP (List + Detail Pages)**
 
 ### [x] Phase 0 — Repo + Docs Setup
 
@@ -252,7 +252,7 @@ Next Phase: **Phase 3 - REST API**
 
 ---
 
-### [~] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
+### [x] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
 
 **Goal:** Implement the Python indexer core: subscribe to relevant Nostr events from one or more relays, reduce them into a normalized model, and persist to SQLite.
 
@@ -281,7 +281,7 @@ Next Phase: **Phase 3 - REST API**
 
 ---
 
-### [ ] Phase 3 — REST API
+### [~] Phase 3 — REST API
 
 **Goal:** Expose the indexed data via a FastAPI REST API so the client and other tools can query designs by ID, list, and search.
 
@@ -298,7 +298,7 @@ Next Phase: **Phase 3 - REST API**
 
 ---
 
-### [ ] Phase 4 — Client MVP (List + Detail Pages)
+### [>] Phase 4 — Client MVP (List + Detail Pages)
 
 **Goal:** Ship an Astro-based web client that lists designs and shows a detail page, using the indexer’s REST API, with SSR for speed and SEO.
 
