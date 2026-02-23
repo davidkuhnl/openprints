@@ -8,9 +8,7 @@ from pathlib import Path
 import aiosqlite
 
 from openprints.common.utils.output import print_json
-from openprints.indexer.config import load_indexer_config
-
-from .index import _resolve_database_path
+from openprints.indexer.config import load_indexer_config, resolve_database_path
 
 
 def run_db_stats(args) -> int:
@@ -20,7 +18,7 @@ def run_db_stats(args) -> int:
         print_json({"ok": False, "errors": config_errors})
         return 1
 
-    database_path = _resolve_database_path(config)
+    database_path = resolve_database_path(config)
     if not database_path or database_path.strip().lower() == ":memory:":
         print_json({"ok": False, "error": "No database path configured; nothing to inspect."})
         return 1
@@ -90,7 +88,7 @@ def run_db_wipe(args) -> int:
         print_json({"ok": False, "errors": config_errors})
         return 1
 
-    database_path = _resolve_database_path(config)
+    database_path = resolve_database_path(config)
     if not database_path or database_path.strip().lower() == ":memory:":
         print_json({"ok": False, "error": "No database path configured; nothing to wipe."})
         return 1

@@ -118,19 +118,31 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Run the FastAPI app:
+Run the OpenPrints HTTP API (FastAPI):
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# From repo root: use indexer config and optional port
+make cli-serve
+# or with config and port
+make cli-serve INDEX_CONFIG=apps/indexer/openprints.indexer.toml API_PORT=8080
+
+# Or from apps/indexer with uv
+uv run openprints-cli serve
+# or run uvicorn directly (config from OPENPRINTS_INDEXER_CONFIG and cwd)
+uv run uvicorn openprints.api:app --host 0.0.0.0 --port 8080
 ```
+
+The API uses the same indexer config (and database path) as `openprints index`. Set `OPENPRINTS_API_PORT` (default 8080) or pass `--port` to change the bind port.
 
 Quick API checks:
 
 ```bash
-curl http://localhost:8000/health
-# or
-curl http://localhost:8000/designs
+curl http://localhost:8080/health
+curl http://localhost:8080/ready
+curl http://localhost:8080/designs
 ```
+
+Docs: Swagger UI at `/docs`, OpenAPI schema at `/openapi.json`.
 
 ### OpenPrints CLI scaffold (uv)
 
@@ -153,6 +165,7 @@ make cli-sign
 make cli-publish
 make cli-subscribe
 make cli-index
+make cli-serve   # run HTTP API (designs, health, ready)
 ```
 
 Payload handoff contract (`build` -> `sign` -> `publish`) is documented in `docs/cli-payload-contract.md`.
@@ -219,29 +232,11 @@ Indexer pipeline (multi-relay, SQLite optional):
   - `INDEX_TIMEOUT` (default `8.0`)
   - `INDEX_MAX_RETRIES` (default `12`, use `0` for infinite retry loop)
   - `INDEX_DURATION` in seconds (default `0`, run until interrupted)
-  - `OPENPRINTS_HEALTH_PORT` or config `health_port` (default `0` = disabled; set to e.g. `8080` to enable the health server)
   - `log_level` in config (`CRITICAL|ERROR|WARNING|INFO|DEBUG`)
 - Precedence for each setting: CLI flag/Make variable -> env var -> config file -> built-in default.
 - Logging level precedence: `OPENPRINTS_LOG_LEVEL` env var overrides config `log_level`.
 
-**Indexer health server (optional)**
-
-When the indexer is run with a health port set (config `health_port` or env `OPENPRINTS_HEALTH_PORT`, e.g. `8080`), a minimal HTTP server runs in the same process and serves:
-
-- **`GET /health`** — liveness: responds `200` with `{"status":"ok","service":"indexer"}`. Use for “process is up” checks.
-- **`GET /ready`** — readiness: responds `200` with `{"status":"ok","ready":true}` when the indexer is ready to accept traffic. When a database is configured, it checks that the DB is reachable (sync `SELECT 1`). When relays are configured, it checks that at least one relay is reachable (TCP connect to the relay host:port). If either check fails, responds `503` with `{"status":"error","ready":false,"database":"...","relays":"..."}`.
-
-Other paths return `404`. The server runs in a background thread and is shut down when the indexer stops. Example:
-
-```bash
-# Enable health server on port 8080 (config or env)
-OPENPRINTS_HEALTH_PORT=8080 make cli-index
-# In another terminal:
-curl http://localhost:8080/health
-curl http://localhost:8080/ready
-```
-
-When Phase 3 adds the FastAPI REST API, this health server will be folded into the API (same `/health` and `/ready` contract) so callers can keep using the same URLs.
+Health and readiness are served only by the API (`openprints serve`). See **Running the OpenPrints HTTP API** above for `GET /health` and `GET /ready`.
 
 **Inspecting the indexer database**
 
