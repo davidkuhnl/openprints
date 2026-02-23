@@ -488,7 +488,7 @@ Example: `OPENPRINTS_LOG_LEVEL=INFO OPENPRINTS_LOG_FORMAT=json make cli-subscrib
 Relay disconnect is treated as a graceful summary event (`status: disconnected`); reconnect/backoff is the next planned improvement.
 Multi-relay subscribe fan-out (with dedupe) is planned.
 `make cli-index` runs the indexer pipeline scaffold (relay workers + shared queue + reducer).
-Config file support: copy `apps/indexer/openprints.indexer.toml.example` to `apps/indexer/openprints.indexer.toml`.
+Config file: `make setup` creates `apps/indexer/openprints.indexer.toml` from the example when missing (file is not committed).
 CLI override examples: `make cli-index INDEX_RELAY=ws://localhost:7447` or `make cli-index RELAYS=ws://localhost:7447,wss://relay.example INDEX_DURATION=20`.
 Additional knobs: `INDEX_CONFIG`, `INDEX_KIND`, `INDEX_QUEUE_MAXSIZE`, `INDEX_TIMEOUT`, `INDEX_MAX_RETRIES`, `INDEX_DURATION`.
 Setting precedence: CLI/Make overrides -> env vars -> config file -> built-in defaults.

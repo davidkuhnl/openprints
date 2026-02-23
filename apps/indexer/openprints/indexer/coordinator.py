@@ -92,7 +92,6 @@ class IndexerCoordinator:
             extra={
                 "processed": self.reducer.stats.processed,
                 "reduced": self.reducer.stats.reduced,
-                "ignored": self.reducer.stats.ignored,
                 "duplicates": self.reducer.stats.duplicates,
             },
         )

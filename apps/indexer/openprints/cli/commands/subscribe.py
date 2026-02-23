@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-import secrets
 import sys
 from argparse import Namespace
 
@@ -11,6 +9,13 @@ import websockets  # type: ignore[reportMissingImports]
 from websockets.exceptions import ConnectionClosed  # type: ignore[reportMissingImports]
 
 from openprints.common.errors import invalid_value
+from openprints.common.relay_protocol import (
+    build_close,
+    build_req,
+    consume_messages,
+    new_sub_id,
+    serialize_message,
+)
 from openprints.common.utils.logging import configure_logging
 from openprints.common.utils.output import print_json
 from openprints.common.utils.relay import resolve_relay_url
@@ -24,8 +29,7 @@ async def _subscribe_once(
     timeout_s: float,
     limit: int,
 ) -> dict[str, object]:
-    sub_id = f"openprints-cli-{secrets.token_hex(4)}"
-    req_message = ["REQ", sub_id, {"kinds": [kind]}]
+    sub_id = new_sub_id("cli")
     logger.info(
         "subscribe_connection_opening",
         extra={
@@ -37,88 +41,76 @@ async def _subscribe_once(
         },
     )
 
-    events_seen = 0
-    eose_seen = False
-
     async with websockets.connect(relay, open_timeout=timeout_s, close_timeout=timeout_s) as ws:
-        await ws.send(json.dumps(req_message, separators=(",", ":"), ensure_ascii=False))
+        await ws.send(serialize_message(build_req(sub_id, kind)))
         logger.debug(
             "subscribe_request_sent",
             extra={"relay": relay, "sub_id": sub_id, "kind": kind},
         )
-        while True:
-            if limit > 0 and events_seen >= limit:
-                await ws.send(
-                    json.dumps(["CLOSE", sub_id], separators=(",", ":"), ensure_ascii=False)
-                )
-                logger.info(
-                    "subscribe_limit_reached",
-                    extra={
-                        "relay": relay,
-                        "sub_id": sub_id,
-                        "events_seen": events_seen,
-                        "limit": limit,
-                    },
-                )
-                break
 
-            try:
-                raw = await asyncio.wait_for(ws.recv(), timeout=timeout_s)
-            except asyncio.TimeoutError:
-                logger.info(
-                    "subscribe_receive_timeout",
-                    extra={
-                        "relay": relay,
-                        "sub_id": sub_id,
-                        "events_seen": events_seen,
-                        "timeout_s": timeout_s,
-                    },
-                )
-                break
+        def on_event(r: str, sid: str, event: dict, events_seen: int) -> bool:
+            print_json(event, compact=True, ensure_ascii=False)
+            logger.debug(
+                "subscribe_event_received",
+                extra={"relay": r, "sub_id": sid, "events_seen": events_seen},
+            )
+            return limit > 0 and events_seen >= limit
 
-            try:
-                message = json.loads(raw)
-            except json.JSONDecodeError:
-                print_json({"relay": relay, "type": "MALFORMED", "raw": raw}, stream=sys.stderr)
-                continue
+        def on_eose(r: str, sid: str, events_seen: int) -> None:
+            logger.info(
+                "subscribe_eose_received",
+                extra={"relay": r, "sub_id": sid, "events_seen": events_seen},
+            )
 
-            if not isinstance(message, list) or not message:
-                continue
+        def on_notice(r: str, message: str) -> None:
+            print_json(
+                {"relay": r, "type": "NOTICE", "message": message},
+                stream=sys.stderr,
+            )
+            logger.info("subscribe_notice_received", extra={"relay": r, "sub_id": sub_id})
 
-            msg_type = message[0]
-            if msg_type == "EVENT" and len(message) >= 3 and message[1] == sub_id:
-                event = message[2]
-                print_json(event, compact=True, ensure_ascii=False)
-                events_seen += 1
-                logger.debug(
-                    "subscribe_event_received",
-                    extra={"relay": relay, "sub_id": sub_id, "events_seen": events_seen},
-                )
-            elif msg_type == "EOSE" and len(message) >= 2 and message[1] == sub_id:
-                eose_seen = True
-                logger.info(
-                    "subscribe_eose_received",
-                    extra={"relay": relay, "sub_id": sub_id, "events_seen": events_seen},
-                )
-                # Keep streaming after EOSE in live mode (limit=0). EOSE only marks
-                # completion of the initial backlog, not the end of subscription.
-            elif msg_type == "NOTICE" and len(message) >= 2:
-                print_json(
-                    {"relay": relay, "type": "NOTICE", "message": str(message[1])},
-                    stream=sys.stderr,
-                )
-                logger.info("subscribe_notice_received", extra={"relay": relay, "sub_id": sub_id})
+        def on_malformed(raw: str) -> None:
+            print_json({"relay": relay, "type": "MALFORMED", "raw": raw}, stream=sys.stderr)
+
+        result = await consume_messages(
+            ws,
+            relay,
+            sub_id,
+            timeout_s,
+            on_event=on_event,
+            on_eose=on_eose,
+            on_notice=on_notice,
+            should_stop=lambda: False,
+            timeout_breaks_loop=True,
+            on_malformed=on_malformed,
+        )
+
+        if limit > 0 and result["events_seen"] >= limit:
+            await ws.send(serialize_message(build_close(sub_id)))
+            logger.info(
+                "subscribe_limit_reached",
+                extra={
+                    "relay": relay,
+                    "sub_id": sub_id,
+                    "events_seen": result["events_seen"],
+                    "limit": limit,
+                },
+            )
 
     logger.info(
         "subscribe_connection_closed",
         extra={
             "relay": relay,
             "sub_id": sub_id,
-            "events_seen": events_seen,
-            "eose_seen": eose_seen,
+            "events_seen": result["events_seen"],
+            "eose_seen": result["eose_seen"],
         },
     )
-    return {"relay": relay, "events_seen": events_seen, "eose_seen": eose_seen}
+    return {
+        "relay": relay,
+        "events_seen": result["events_seen"],
+        "eose_seen": result["eose_seen"],
+    }
 
 
 def run_subscribe(args: Namespace) -> int:
@@ -160,8 +152,6 @@ def run_subscribe(args: Namespace) -> int:
         )
         return 0
     except ConnectionClosed as exc:
-        # Graceful shutdown path when relay disconnects. This is where future
-        # reconnect logic will be plugged in for long-lived subscribers.
         logger.info(
             "subscribe_relay_disconnected",
             extra={"relay": relay, "disconnect_reason": str(exc)},

@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
 from typing import cast
 
 import websockets
 
+from openprints.common.event_filter import is_ingestible_design_event
 from openprints.common.event_types import SignedEvent
+from openprints.common.relay_protocol import (
+    build_req,
+    consume_messages,
+    new_sub_id,
+    serialize_message,
+)
 
 from .types import IngestEnvelope
 
@@ -37,8 +43,7 @@ class RelayWorker:
         backoff_s = 0.5
         consecutive_failures = 0
         while not self.stop_event.is_set():
-            sub_id = f"openprints-indexer-{int(time.time() * 1000)}"
-            req_message = ["REQ", sub_id, {"kinds": [self.kind]}]
+            sub_id = new_sub_id("indexer")
             try:
                 logger.info("relay_connecting", extra={"relay": self.relay, "kind": self.kind})
                 async with websockets.connect(
@@ -46,12 +51,22 @@ class RelayWorker:
                     open_timeout=self.timeout_s,
                     close_timeout=self.timeout_s,
                 ) as ws:
-                    req_json = json.dumps(req_message, separators=(",", ":"), ensure_ascii=False)
-                    await ws.send(req_json)
+                    await ws.send(serialize_message(build_req(sub_id, self.kind)))
                     logger.info("relay_connected", extra={"relay": self.relay, "sub_id": sub_id})
                     backoff_s = 0.5
                     consecutive_failures = 0
-                    await self._consume_messages(ws, sub_id)
+                    await consume_messages(
+                        ws,
+                        self.relay,
+                        sub_id,
+                        self.timeout_s,
+                        on_event=self._on_event,
+                        should_stop=self.stop_event.is_set,
+                        timeout_breaks_loop=False,
+                        on_malformed=lambda raw: logger.debug(
+                            "relay_malformed_message", extra={"relay": self.relay}
+                        ),
+                    )
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
@@ -78,29 +93,13 @@ class RelayWorker:
                 await asyncio.sleep(backoff_s)
                 backoff_s = min(backoff_s * 2.0, 10.0)
 
-    async def _consume_messages(self, ws: websockets.ClientConnection, sub_id: str) -> None:
-        while not self.stop_event.is_set():
-            try:
-                raw = await asyncio.wait_for(ws.recv(), timeout=self.timeout_s)
-            except asyncio.TimeoutError:
-                continue
-
-            try:
-                message = json.loads(raw)
-            except json.JSONDecodeError:
-                logger.debug("relay_malformed_message", extra={"relay": self.relay})
-                continue
-
-            if not isinstance(message, list) or not message:
-                continue
-            if message[0] != "EVENT" or len(message) < 3:
-                continue
-            if message[1] != sub_id or not isinstance(message[2], dict):
-                continue
-
-            envelope = IngestEnvelope(
-                relay=self.relay,
-                received_at=int(time.time()),
-                event=cast(SignedEvent, message[2]),
-            )
-            await self.out_queue.put(envelope)
+    async def _on_event(self, relay: str, sub_id: str, event: dict, events_seen: int) -> bool:
+        if not is_ingestible_design_event(event):
+            return False
+        envelope = IngestEnvelope(
+            relay=relay,
+            received_at=int(time.time()),
+            event=cast(SignedEvent, event),
+        )
+        await self.out_queue.put(envelope)
+        return False

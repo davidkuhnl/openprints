@@ -10,6 +10,29 @@ from coincurve import PublicKeyXOnly
 from openprints.common.event_types import DraftEvent, SignedEvent
 
 
+def tag_value(tags: object, key: str) -> str | None:
+    """Return the first tag value for the given key, or None if not found."""
+    values = tag_values(tags, key)
+    return values[0] if values else None
+
+
+def tag_values(tags: object, key: str) -> list[str]:
+    """Return all tag values for the given key (order preserved)."""
+    if not isinstance(tags, list):
+        return []
+    result: list[str] = []
+    for tag in tags:
+        if (
+            isinstance(tag, list)
+            and len(tag) >= 2
+            and isinstance(tag[0], str)
+            and isinstance(tag[1], str)
+            and tag[0] == key
+        ):
+            result.append(tag[1])
+    return result
+
+
 def canonical_event_serialization(event: DraftEvent | SignedEvent, pubkey: str) -> bytes:
     """Serialize event for hashing (id) and signing. Order and format must match NIP-01."""
     payload = [

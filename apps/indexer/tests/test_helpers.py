@@ -10,7 +10,7 @@ def valid_draft_payload() -> dict:
             "kind": 33301,
             "created_at": 1730000000,
             "tags": [
-                ["d", "openprints:stub-design-id"],
+                ["d", "openprints:00000000-0000-4000-8000-000000000000"],
                 ["name", "Stub Design"],
                 ["format", "stl"],
                 ["sha256", "0000000000000000000000000000000000000000000000000000000000000000"],

@@ -208,7 +208,7 @@ Subscribe relay selection (single relay for now):
 Indexer pipeline scaffold (multi-relay aware, no DB writes yet):
 
 - `make cli-index` runs the in-process indexer pipeline stub (relay workers + shared queue + single reducer).
-- Config file (optional): copy `apps/indexer/openprints.indexer.toml.example` to `apps/indexer/openprints.indexer.toml`.
+- Config file (optional): `make setup` creates `openprints.indexer.toml` from `.example` when missing; the file is not committed (edit locally as needed).
 - Single relay via CLI override: `make cli-index INDEX_RELAY=ws://localhost:7447`
 - Multiple relays: `make cli-index RELAYS=ws://localhost:7447,wss://relay.example`
 - Runtime knobs:

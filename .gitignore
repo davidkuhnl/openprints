@@ -65,6 +65,11 @@ coverage/
 *.tsbuildinfo
 
 # ------------------------------
+# Local config (create from .example)
+# ------------------------------
+apps/indexer/openprints.indexer.toml
+
+# ------------------------------
 # Runtime data (local/dev)
 # ------------------------------
 *.sqlite

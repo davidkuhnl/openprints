@@ -65,6 +65,58 @@ def test_relay_worker_put_envelope_when_event_received() -> None:
     assert envelope.event.get("id") == event["id"]
 
 
+def test_relay_worker_does_not_enqueue_event_failing_ingestible_filter() -> None:
+    """When EVENT has no d tag (fails is_ingestible_design_event), no envelope is put."""
+    queue: asyncio.Queue[IngestEnvelope] = asyncio.Queue()
+    stop = asyncio.Event()
+    payload = valid_signed_payload()
+    event = dict(payload["event"])
+    event["tags"] = [["name", "Only name"], ["format", "stl"]]
+    sent: list[str] = []
+
+    async def mock_send(msg: str) -> None:
+        sent.append(msg)
+
+    async def mock_recv() -> str:
+        if sent:
+            req = json.loads(sent[0])
+            sub_id = req[1] if isinstance(req, list) and len(req) >= 2 else "fallback"
+        else:
+            sub_id = "fallback"
+        stop.set()
+        return json.dumps(["EVENT", sub_id, event], separators=(",", ":"), ensure_ascii=False)
+
+    mock_ws = MagicMock()
+    mock_ws.send = AsyncMock(side_effect=mock_send)
+    mock_ws.recv = AsyncMock(side_effect=mock_recv)
+
+    class MockConnect:
+        async def __aenter__(self) -> MagicMock:
+            return mock_ws
+
+        async def __aexit__(self, *args: object) -> None:
+            pass
+
+    worker = RelayWorker(
+        relay="ws://localhost:7447",
+        kind=33301,
+        timeout_s=1.0,
+        max_retries=0,
+        out_queue=queue,
+        stop_event=stop,
+    )
+
+    async def run_worker() -> None:
+        with patch(
+            "openprints.indexer.relay_worker.websockets.connect",
+            return_value=MockConnect(),
+        ):
+            await worker.run()
+
+    asyncio.run(run_worker())
+    assert queue.qsize() == 0
+
+
 def test_relay_worker_ignores_non_event_message() -> None:
     """When ws.recv returns a non-EVENT message, no envelope is put."""
     queue: asyncio.Queue[IngestEnvelope] = asyncio.Queue()

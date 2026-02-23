@@ -79,37 +79,46 @@ def test_reducer_ignores_duplicate_event_ids() -> None:
     assert len(store.versions) == 1
 
 
-def test_reducer_ignores_event_without_id() -> None:
+def test_reducer_raises_for_event_without_id() -> None:
     payload = valid_signed_payload()
     event = dict(payload["event"])
     del event["id"]
     store = _CapturingStore()
     reducer = ReducerWorker(store=store)
-    asyncio.run(reducer.reduce_one(_envelope_for(event)))
-    assert reducer.stats.processed == 1
-    assert reducer.stats.ignored == 1
-    assert len(store.versions) == 0
+    try:
+        asyncio.run(reducer.reduce_one(_envelope_for(event)))
+    except RuntimeError as exc:
+        assert "id and pubkey must be strings" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError for missing id")
 
 
-def test_reducer_ignores_event_without_pubkey() -> None:
+def test_reducer_raises_for_event_without_pubkey() -> None:
     payload = valid_signed_payload()
     event = dict(payload["event"])
     del event["pubkey"]
     store = _CapturingStore()
     reducer = ReducerWorker(store=store)
-    asyncio.run(reducer.reduce_one(_envelope_for(event)))
-    assert reducer.stats.ignored == 1
-    assert len(store.versions) == 0
+    try:
+        asyncio.run(reducer.reduce_one(_envelope_for(event)))
+    except RuntimeError as exc:
+        assert "id and pubkey must be strings" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError for missing pubkey")
 
 
-def test_reducer_ignores_event_with_non_string_id() -> None:
+def test_reducer_raises_for_event_with_non_string_id() -> None:
     payload = valid_signed_payload()
     event = dict(payload["event"])
     event["id"] = 12345
     store = _CapturingStore()
     reducer = ReducerWorker(store=store)
-    asyncio.run(reducer.reduce_one(_envelope_for(event)))
-    assert reducer.stats.ignored == 1
+    try:
+        asyncio.run(reducer.reduce_one(_envelope_for(event)))
+    except RuntimeError as exc:
+        assert "id and pubkey must be strings" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError for non-string id")
 
 
 def test_reducer_ignores_event_without_d_tag() -> None:
@@ -118,29 +127,61 @@ def test_reducer_ignores_event_without_d_tag() -> None:
     event["tags"] = [["name", "Only name"], ["format", "stl"]]
     store = _CapturingStore()
     reducer = ReducerWorker(store=store)
-    asyncio.run(reducer.reduce_one(_envelope_for(event)))
-    assert reducer.stats.ignored == 1
-    assert len(store.versions) == 0
+    try:
+        asyncio.run(reducer.reduce_one(_envelope_for(event)))
+    except RuntimeError as exc:
+        assert "design_id must be a valid openprints:uuid-v4" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError for missing d tag")
 
 
-def test_reducer_ignores_event_with_non_int_kind() -> None:
+def test_reducer_raises_for_event_with_non_openprints_d_tag() -> None:
+    """Event with d tag that is not openprints:uuid-v4 causes invariant error."""
+    payload = valid_signed_payload()
+    event = dict(payload["event"])
+    event["tags"] = [
+        ["d", "openprints:abc"],
+        ["name", "x"],
+        ["format", "stl"],
+        ["sha256", "0" * 64],
+        ["url", "https://x"],
+    ]
+    store = _CapturingStore()
+    reducer = ReducerWorker(store=store)
+    try:
+        asyncio.run(reducer.reduce_one(_envelope_for(event)))
+    except RuntimeError as exc:
+        assert "design_id must be a valid openprints:uuid-v4" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError for non-openprints d tag")
+
+
+def test_reducer_raises_for_event_with_non_int_kind() -> None:
     payload = valid_signed_payload()
     event = dict(payload["event"])
     event["kind"] = "33301"
     store = _CapturingStore()
     reducer = ReducerWorker(store=store)
-    asyncio.run(reducer.reduce_one(_envelope_for(event)))
-    assert reducer.stats.ignored == 1
+    try:
+        asyncio.run(reducer.reduce_one(_envelope_for(event)))
+    except RuntimeError as exc:
+        assert "kind and created_at must be integers" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError for non-int kind")
 
 
-def test_reducer_ignores_event_with_non_int_created_at() -> None:
+def test_reducer_raises_for_event_with_non_int_created_at() -> None:
     payload = valid_signed_payload()
     event = dict(payload["event"])
     event["created_at"] = "1730000000"
     store = _CapturingStore()
     reducer = ReducerWorker(store=store)
-    asyncio.run(reducer.reduce_one(_envelope_for(event)))
-    assert reducer.stats.ignored == 1
+    try:
+        asyncio.run(reducer.reduce_one(_envelope_for(event)))
+    except RuntimeError as exc:
+        assert "kind and created_at must be integers" in str(exc)
+    else:
+        raise AssertionError("Expected RuntimeError for non-int created_at")
 
 
 def test_reducer_keeps_older_event_when_created_at_tie_break() -> None:

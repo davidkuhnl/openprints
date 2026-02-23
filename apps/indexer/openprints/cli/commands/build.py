@@ -3,8 +3,8 @@ import sys
 import time
 from argparse import Namespace
 from pathlib import Path
-from uuid import UUID, uuid4
 
+from openprints.common.design_id import normalize_design_id
 from openprints.common.errors import invalid_value
 from openprints.common.payload_contract import ARTIFACT_VERSION, validate_payload
 from openprints.common.utils.output import print_json, serialize_json
@@ -31,29 +31,12 @@ def _normalize_sha256(args: Namespace) -> tuple[str | None, list[dict[str, str]]
     return None, [invalid_value("sha256", "either --file or --sha256 is required")]
 
 
-def _normalize_design_id(raw_value: str | None) -> tuple[str | None, bool, list[dict[str, str]]]:
-    generated = raw_value is None
-    candidate = raw_value or str(uuid4())
-    if candidate.startswith("openprints:"):
-        candidate = candidate[len("openprints:") :]
-
-    try:
-        parsed = UUID(candidate)
-    except ValueError:
-        return None, generated, [invalid_value("design_id", "design_id must be a valid UUID")]
-
-    if parsed.version != 4:
-        return None, generated, [invalid_value("design_id", "design_id must be a UUID version 4")]
-
-    return f"openprints:{parsed}", generated, []
-
-
 def _build_draft_payload(args: Namespace) -> tuple[dict | None, bool, list[dict[str, str]]]:
     sha256_value, hash_errors = _normalize_sha256(args)
     if hash_errors:
         return None, False, hash_errors
 
-    design_id_value, design_id_generated, design_id_errors = _normalize_design_id(args.design_id)
+    design_id_value, design_id_generated, design_id_errors = normalize_design_id(args.design_id)
     if design_id_errors:
         return None, False, design_id_errors
 

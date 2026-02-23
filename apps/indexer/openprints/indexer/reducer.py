@@ -4,6 +4,9 @@ import json
 import logging
 from dataclasses import dataclass
 
+from openprints.common.design_id import is_valid_openprints_design_id
+from openprints.common.event_utils import tag_values
+
 from .store import DesignCurrentRow, DesignVersionRow, LogOnlyIndexStore
 from .types import IngestEnvelope
 
@@ -13,7 +16,6 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ReducerStats:
     processed: int = 0
-    ignored: int = 0
     duplicates: int = 0
     reduced: int = 0
 
@@ -32,24 +34,23 @@ class ReducerWorker:
         event_id = event.get("id")
         pubkey = event.get("pubkey")
         if not isinstance(event_id, str) or not isinstance(pubkey, str):
-            self.stats.ignored += 1
-            return
+            raise RuntimeError("Reducer invariant violated: id and pubkey must be strings")
 
         if event_id in self._seen_event_ids:
             self.stats.duplicates += 1
             return
 
         tags = event.get("tags")
-        design_id = _extract_tag_value(tags, "d")
-        if design_id is None:
-            self.stats.ignored += 1
-            return
+        design_id = _single_tag_value(tags, "d", event_id, envelope.relay)
+        if design_id is None or not is_valid_openprints_design_id(design_id):
+            raise RuntimeError(
+                "Reducer invariant violated: design_id must be a valid openprints:uuid-v4"
+            )
 
         kind = event.get("kind")
         created_at = event.get("created_at")
         if not isinstance(kind, int) or not isinstance(created_at, int):
-            self.stats.ignored += 1
-            return
+            raise RuntimeError("Reducer invariant violated: kind and created_at must be integers")
 
         version_row = DesignVersionRow(
             event_id=event_id,
@@ -57,10 +58,10 @@ class ReducerWorker:
             design_id=design_id,
             kind=kind,
             created_at=created_at,
-            name=_extract_tag_value(tags, "name"),
-            format=_extract_tag_value(tags, "format"),
-            sha256=_extract_tag_value(tags, "sha256"),
-            url=_extract_tag_value(tags, "url"),
+            name=_single_tag_value(tags, "name", event_id, envelope.relay),
+            format=_single_tag_value(tags, "format", event_id, envelope.relay),
+            sha256=_single_tag_value(tags, "sha256", event_id, envelope.relay),
+            url=_single_tag_value(tags, "url", event_id, envelope.relay),
             content=event.get("content") if isinstance(event.get("content"), str) else None,
             raw_event_json=json.dumps(event, separators=(",", ":"), ensure_ascii=False),
             received_at=envelope.received_at,
@@ -126,19 +127,33 @@ class ReducerWorker:
         )
 
 
-def _extract_tag_value(tags: object, key: str) -> str | None:
-    if not isinstance(tags, list):
+def _single_tag_value(tags: object, key: str, event_id: str, relay: str) -> str | None:
+    """First tag value for key; log warning if duplicate same value, error if different."""
+    values = tag_values(tags, key)
+    if not values:
         return None
-    for tag in tags:
-        if (
-            isinstance(tag, list)
-            and len(tag) >= 2
-            and isinstance(tag[0], str)
-            and isinstance(tag[1], str)
-            and tag[0] == key
-        ):
-            return tag[1]
-    return None
+    if len(values) > 1:
+        if len(set(values)) == 1:
+            logger.warning(
+                "duplicate_tag_same_value",
+                extra={
+                    "relay": relay,
+                    "event_id": event_id,
+                    "tag_key": key,
+                    "value": values[0],
+                },
+            )
+        else:
+            logger.error(
+                "duplicate_tag_different_values",
+                extra={
+                    "relay": relay,
+                    "event_id": event_id,
+                    "tag_key": key,
+                    "values": values,
+                },
+            )
+    return values[0]
 
 
 def _optional_tags_json(tags: object) -> str:

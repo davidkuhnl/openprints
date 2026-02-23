@@ -28,9 +28,7 @@ class _FakeCoordinator:
             "queue_maxsize": queue_maxsize,
             "max_retries": max_retries,
         }
-        self.reducer = SimpleNamespace(
-            stats=SimpleNamespace(processed=0, reduced=0, ignored=0, duplicates=0)
-        )
+        self.reducer = SimpleNamespace(stats=SimpleNamespace(processed=0, reduced=0, duplicates=0))
 
     async def run_for(self, duration_s: float) -> None:
         _FakeCoordinator.ran_for_duration = duration_s

@@ -143,7 +143,6 @@ def run_index(args: Namespace) -> int:
             "stats": {
                 "processed": coordinator.reducer.stats.processed,
                 "reduced": coordinator.reducer.stats.reduced,
-                "ignored": coordinator.reducer.stats.ignored,
                 "duplicates": coordinator.reducer.stats.duplicates,
             },
         }

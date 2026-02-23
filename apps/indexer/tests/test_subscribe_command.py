@@ -6,6 +6,7 @@ from websockets.exceptions import ConnectionClosedOK
 
 import openprints.cli.commands.subscribe as subscribe_cmd
 from openprints.cli.commands.subscribe import run_subscribe
+from openprints.common import relay_protocol
 from openprints.common.error_codes import INVALID_VALUE
 
 
@@ -113,7 +114,7 @@ def test_subscribe_once_streams_event_and_closes_on_limit(monkeypatch) -> None:
             json.dumps(["EVENT", sub_id, {"id": "a" * 64, "kind": 33301}]),
         ]
     )
-    monkeypatch.setattr(subscribe_cmd.secrets, "token_hex", lambda _n: "fixed")
+    monkeypatch.setattr(relay_protocol.secrets, "token_hex", lambda _n: "fixed")
     monkeypatch.setattr(subscribe_cmd.websockets, "connect", lambda *args, **kwargs: fake_ws)
 
     result = asyncio.run(
@@ -140,7 +141,7 @@ def test_subscribe_once_handles_notice_malformed_and_eose(monkeypatch, capsys) -
             json.dumps(["EOSE", sub_id]),
         ]
     )
-    monkeypatch.setattr(subscribe_cmd.secrets, "token_hex", lambda _n: "fixed")
+    monkeypatch.setattr(relay_protocol.secrets, "token_hex", lambda _n: "fixed")
     monkeypatch.setattr(subscribe_cmd.websockets, "connect", lambda *args, **kwargs: fake_ws)
 
     result = asyncio.run(
@@ -168,7 +169,7 @@ def test_subscribe_once_limit_zero_continues_after_eose_until_timeout(monkeypatc
             asyncio.TimeoutError(),
         ]
     )
-    monkeypatch.setattr(subscribe_cmd.secrets, "token_hex", lambda _n: "fixed")
+    monkeypatch.setattr(relay_protocol.secrets, "token_hex", lambda _n: "fixed")
     monkeypatch.setattr(subscribe_cmd.websockets, "connect", lambda *args, **kwargs: fake_ws)
 
     result = asyncio.run(
