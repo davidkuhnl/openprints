@@ -281,16 +281,16 @@ Next Phase: **Phase 4 - Client MVP (List + Detail Pages)**
 
 ---
 
-### [~] Phase 3 — REST API
+### [x] Phase 3 — REST API
 
 **Goal:** Expose the indexed data via a FastAPI REST API so the client and other tools can query designs by ID, list, and search.
 
 **Includes:**
 
-- FastAPI app mounted under a base path (e.g. `/api` or root)
-- Endpoints: `GET /designs` (list/filter), `GET /designs/{id}` (single design), `GET /search` (or query params on `/designs`) for text/search
-- Responses shaped for client consumption (JSON; include key design metadata and tags)
-- API documented (OpenAPI/Swagger or a short doc in `docs/`) so frontend and grant reviewers can call it
+- FastAPI app at `openprints.api` (same package as indexer); Swagger UI at `/docs`, OpenAPI at `/openapi.json`; ReDoc off
+- Endpoints: `GET /health`, `GET /ready`, `GET /designs` (list with pagination and `q` for name search), `GET /designs/{id}` (single design by API id)
+- Design id: `GET /designs/{id}` uses an opaque base64url-encoded id (from list `items[].id`). The store key remains `(pubkey, design_id)`; the API encodes/decodes for stable URLs
+- Run: `openprints serve` or `uvicorn openprints.api:app --port 8080`; config via indexer TOML and `OPENPRINTS_API_PORT` (default 8080). See `docs/dev-setup.md`
 
 **Done when:**
 

@@ -8,6 +8,7 @@ from .commands.hash import run_hash
 from .commands.index import run_index
 from .commands.keygen import run_keygen
 from .commands.publish import run_publish
+from .commands.serve import run_serve
 from .commands.sign import run_sign
 from .commands.subscribe import run_subscribe
 
@@ -186,6 +187,33 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Run seconds before clean stop (falls back to env/config/default: 0=until interrupt).",
     )
     index_parser.set_defaults(func=run_index)
+
+    serve_parser = subparsers.add_parser(
+        "serve",
+        help="Run HTTP API. Port from config api_port or OPENPRINTS_API_PORT (default 8080).",
+    )
+    serve_parser.add_argument(
+        "--config",
+        default=None,
+        help="Path to indexer TOML config (same as index command; used for database_path).",
+    )
+    serve_parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="Port to bind (default: config api_port or OPENPRINTS_API_PORT or 8080).",
+    )
+    serve_parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Host to bind (default: 0.0.0.0).",
+    )
+    serve_parser.add_argument(
+        "--log-level",
+        default="info",
+        help="Uvicorn log level (default: info).",
+    )
+    serve_parser.set_defaults(func=run_serve)
 
     db_parser = subparsers.add_parser("db", help="Database operations")
     db_sub = db_parser.add_subparsers(dest="db_command", required=True)

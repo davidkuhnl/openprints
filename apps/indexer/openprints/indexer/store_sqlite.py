@@ -133,3 +133,99 @@ class SQLiteIndexStore:
             ),
         )
         await conn.commit()
+
+    async def list_designs(
+        self,
+        *,
+        limit: int = 20,
+        offset: int = 0,
+        order: str = "latest_published_at_desc",
+        name_contains: str | None = None,
+    ) -> tuple[list[DesignCurrentRow], int]:
+        """List current designs with optional filters. Returns (rows, total_count)."""
+        conn = self._conn_required()
+        order_col = "latest_published_at"
+        order_dir = "DESC"
+        if order == "first_published_at_desc":
+            order_col, order_dir = "first_published_at", "DESC"
+        elif order == "first_published_at_asc":
+            order_col, order_dir = "first_published_at", "ASC"
+        elif order == "latest_published_at_asc":
+            order_col, order_dir = "latest_published_at", "ASC"
+        # default: latest_published_at_desc
+
+        where = "WHERE 1=1"
+        params: list[object] = []
+        if name_contains and name_contains.strip():
+            where += " AND name LIKE ?"
+            params.append(f"%{name_contains.strip()}%")
+
+        async with conn.execute(f"SELECT COUNT(*) FROM designs {where}", params) as cur:
+            (total,) = await cur.fetchone()
+
+        params_ext = list(params) + [limit, offset]
+        async with conn.execute(
+            f"""
+            SELECT pubkey, design_id, latest_event_id, latest_published_at,
+                   first_published_at, first_seen_at, updated_at, version_count,
+                   name, format, sha256, url, content, tags_json
+            FROM designs {where}
+            ORDER BY {order_col} {order_dir}
+            LIMIT ? OFFSET ?
+            """,
+            params_ext,
+        ) as cur:
+            rows = await cur.fetchall()
+
+        result = [
+            DesignCurrentRow(
+                pubkey=r["pubkey"],
+                design_id=r["design_id"],
+                latest_event_id=r["latest_event_id"],
+                latest_published_at=r["latest_published_at"],
+                first_published_at=r["first_published_at"],
+                first_seen_at=r["first_seen_at"],
+                updated_at=r["updated_at"],
+                version_count=r["version_count"],
+                name=r["name"],
+                format=r["format"],
+                sha256=r["sha256"],
+                url=r["url"],
+                content=r["content"],
+                tags_json=r["tags_json"],
+            )
+            for r in rows
+        ]
+        return result, total
+
+    async def get_design(self, pubkey: str, design_id: str) -> DesignCurrentRow | None:
+        """Return the current design row for (pubkey, design_id), or None."""
+        conn = self._conn_required()
+        async with conn.execute(
+            """
+            SELECT pubkey, design_id, latest_event_id, latest_published_at,
+                   first_published_at, first_seen_at, updated_at, version_count,
+                   name, format, sha256, url, content, tags_json
+            FROM designs WHERE pubkey = ? AND design_id = ?
+            """,
+            (pubkey, design_id),
+        ) as cur:
+            r = await cur.fetchone()
+        if r is None:
+            return None
+        return DesignCurrentRow(
+            pubkey=r["pubkey"],
+            design_id=r["design_id"],
+            latest_event_id=r["latest_event_id"],
+            latest_published_at=r["latest_published_at"],
+            first_published_at=r["first_published_at"],
+            first_seen_at=r["first_seen_at"],
+            updated_at=r["updated_at"],
+            version_count=r["version_count"],
+            name=r["name"],
+            format=r["format"],
+            sha256=r["sha256"],
+            url=r["url"],
+            content=r["content"],
+            tags_json=r["tags_json"],
+        )

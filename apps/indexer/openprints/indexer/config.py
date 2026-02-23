@@ -7,6 +7,8 @@ from typing import Any
 
 from openprints.common.errors import invalid_type, invalid_value
 
+ENV_DATABASE_PATH = "OPENPRINTS_INDEX_DATABASE_PATH"
+
 DEFAULT_CONFIG_FILENAME = "openprints.indexer.toml"
 ENV_CONFIG_PATH = "OPENPRINTS_INDEXER_CONFIG"
 
@@ -50,3 +52,20 @@ def load_indexer_config(
         return dict(index_config), [], str(path)
 
     return dict(parsed), [], str(path)
+
+
+def resolve_database_path(config: dict[str, Any]) -> str | None:
+    """Resolve DB path from env and config.
+
+    Returns None when log-only storage is configured (empty, 'log', 'none').
+    """
+    raw_env = os.environ.get(ENV_DATABASE_PATH, "").strip()
+    if raw_env:
+        value = raw_env
+    else:
+        raw = config.get("database_path") or config.get("database")
+        value = (raw if isinstance(raw, str) else "") or ""
+        value = value.strip()
+    if not value or value.lower() in ("log", "none"):
+        return None
+    return value
