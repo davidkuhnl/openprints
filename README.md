@@ -273,7 +273,7 @@ Next Phase: **Phase 3 - REST API**
 - [x] SQLite schema and persistent store (`designs`, `design_versions`); FK `designs.latest_event_id` → `design_versions.event_id`; events persisted to DB
 - [x] `openprints db wipe --force` and `openprints db stats`; `make cli-db-wipe`, `make cli-db-stats`; DB inspection documented in `docs/dev-setup.md`
 - [x] End-to-end test drive (`make test-drive` / `scripts/test-drive.sh`): relay wipe, relay up, key, DB wipe option, indexer + stats, publish 2 designs + update, tear down
-- [ ] Optional: minimal health endpoint
+- [x] Optional: minimal health endpoint (`GET /health`, `GET /ready` on configurable port; see docs/dev-setup.md)
 
 **Done when:**
 

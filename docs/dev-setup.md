@@ -219,9 +219,29 @@ Indexer pipeline (multi-relay, SQLite optional):
   - `INDEX_TIMEOUT` (default `8.0`)
   - `INDEX_MAX_RETRIES` (default `12`, use `0` for infinite retry loop)
   - `INDEX_DURATION` in seconds (default `0`, run until interrupted)
+  - `OPENPRINTS_HEALTH_PORT` or config `health_port` (default `0` = disabled; set to e.g. `8080` to enable the health server)
   - `log_level` in config (`CRITICAL|ERROR|WARNING|INFO|DEBUG`)
 - Precedence for each setting: CLI flag/Make variable -> env var -> config file -> built-in default.
 - Logging level precedence: `OPENPRINTS_LOG_LEVEL` env var overrides config `log_level`.
+
+**Indexer health server (optional)**
+
+When the indexer is run with a health port set (config `health_port` or env `OPENPRINTS_HEALTH_PORT`, e.g. `8080`), a minimal HTTP server runs in the same process and serves:
+
+- **`GET /health`** — liveness: responds `200` with `{"status":"ok","service":"indexer"}`. Use for “process is up” checks.
+- **`GET /ready`** — readiness: responds `200` with `{"status":"ok","ready":true}` when the indexer is ready to accept traffic. When a database is configured, it checks that the DB is reachable (sync `SELECT 1`). When relays are configured, it checks that at least one relay is reachable (TCP connect to the relay host:port). If either check fails, responds `503` with `{"status":"error","ready":false,"database":"...","relays":"..."}`.
+
+Other paths return `404`. The server runs in a background thread and is shut down when the indexer stops. Example:
+
+```bash
+# Enable health server on port 8080 (config or env)
+OPENPRINTS_HEALTH_PORT=8080 make cli-index
+# In another terminal:
+curl http://localhost:8080/health
+curl http://localhost:8080/ready
+```
+
+When Phase 3 adds the FastAPI REST API, this health server will be folded into the API (same `/health` and `/ready` contract) so callers can keep using the same URLs.
 
 **Inspecting the indexer database**
 
