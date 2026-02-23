@@ -4,9 +4,9 @@ from argparse import Namespace
 
 from websockets.exceptions import ConnectionClosedOK
 
-import openprints_cli.commands.subscribe as subscribe_cmd
-from openprints_cli.commands.subscribe import run_subscribe
-from openprints_cli.error_codes import INVALID_VALUE
+import openprints.cli.commands.subscribe as subscribe_cmd
+from openprints.cli.commands.subscribe import run_subscribe
+from openprints.common.error_codes import INVALID_VALUE
 
 
 def _args(**overrides: object) -> Namespace:

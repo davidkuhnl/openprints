@@ -225,10 +225,10 @@ Next Phase: **Phase 3 - REST API**
 **Includes:**
 
 - Script or CLI to build a valid `33301` event (tags, content, `created_at`)
-- CLI scaffold location: `apps/indexer/openprints_cli/` (primary run command: `cd apps/indexer && uv run openprints-cli`, or `make cli`; troubleshooting fallback: `uv run python -m openprints_cli`)
+- CLI and indexer live under `apps/indexer/openprints/` (package `openprints` with `openprints.cli`, `openprints.indexer`, `openprints.common`). Primary run: `cd apps/indexer && uv run openprints-cli`, or `make cli`; troubleshooting: `uv run python -m openprints`.
 - CLI flow supports file handoff and piping (`build | sign | publish`, or `build --output draft.json` -> `sign --input draft.json` -> `publish --input signed.json`)
 - Build/publish handoff contract is defined in `docs/cli-payload-contract.md` (`artifact_version`, draft/signed states, and validation error format)
-- Build/publish validation errors are centralized in `apps/indexer/openprints_cli/error_codes.py` + `apps/indexer/openprints_cli/errors.py`
+- Build/publish validation errors are centralized in `openprints.common.error_codes` and `openprints.common.errors`.
 - Signing via NIP-07 (browser extension) or Nostr Connect / nsec
 - Publish to configurable relay(s); optional: publish from indexer/client env
 - Subscriber script (e.g. Python or Node) that connects to the relay, subscribes to `kind 33301`, and logs or prints received events
@@ -418,7 +418,7 @@ Small cleanup tasks intended to be safe, independent, and easy to pick up in sho
 - [ ] Keep protocol/wire-level literals inline (Nostr message fields), but document which keys are intentionally protocol constants.
 - [ ] Extract shared JSON print helpers for success/error output formatting to reduce boilerplate.
 - [ ] Add a consistency-sweep test to assert common output shape across CLI commands.
-- [ ] Review command modules for tiny duplicate helpers and move stable shared logic into `openprints_cli/utils/`.
+- [ ] Review command modules for tiny duplicate helpers and move stable shared logic into `openprints.common.utils/`.
 
 Guideline: prefer refactors that preserve behavior and improve consistency/readability; avoid mixed feature work in the same PR.
 

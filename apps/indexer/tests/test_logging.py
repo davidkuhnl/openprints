@@ -1,4 +1,4 @@
-"""Tests for openprints_cli.utils.logging."""
+"""Tests for openprints.common.utils.logging."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ import logging
 import sys
 from io import StringIO
 
-import openprints_cli.utils.logging as logging_mod
-from openprints_cli.utils.logging import configure_logging
+import openprints.common.utils.logging as logging_mod
+from openprints.common.utils.logging import configure_logging
 
 
 def test_configure_logging_text_format_includes_extra(monkeypatch) -> None:

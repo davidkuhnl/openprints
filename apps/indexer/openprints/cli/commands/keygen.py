@@ -7,7 +7,7 @@ from argparse import Namespace
 from bech32 import bech32_encode, convertbits
 from coincurve import PrivateKey
 
-from openprints_cli.utils.output import print_json
+from openprints.common.utils.output import print_json
 
 
 def _to_bech32(hrp: str, raw: bytes) -> str:

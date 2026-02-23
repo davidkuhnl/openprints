@@ -1,5 +1,7 @@
 import argparse
 
+from openprints.common.signers.factory import SUPPORTED_SIGNERS
+
 from .commands.build import run_build
 from .commands.hash import run_hash
 from .commands.index import run_index
@@ -7,7 +9,6 @@ from .commands.keygen import run_keygen
 from .commands.publish import run_publish
 from .commands.sign import run_sign
 from .commands.subscribe import run_subscribe
-from .signers.factory import SUPPORTED_SIGNERS
 
 
 def _build_parser() -> argparse.ArgumentParser:

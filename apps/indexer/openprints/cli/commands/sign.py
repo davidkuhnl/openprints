@@ -2,12 +2,12 @@ import json
 import sys
 from argparse import Namespace
 
-from openprints_cli.errors import invalid_json, invalid_value
-from openprints_cli.payload_contract import validate_payload
-from openprints_cli.signers.base import SignerError
-from openprints_cli.signers.factory import build_signer
-from openprints_cli.utils.input import read_text_input
-from openprints_cli.utils.output import print_json
+from openprints.common.errors import invalid_json, invalid_value
+from openprints.common.payload_contract import validate_payload
+from openprints.common.signers.base import SignerError
+from openprints.common.signers.factory import build_signer
+from openprints.common.utils.input import read_text_input
+from openprints.common.utils.output import print_json
 
 
 def run_sign(args: Namespace) -> int:

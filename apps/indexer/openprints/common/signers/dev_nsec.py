@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from bech32 import bech32_decode, convertbits
 from coincurve import PrivateKey
 
-from openprints_cli.event_types import DraftEvent, SignedEvent
-from openprints_cli.event_utils import compute_event_id
-from openprints_cli.signers.base import SignerError
+from openprints.common.event_types import DraftEvent, SignedEvent
+from openprints.common.event_utils import compute_event_id
+from openprints.common.signers.base import SignerError
 
 
 def _decode_nsec(nsec: str) -> bytes:

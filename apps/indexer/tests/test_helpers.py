@@ -23,7 +23,7 @@ def valid_draft_payload() -> dict:
 
 def valid_signed_payload() -> dict:
     """Return a cryptographically valid signed payload (verify_event_signature passes)."""
-    from openprints_cli.signers.dev_nsec import DevNsecSigner
+    from openprints.common.signers.dev_nsec import DevNsecSigner
 
     payload = valid_draft_payload()
     payload["meta"] = dict(payload["meta"])

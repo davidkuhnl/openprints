@@ -7,7 +7,7 @@ import json
 
 from coincurve import PublicKeyXOnly
 
-from openprints_cli.event_types import DraftEvent, SignedEvent
+from openprints.common.event_types import DraftEvent, SignedEvent
 
 
 def canonical_event_serialization(event: DraftEvent | SignedEvent, pubkey: str) -> bytes:

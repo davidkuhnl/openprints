@@ -1,4 +1,4 @@
-"""Tests for openprints_cli.indexer.relay_worker."""
+"""Tests for openprints.indexer.relay_worker."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from openprints_cli.indexer.relay_worker import RelayWorker
-from openprints_cli.indexer.types import IngestEnvelope
+from openprints.indexer.relay_worker import RelayWorker
+from openprints.indexer.types import IngestEnvelope
 from tests.test_helpers import valid_signed_payload
 
 
@@ -53,7 +53,7 @@ def test_relay_worker_put_envelope_when_event_received() -> None:
 
     async def run_worker() -> None:
         with patch(
-            "openprints_cli.indexer.relay_worker.websockets.connect",
+            "openprints.indexer.relay_worker.websockets.connect",
             return_value=MockConnect(),
         ):
             await worker.run()
@@ -100,7 +100,7 @@ def test_relay_worker_ignores_non_event_message() -> None:
 
     async def run_worker() -> None:
         with patch(
-            "openprints_cli.indexer.relay_worker.websockets.connect",
+            "openprints.indexer.relay_worker.websockets.connect",
             return_value=MockConnect(),
         ):
             await worker.run()
@@ -144,7 +144,7 @@ def test_relay_worker_ignores_malformed_json() -> None:
 
     async def run_worker() -> None:
         with patch(
-            "openprints_cli.indexer.relay_worker.websockets.connect",
+            "openprints.indexer.relay_worker.websockets.connect",
             return_value=MockConnect(),
         ):
             await worker.run()

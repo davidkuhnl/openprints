@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from openprints_cli.error_codes import (
+from openprints.common.error_codes import (
     INVALID_JSON,
     INVALID_TYPE,
     INVALID_VALUE,

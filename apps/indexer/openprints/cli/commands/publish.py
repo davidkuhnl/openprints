@@ -6,13 +6,13 @@ from typing import cast
 
 import websockets
 
-from openprints_cli.errors import invalid_json, invalid_value
-from openprints_cli.event_types import SignedEvent
-from openprints_cli.event_utils import verify_event_signature
-from openprints_cli.payload_contract import validate_payload
-from openprints_cli.utils.input import read_text_input
-from openprints_cli.utils.output import print_json
-from openprints_cli.utils.relay import resolve_relay_url
+from openprints.common.errors import invalid_json, invalid_value
+from openprints.common.event_types import SignedEvent
+from openprints.common.event_utils import verify_event_signature
+from openprints.common.payload_contract import validate_payload
+from openprints.common.utils.input import read_text_input
+from openprints.common.utils.output import print_json
+from openprints.common.utils.relay import resolve_relay_url
 
 
 async def _publish_event_to_relay(

@@ -8,7 +8,7 @@ from typing import cast
 
 import websockets
 
-from openprints_cli.event_types import SignedEvent
+from openprints.common.event_types import SignedEvent
 
 from .types import IngestEnvelope
 

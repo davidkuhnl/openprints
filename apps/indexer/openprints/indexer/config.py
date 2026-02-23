@@ -5,7 +5,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-from openprints_cli.errors import invalid_type, invalid_value
+from openprints.common.errors import invalid_type, invalid_value
 
 DEFAULT_CONFIG_FILENAME = "openprints.indexer.toml"
 ENV_CONFIG_PATH = "OPENPRINTS_INDEXER_CONFIG"

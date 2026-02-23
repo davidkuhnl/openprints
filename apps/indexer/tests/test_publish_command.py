@@ -6,9 +6,9 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import openprints_cli.commands.publish as publish_cmd
-from openprints_cli.commands.publish import _publish_event_to_relay, run_publish
-from openprints_cli.error_codes import INVALID_JSON, INVALID_VALUE, MISSING_REQUIRED_FIELD
+import openprints.cli.commands.publish as publish_cmd
+from openprints.cli.commands.publish import _publish_event_to_relay, run_publish
+from openprints.common.error_codes import INVALID_JSON, INVALID_VALUE, MISSING_REQUIRED_FIELD
 from tests.test_helpers import valid_draft_payload, valid_signed_payload
 
 
@@ -277,7 +277,7 @@ def test_publish_event_to_relay_success() -> None:
         async def __aexit__(self, *args: object) -> None:
             pass
 
-    with patch("openprints_cli.commands.publish.websockets.connect", return_value=MockConnect()):
+    with patch("openprints.cli.commands.publish.websockets.connect", return_value=MockConnect()):
         result = asyncio.run(_publish_event_to_relay("ws://localhost:7447", event, timeout_s=1.0))
     assert result["accepted"] is True
     assert result["event_id"] == event["id"]
@@ -297,7 +297,7 @@ def test_publish_event_to_relay_non_json_response() -> None:
         async def __aexit__(self, *args: object) -> None:
             pass
 
-    with patch("openprints_cli.commands.publish.websockets.connect", return_value=MockConnect()):
+    with patch("openprints.cli.commands.publish.websockets.connect", return_value=MockConnect()):
         result = asyncio.run(_publish_event_to_relay("ws://localhost:7447", event, timeout_s=1.0))
     assert result["accepted"] is False
     assert "non-JSON" in result["message"] or "not json" in result["message"]
@@ -318,7 +318,7 @@ def test_publish_event_to_relay_unexpected_response() -> None:
         async def __aexit__(self, *args: object) -> None:
             pass
 
-    with patch("openprints_cli.commands.publish.websockets.connect", return_value=MockConnect()):
+    with patch("openprints.cli.commands.publish.websockets.connect", return_value=MockConnect()):
         result = asyncio.run(_publish_event_to_relay("ws://localhost:7447", event, timeout_s=1.0))
     assert result["accepted"] is False
     assert "unexpected" in result["message"].lower()

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from openprints_cli.error_codes import (
+from openprints.common.error_codes import (
     DRAFT_CONTAINS_SIGNED_FIELDS,
     SIGNED_MISSING_SIGNATURE_FIELDS,
     UNSUPPORTED_ARTIFACT_VERSION,
     UNSUPPORTED_EVENT_KIND,
 )
-from openprints_cli.errors import (
+from openprints.common.errors import (
     invalid_type,
     invalid_value,
     make_error,

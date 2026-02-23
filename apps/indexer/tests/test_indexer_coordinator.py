@@ -1,11 +1,11 @@
-"""Tests for openprints_cli.indexer.coordinator."""
+"""Tests for openprints.indexer.coordinator."""
 
 from __future__ import annotations
 
 import asyncio
 
-from openprints_cli.indexer.coordinator import IndexerCoordinator
-from openprints_cli.indexer.store import LogOnlyIndexStore
+from openprints.indexer.coordinator import IndexerCoordinator
+from openprints.indexer.store import LogOnlyIndexStore
 
 
 class _InstantRelayWorker:
@@ -49,7 +49,7 @@ def test_coordinator_init() -> None:
 
 
 def test_coordinator_run_for_starts_and_stops(monkeypatch) -> None:
-    import openprints_cli.indexer.coordinator as coord_mod
+    import openprints.indexer.coordinator as coord_mod
 
     monkeypatch.setattr(coord_mod, "RelayWorker", _InstantRelayWorker)
     coordinator = IndexerCoordinator(
@@ -64,7 +64,7 @@ def test_coordinator_run_for_starts_and_stops(monkeypatch) -> None:
 
 
 def test_coordinator_stop_clears_tasks(monkeypatch) -> None:
-    import openprints_cli.indexer.coordinator as coord_mod
+    import openprints.indexer.coordinator as coord_mod
 
     monkeypatch.setattr(coord_mod, "RelayWorker", _InstantRelayWorker)
     coordinator = IndexerCoordinator(

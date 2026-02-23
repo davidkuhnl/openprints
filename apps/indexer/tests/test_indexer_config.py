@@ -1,8 +1,8 @@
-"""Tests for openprints_cli.indexer.config."""
+"""Tests for openprints.indexer.config."""
 
 from __future__ import annotations
 
-from openprints_cli.indexer.config import (
+from openprints.indexer.config import (
     DEFAULT_CONFIG_FILENAME,
     ENV_CONFIG_PATH,
     load_indexer_config,
@@ -10,7 +10,7 @@ from openprints_cli.indexer.config import (
 
 
 def test_load_indexer_config_none_when_no_file(monkeypatch, tmp_path) -> None:
-    import openprints_cli.indexer.config as config_mod
+    import openprints.indexer.config as config_mod
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv(ENV_CONFIG_PATH, raising=False)

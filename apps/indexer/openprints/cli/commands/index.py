@@ -6,12 +6,12 @@ import os
 from argparse import Namespace
 from typing import Any
 
-from openprints_cli.errors import invalid_type, invalid_value
-from openprints_cli.indexer.config import load_indexer_config
-from openprints_cli.indexer.coordinator import IndexerCoordinator
-from openprints_cli.utils.logging import configure_logging
-from openprints_cli.utils.output import print_json
-from openprints_cli.utils.relay import resolve_relay_urls
+from openprints.common.errors import invalid_type, invalid_value
+from openprints.common.utils.logging import configure_logging
+from openprints.common.utils.output import print_json
+from openprints.common.utils.relay import resolve_relay_urls
+from openprints.indexer.config import load_indexer_config
+from openprints.indexer.coordinator import IndexerCoordinator
 
 logger = logging.getLogger(__name__)
 

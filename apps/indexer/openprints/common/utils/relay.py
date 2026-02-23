@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from argparse import Namespace
 
-from openprints_cli.errors import invalid_value
+from openprints.common.errors import invalid_value
 
 
 def resolve_relay_urls(

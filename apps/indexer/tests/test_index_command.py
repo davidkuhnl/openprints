@@ -3,7 +3,7 @@ from __future__ import annotations
 from argparse import Namespace
 from types import SimpleNamespace
 
-import openprints_cli.commands.index as index_cmd
+import openprints.cli.commands.index as index_cmd
 
 
 class _FakeCoordinator:

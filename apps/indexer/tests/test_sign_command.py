@@ -6,8 +6,8 @@ from pathlib import Path
 
 from bech32 import bech32_encode, convertbits
 
-from openprints_cli.commands.sign import run_sign
-from openprints_cli.error_codes import INVALID_JSON, INVALID_VALUE
+from openprints.cli.commands.sign import run_sign
+from openprints.common.error_codes import INVALID_JSON, INVALID_VALUE
 from tests.test_helpers import valid_draft_payload
 
 

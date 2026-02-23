@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import os
 
-from openprints_cli.signers.base import Signer, SignerError
-from openprints_cli.signers.dev_nsec import DevNsecSigner
+from openprints.common.signers.base import Signer, SignerError
+from openprints.common.signers.dev_nsec import DevNsecSigner
 
 SUPPORTED_SIGNERS = ("dev-nsec", "remote")
 

@@ -5,10 +5,10 @@ from argparse import Namespace
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from openprints_cli.errors import invalid_value
-from openprints_cli.payload_contract import ARTIFACT_VERSION, validate_payload
-from openprints_cli.utils.output import print_json, serialize_json
-from openprints_cli.utils.sha256 import sha256_file
+from openprints.common.errors import invalid_value
+from openprints.common.payload_contract import ARTIFACT_VERSION, validate_payload
+from openprints.common.utils.output import print_json, serialize_json
+from openprints.common.utils.sha256 import sha256_file
 
 SHA256_HEX_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 

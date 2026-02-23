@@ -59,7 +59,7 @@ lint:
 	@cd $(INDEXER_DIR) && uv run ruff check .
 
 test:
-	@cd $(INDEXER_DIR) && uv run pytest --cov=openprints_cli --cov-branch --cov-report=term-missing --cov-fail-under=85
+	@cd $(INDEXER_DIR) && uv run pytest --cov=openprints --cov-branch --cov-report=term-missing --cov-fail-under=85
 
 check: lint test
 

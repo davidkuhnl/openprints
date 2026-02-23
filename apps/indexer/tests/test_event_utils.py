@@ -1,8 +1,8 @@
-"""Tests for openprints_cli.event_utils."""
+"""Tests for openprints.common.event_utils."""
 
 from __future__ import annotations
 
-from openprints_cli.event_utils import (
+from openprints.common.event_utils import (
     canonical_event_serialization,
     compute_event_id,
     verify_event_signature,

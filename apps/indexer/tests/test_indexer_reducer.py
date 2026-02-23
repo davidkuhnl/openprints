@@ -1,8 +1,8 @@
 import asyncio
 
-from openprints_cli.indexer.reducer import ReducerWorker
-from openprints_cli.indexer.store import DesignCurrentRow, DesignVersionRow, LogOnlyIndexStore
-from openprints_cli.indexer.types import IngestEnvelope
+from openprints.indexer.reducer import ReducerWorker
+from openprints.indexer.store import DesignCurrentRow, DesignVersionRow, LogOnlyIndexStore
+from openprints.indexer.types import IngestEnvelope
 from tests.test_helpers import valid_signed_payload
 
 

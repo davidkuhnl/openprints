@@ -136,7 +136,7 @@ curl http://localhost:8000/designs
 
 Current CLI scaffold location:
 
-- `apps/indexer/openprints_cli/`
+- `apps/indexer/openprints/` (package `openprints` with `openprints.cli`, `openprints.indexer`, `openprints.common`)
 
 Run it from repo root:
 
@@ -226,10 +226,10 @@ Troubleshooting fallback (if entrypoint resolution is broken in your environment
 
 ```bash
 cd apps/indexer
-uv run python -m openprints_cli
+uv run python -m openprints
 ```
 
-Note: the console script name is `openprints-cli` (hyphen), not `openprints_cli`.
+Note: the console script is `openprints-cli`; the package is `openprints`.
 
 Early indexer/client endpoints may remain minimal while reducer/indexing work is built out in Phase 2.
 

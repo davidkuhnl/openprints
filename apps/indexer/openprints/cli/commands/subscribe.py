@@ -10,10 +10,10 @@ from argparse import Namespace
 import websockets  # type: ignore[reportMissingImports]
 from websockets.exceptions import ConnectionClosed  # type: ignore[reportMissingImports]
 
-from openprints_cli.errors import invalid_value
-from openprints_cli.utils.logging import configure_logging
-from openprints_cli.utils.output import print_json
-from openprints_cli.utils.relay import resolve_relay_url
+from openprints.common.errors import invalid_value
+from openprints.common.utils.logging import configure_logging
+from openprints.common.utils.output import print_json
+from openprints.common.utils.relay import resolve_relay_url
 
 logger = logging.getLogger(__name__)
 
