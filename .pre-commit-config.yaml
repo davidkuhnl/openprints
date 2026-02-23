@@ -13,6 +13,6 @@ repos:
         pass_filenames: false
       - id: indexer-tests
         name: indexer tests
-        entry: bash -lc 'cd apps/indexer && uv run pytest --cov=openprints_cli --cov-branch --cov-report=term-missing --cov-fail-under=85'
+        entry: bash -lc 'cd apps/indexer && uv run pytest --cov=openprints --cov-branch --cov-report=term-missing --cov-fail-under=85'
         language: system
         pass_filenames: false

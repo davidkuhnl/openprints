@@ -4,8 +4,8 @@ from argparse import Namespace
 from io import BytesIO, TextIOWrapper
 from pathlib import Path
 
-from openprints_cli.commands.hash import run_hash
-from openprints_cli.utils.sha256 import sha256_file
+from openprints.cli.commands.hash import run_hash
+from openprints.common.utils.sha256 import sha256_file
 
 
 def test_hash_file_matches_fixture_digest(capsys) -> None:

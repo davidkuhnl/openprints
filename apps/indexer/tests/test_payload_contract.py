@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 
-from openprints_cli.error_codes import (
+from openprints.common.error_codes import (
     DRAFT_CONTAINS_SIGNED_FIELDS,
     INVALID_TYPE,
     MISSING_REQUIRED_TAG,
@@ -10,7 +10,7 @@ from openprints_cli.error_codes import (
     UNSUPPORTED_ARTIFACT_VERSION,
     UNSUPPORTED_EVENT_KIND,
 )
-from openprints_cli.payload_contract import ARTIFACT_VERSION, validate_payload
+from openprints.common.payload_contract import ARTIFACT_VERSION, validate_payload
 
 
 def _base_draft_payload() -> dict:

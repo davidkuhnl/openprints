@@ -37,4 +37,4 @@ jobs:
 
       - name: Tests with coverage
         working-directory: apps/indexer
-        run: uv run pytest --cov=openprints_cli --cov-branch --cov-report=term-missing --cov-fail-under=85
+        run: uv run pytest --cov=openprints --cov-branch --cov-report=term-missing --cov-fail-under=85

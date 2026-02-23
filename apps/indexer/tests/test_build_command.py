@@ -3,9 +3,9 @@ from argparse import Namespace
 from pathlib import Path
 from uuid import UUID
 
-import openprints_cli.commands.build as build_cmd
-from openprints_cli.commands.build import run_build
-from openprints_cli.error_codes import INVALID_VALUE, MISSING_REQUIRED_FIELD
+import openprints.cli.commands.build as build_cmd
+from openprints.cli.commands.build import run_build
+from openprints.common.error_codes import INVALID_VALUE, MISSING_REQUIRED_FIELD
 
 FIXTURE_FILE = Path(__file__).parent / "fixtures" / "stub_design.stl"
 FIXTURE_SHA256 = "fc1b7cc223d252f88ddf568a83fe5a446a21d9358cb69cb3d6374c181cc4f3cd"

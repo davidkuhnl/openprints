@@ -1,7 +1,7 @@
 import json
 from argparse import Namespace
 
-from openprints_cli.commands.keygen import run_keygen
+from openprints.cli.commands.keygen import run_keygen
 
 
 def _args(**overrides: object) -> Namespace:
@@ -16,7 +16,7 @@ def _args(**overrides: object) -> Namespace:
 
 def test_keygen_default_output(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
-        "openprints_cli.commands.keygen.secrets.token_bytes", lambda _n: b"\x11" * 32
+        "openprints.cli.commands.keygen.secrets.token_bytes", lambda _n: b"\x11" * 32
     )
 
     result = run_keygen(_args())
@@ -33,7 +33,7 @@ def test_keygen_default_output(monkeypatch, capsys) -> None:
 
 def test_keygen_json_output(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
-        "openprints_cli.commands.keygen.secrets.token_bytes", lambda _n: b"\x22" * 32
+        "openprints.cli.commands.keygen.secrets.token_bytes", lambda _n: b"\x22" * 32
     )
 
     result = run_keygen(_args(json=True))
@@ -49,7 +49,7 @@ def test_keygen_json_output(monkeypatch, capsys) -> None:
 
 def test_keygen_env_output(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
-        "openprints_cli.commands.keygen.secrets.token_bytes", lambda _n: b"\x33" * 32
+        "openprints.cli.commands.keygen.secrets.token_bytes", lambda _n: b"\x33" * 32
     )
 
     result = run_keygen(_args(env=True, env_name="MY_DEV_NSEC"))
