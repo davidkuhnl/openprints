@@ -12,6 +12,7 @@ from openprints.common.utils.output import print_json
 from openprints.common.utils.relay import resolve_relay_urls
 from openprints.indexer.config import load_indexer_config
 from openprints.indexer.coordinator import IndexerCoordinator
+from openprints.indexer.health_server import start_health_server, stop_health_server
 from openprints.indexer.store import LogOnlyIndexStore
 from openprints.indexer.store_sqlite import SQLiteIndexStore
 
@@ -100,6 +101,22 @@ def run_index(args: Namespace) -> int:
         print_json({"ok": False, "errors": [invalid_value("duration", "duration must be >= 0")]})
         return 1
 
+    health_port, health_port_errors = _resolve_int_option(
+        args_value=None,
+        env_name="OPENPRINTS_HEALTH_PORT",
+        config_value=config.get("health_port"),
+        default_value=0,
+        path="health_port",
+    )
+    if health_port_errors:
+        print_json({"ok": False, "errors": health_port_errors})
+        return 1
+    if health_port < 0:
+        print_json(
+            {"ok": False, "errors": [invalid_value("health_port", "health_port must be >= 0")]}
+        )
+        return 1
+
     config_log_level, log_level_errors = _resolve_config_log_level(config)
     if log_level_errors:
         print_json({"ok": False, "errors": log_level_errors})
@@ -115,6 +132,16 @@ def run_index(args: Namespace) -> int:
         store = SQLiteIndexStore(database_path)
     else:
         store = LogOnlyIndexStore()
+
+    health_server = (
+        start_health_server(
+            health_port,
+            database_path=database_path,
+            relay_urls=relay_urls,
+        )
+        if health_port > 0
+        else None
+    )
 
     async def _run() -> tuple[int, int, int]:
         if isinstance(store, SQLiteIndexStore):
@@ -140,6 +167,7 @@ def run_index(args: Namespace) -> int:
                     "config_source": config_source or "none",
                     "log_level": os.environ.get("OPENPRINTS_LOG_LEVEL", "WARNING"),
                     "database": database_path or "log",
+                    "health_port": health_port or None,
                 },
             )
             try:
@@ -162,6 +190,9 @@ def run_index(args: Namespace) -> int:
         processed, reduced, duplicates = asyncio.run(_run())
     except KeyboardInterrupt:
         processed, reduced, duplicates = 0, 0, 0
+    finally:
+        if health_server is not None:
+            stop_health_server(health_server)
 
     print_json(
         {

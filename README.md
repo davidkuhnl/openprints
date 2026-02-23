@@ -195,9 +195,9 @@ openprints/
 
 Legend: `[x]` done, `[~]` current, `[>]` next, `[ ]` upcoming, `[!]` blocked
 
-Current Phase: **Phase 2 - Indexer Core (Relay Subscriptions + Reducer + DB)**
+Current Phase: **Phase 3 - REST API**
 
-Next Phase: **Phase 3 - REST API**
+Next Phase: **Phase 4 - Client MVP (List + Detail Pages)**
 
 ### [x] Phase 0 — Repo + Docs Setup
 
@@ -252,7 +252,7 @@ Next Phase: **Phase 3 - REST API**
 
 ---
 
-### [~] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
+### [x] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
 
 **Goal:** Implement the Python indexer core: subscribe to relevant Nostr events from one or more relays, reduce them into a normalized model, and persist to SQLite.
 
@@ -273,7 +273,7 @@ Next Phase: **Phase 3 - REST API**
 - [x] SQLite schema and persistent store (`designs`, `design_versions`); FK `designs.latest_event_id` → `design_versions.event_id`; events persisted to DB
 - [x] `openprints db wipe --force` and `openprints db stats`; `make cli-db-wipe`, `make cli-db-stats`; DB inspection documented in `docs/dev-setup.md`
 - [x] End-to-end test drive (`make test-drive` / `scripts/test-drive.sh`): relay wipe, relay up, key, DB wipe option, indexer + stats, publish 2 designs + update, tear down
-- [ ] Optional: minimal health endpoint
+- [x] Optional: minimal health endpoint (`GET /health`, `GET /ready` on configurable port; see docs/dev-setup.md)
 
 **Done when:**
 
@@ -281,7 +281,7 @@ Next Phase: **Phase 3 - REST API**
 
 ---
 
-### [ ] Phase 3 — REST API
+### [~] Phase 3 — REST API
 
 **Goal:** Expose the indexed data via a FastAPI REST API so the client and other tools can query designs by ID, list, and search.
 
@@ -298,7 +298,7 @@ Next Phase: **Phase 3 - REST API**
 
 ---
 
-### [ ] Phase 4 — Client MVP (List + Detail Pages)
+### [>] Phase 4 — Client MVP (List + Detail Pages)
 
 **Goal:** Ship an Astro-based web client that lists designs and shows a detail page, using the indexer’s REST API, with SSR for speed and SEO.
 

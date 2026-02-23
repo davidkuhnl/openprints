@@ -1,4 +1,4 @@
-.PHONY: help setup setup-fast lint test check relay-up relay-down relay-down-wipe relay-logs relay-test-up relay-test-ws relay-check test-drive cli cli-build cli-sign cli-publish cli-subscribe cli-index cli-db-stats cli-db-wipe cli-hash cli-hash-stdin cli-keygen
+.PHONY: help setup setup-fast format lint test check relay-up relay-down relay-down-wipe relay-logs relay-test-up relay-test-ws relay-check test-drive cli cli-build cli-sign cli-publish cli-subscribe cli-index cli-db-stats cli-db-wipe cli-hash cli-hash-stdin cli-keygen
 
 INDEXER_DIR := apps/indexer
 INFRA_DIR := infra
@@ -29,6 +29,7 @@ help:
 	@echo "Available targets:"
 	@echo "  make setup          - run full bootstrap (prereqs, app deps, git hooks)"
 	@echo "  make setup-fast     - sync indexer dev dependencies with uv"
+	@echo "  make format         - run ruff format (indexer, writes changes)"
 	@echo "  make lint           - run ruff format check + ruff lint (indexer)"
 	@echo "  make test           - run pytest with coverage gate (indexer)"
 	@echo "  make check          - run lint and test"
@@ -57,6 +58,9 @@ setup:
 
 setup-fast:
 	@cd $(INDEXER_DIR) && uv sync --group dev
+
+format:
+	@cd $(INDEXER_DIR) && uv run ruff format .
 
 lint:
 	@cd $(INDEXER_DIR) && uv run ruff format --check .
