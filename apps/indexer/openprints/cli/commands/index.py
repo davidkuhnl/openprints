@@ -12,6 +12,8 @@ from openprints.common.utils.output import print_json
 from openprints.common.utils.relay import resolve_relay_urls
 from openprints.indexer.config import load_indexer_config
 from openprints.indexer.coordinator import IndexerCoordinator
+from openprints.indexer.store import LogOnlyIndexStore
+from openprints.indexer.store_sqlite import SQLiteIndexStore
 
 logger = logging.getLogger(__name__)
 
@@ -107,47 +109,85 @@ def run_index(args: Namespace) -> int:
 
     configure_logging()
 
-    coordinator = IndexerCoordinator(
-        relays=relay_urls,
-        kind=kind,
-        timeout_s=timeout_s,
-        queue_maxsize=queue_maxsize,
-        max_retries=max_retries,
-    )
+    database_path = _resolve_database_path(config)
+    store: LogOnlyIndexStore | SQLiteIndexStore
+    if database_path:
+        store = SQLiteIndexStore(database_path)
+    else:
+        store = LogOnlyIndexStore()
 
-    logger.info(
-        "indexer_command_start",
-        extra={
-            "relay_count": len(relay_urls),
-            "kind": kind,
-            "queue_maxsize": queue_maxsize,
-            "max_retries": max_retries,
-            "timeout_s": timeout_s,
-            "duration_s": duration_s,
-            "config_source": config_source or "none",
-            "log_level": os.environ.get("OPENPRINTS_LOG_LEVEL", "WARNING"),
-        },
-    )
+    async def _run() -> tuple[int, int, int]:
+        if isinstance(store, SQLiteIndexStore):
+            await store.open()
+        try:
+            coordinator = IndexerCoordinator(
+                relays=relay_urls,
+                kind=kind,
+                timeout_s=timeout_s,
+                queue_maxsize=queue_maxsize,
+                max_retries=max_retries,
+                store=store,
+            )
+            logger.info(
+                "indexer_command_start",
+                extra={
+                    "relay_count": len(relay_urls),
+                    "kind": kind,
+                    "queue_maxsize": queue_maxsize,
+                    "max_retries": max_retries,
+                    "timeout_s": timeout_s,
+                    "duration_s": duration_s,
+                    "config_source": config_source or "none",
+                    "log_level": os.environ.get("OPENPRINTS_LOG_LEVEL", "WARNING"),
+                    "database": database_path or "log",
+                },
+            )
+            try:
+                if duration_s > 0:
+                    await coordinator.run_for(duration_s)
+                else:
+                    await coordinator.run_until_cancelled()
+            except KeyboardInterrupt:
+                pass
+            return (
+                coordinator.reducer.stats.processed,
+                coordinator.reducer.stats.reduced,
+                coordinator.reducer.stats.duplicates,
+            )
+        finally:
+            if isinstance(store, SQLiteIndexStore):
+                await store.close()
+
     try:
-        if duration_s > 0:
-            asyncio.run(coordinator.run_for(duration_s))
-        else:
-            asyncio.run(coordinator.run_until_cancelled())
+        processed, reduced, duplicates = asyncio.run(_run())
     except KeyboardInterrupt:
-        pass
+        processed, reduced, duplicates = 0, 0, 0
 
     print_json(
         {
             "ok": True,
             "relays": relay_urls,
-            "stats": {
-                "processed": coordinator.reducer.stats.processed,
-                "reduced": coordinator.reducer.stats.reduced,
-                "duplicates": coordinator.reducer.stats.duplicates,
-            },
+            "stats": {"processed": processed, "reduced": reduced, "duplicates": duplicates},
         }
     )
     return 0
+
+
+def _resolve_database_path(config: dict[str, Any]) -> str | None:
+    """Resolve DB path from env and config.
+
+    Returns None when log-only storage is configured.
+    """
+    raw_env = os.environ.get("OPENPRINTS_INDEX_DATABASE_PATH", "").strip()
+    if raw_env:
+        value = raw_env
+    else:
+        raw = config.get("database_path") or config.get("database")
+        value = (raw if isinstance(raw, str) else "") or ""
+        value = value.strip()
+    if not value or value.lower() in ("log", "none"):
+        return None
+    return value
 
 
 def _resolve_config_relays(config: dict[str, Any]) -> tuple[list[str] | None, list[dict[str, str]]]:

@@ -3,6 +3,7 @@ import argparse
 from openprints.common.signers.factory import SUPPORTED_SIGNERS
 
 from .commands.build import run_build
+from .commands.db import run_db_stats, run_db_wipe
 from .commands.hash import run_hash
 from .commands.index import run_index
 from .commands.keygen import run_keygen
@@ -132,7 +133,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     index_parser = subparsers.add_parser(
         "index",
-        help="Run indexer ingestion pipeline stub (no DB writes yet)",
+        help="Run indexer: subscribe to relay(s), reduce events, optionally persist to SQLite",
     )
     index_parser.add_argument(
         "--config",
@@ -185,6 +186,37 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Run seconds before clean stop (falls back to env/config/default: 0=until interrupt).",
     )
     index_parser.set_defaults(func=run_index)
+
+    db_parser = subparsers.add_parser("db", help="Database operations")
+    db_sub = db_parser.add_subparsers(dest="db_command", required=True)
+    stats_parser = db_sub.add_parser("stats", help="Print indexer DB stats and latest designs")
+    stats_parser.add_argument(
+        "--config",
+        default=None,
+        help="Path to indexer TOML config (same as index command).",
+    )
+    stats_parser.add_argument(
+        "--limit",
+        type=int,
+        default=10,
+        help="Max number of designs to list (default: 10, use 0 to skip list).",
+    )
+    stats_parser.set_defaults(func=run_db_stats)
+    wipe_parser = db_sub.add_parser(
+        "wipe",
+        help="Wipe the indexer SQLite DB (requires --force)",
+    )
+    wipe_parser.add_argument(
+        "--config",
+        default=None,
+        help="Path to indexer TOML config (same as index command).",
+    )
+    wipe_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Confirm wipe; required to avoid accidental data loss.",
+    )
+    wipe_parser.set_defaults(func=run_db_wipe)
 
     hash_parser = subparsers.add_parser("hash", help="Compute SHA-256 for a file or stdin")
     hash_parser.add_argument(
