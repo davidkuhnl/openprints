@@ -27,5 +27,4 @@ Frontend for [OpenPrints](https://github.com/davidkuhnl/openprints)—an open, d
 
 ## Credits
 
-- Moon image: [Unsplash / NASA](https://unsplash.com/@nasa)
 - Client started from an Astro + Tailwind landing template

@@ -1,6 +1,5 @@
 ---
 import { Icon } from "astro-icon/components";
-import ContentSection from "~/components/content-section.astro";
 import type { FeatureItem } from "~/types";
 
 const features: Array<FeatureItem> = [
@@ -43,13 +42,21 @@ const features: Array<FeatureItem> = [
 ];
 ---
 
-<ContentSection title="Building Blocks" id="buildingblocks" titleClass="text-intro-accent">
-  <Fragment slot="lead">
+<section
+  id="building-blocks"
+  class="flex scroll-mt-24 flex-col items-center gap-4 space-y-8"
+>
+  <div class="flex flex-col items-center gap-4">
+    <h2 class="text-center font-extrabold tracking-tight text-6xl text-intro-accent">
+      Building Blocks
+    </h2>
+  </div>
+  <p class="max-w-xl text-center font-extrabold text-2xl">
     OpenPrints treats <span class="text-intro-accent">3D designs</span> as open
     protocol data, not siloed marketplace inventory. It combines Nostr, Lightning,
     and simple storage into a <span class="text-intro-accent">creator-owned</span>,
     censorship-resistant foundation for printable models.
-  </Fragment>
+  </p>
   <ul class="grid max-w-6xl grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
     {
       features.map(({ title, description, icon }) => (
@@ -63,4 +70,4 @@ const features: Array<FeatureItem> = [
       ))
     }
   </ul>
-</ContentSection>
+</section>
