@@ -1,30 +1,27 @@
 # OpenPrints Client
 
-Frontend for [OpenPrints](https://github.com/davidkuhnl/openprints)—an open, decentralized home for 3D-printable designs built on Nostr. Built with Astro and Tailwind CSS.
+Web frontend for [OpenPrints](https://github.com/davidkuhnl/openprints)—browse and (later) publish 3D-printable designs. Built with **Astro** and **Tailwind CSS**.
 
-## Features
+Part of the OpenPrints monorepo. For project overview, architecture, and full local setup (relay + indexer + client), see the [root README](../../README.md) and [Development Setup](../../docs/dev-setup.md).
 
-- Tailwind CSS for styling
-- Themeable (CSS variables in `src/styles/theme.css`, mapped in `tailwind.config.cjs`)
-- Dark mode
-- Responsive layout, images, and typography
-- Accessible and SEO-enabled
-- Open Graph tags for social sharing
-- Prettier setup for Astro and Tailwind
+## Quick start
 
-## Commands
+```bash
+npm install
+npm run dev
+```
 
-| Command                | Action                                            |
-| :--------------------- | :------------------------------------------------ |
-| `npm install`          | Install dependencies                              |
-| `npm run dev`          | Start local dev server at `localhost:4321`        |
-| `npm run build`        | Build production site to `./dist/`                 |
-| `npm run preview`      | Preview the build locally                          |
-| `npm run astro ...`    | Run Astro CLI (`astro add`, `astro check`, etc.)   |
-| `npm run astro --help` | Astro CLI help                                    |
-| `npm run format`       | Format with Prettier                              |
-| `npm run clean`        | Remove `node_modules` and build output            |
+Dev server: **http://localhost:4321**
 
-## Credits
+| Command           | Action                    |
+| ----------------- | ------------------------- |
+| `npm run dev`     | Start dev server          |
+| `npm run build`   | Production build → `dist/` |
+| `npm run preview` | Preview production build  |
+| `npm run format`  | Format with Prettier      |
 
-- Client started from an Astro + Tailwind landing template
+To run the full stack (relay, indexer, client), use the [repo root setup](../../README.md#local-development-setup).
+
+## License
+
+Same as the repository: [AGPL-3.0](../../LICENSE).
