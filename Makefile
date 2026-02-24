@@ -1,6 +1,7 @@
-.PHONY: help setup setup-fast format lint lint-fix test check relay-up relay-down relay-down-wipe relay-logs relay-test-up relay-test-ws relay-check test-drive cli cli-build cli-sign cli-publish cli-subscribe cli-index cli-serve cli-db-stats cli-db-wipe cli-hash cli-hash-stdin cli-keygen api
+.PHONY: help setup setup-fast format lint lint-fix test check relay-up relay-down relay-down-wipe relay-logs relay-test-up relay-test-ws relay-check test-drive cli cli-build cli-sign cli-publish cli-subscribe cli-index cli-serve cli-db-stats cli-db-wipe cli-hash cli-hash-stdin cli-keygen api client-deploy
 
 INDEXER_DIR := apps/indexer
+CLIENT_DIR := apps/client
 INFRA_DIR := infra
 FILE ?= tests/fixtures/stub_design.stl
 SHA256 ?=
@@ -56,6 +57,7 @@ help:
 	@echo "  make cli-hash       - run openprints-cli hash --file \$$FILE"
 	@echo "  make cli-hash-stdin - run openprints-cli hash for piped stdin"
 	@echo "  make cli-keygen     - generate a local dev nsec/npub keypair"
+	@echo "  make client-deploy  - build Astro client and deploy to Cloudflare Pages (openprints-client)"
 
 setup:
 	@./scripts/setup.sh
@@ -139,3 +141,6 @@ cli-hash-stdin:
 
 cli-keygen:
 	@cd $(INDEXER_DIR) && uv run openprints-cli keygen
+
+client-deploy:
+	@cd $(CLIENT_DIR) && npm run build && npx wrangler pages deploy dist --project-name=openprints-client

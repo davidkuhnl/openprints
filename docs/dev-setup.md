@@ -395,3 +395,43 @@ cd infra
 docker compose down
 docker compose up --build
 ```
+
+## 13) Initial push to Cloudflare (client)
+
+To get the Astro client live on [Cloudflare Pages](https://pages.cloudflare.com/) without connecting the repo to Cloudflare, use Wrangler to deploy the built site manually.
+
+**One-time setup**
+
+1. **Log in to Cloudflare** (uses `npx wrangler`; no need to add Wrangler to the app):
+
+   ```bash
+   npx wrangler login
+   ```
+
+   A browser window opens; sign in and approve so Wrangler can deploy to your account.
+
+**Deploy**
+
+2. **Build the site**:
+
+   ```bash
+   npm run build
+   ```
+
+   Output goes to `dist/`.
+
+3. **Deploy to Pages**:
+
+   ```bash
+   npx wrangler pages deploy dist --project-name=openprints-client-client
+   ```
+
+   The first run creates a new Cloudflare Pages project named `openprints-client`. You get a URL like `https://openprints-client.pages.dev` for that deployment.
+
+**Custom domain (openprints.dev)**
+
+4. In the **Cloudflare Dashboard** go to **Workers & Pages** → **openprints-client** → **Custom domains**.
+5. Click **Set up a custom domain** (or **Add custom domain**) and enter **openprints.dev**.
+6. Cloudflare adds the DNS record; with the domain already on Cloudflare, SSL is automatic. After DNS propagates, `https://openprints.dev` serves the client.
+
+To publish updates later, run `npm run build` and `npx wrangler pages deploy dist --project-name=openprints-client` again from `apps/client`.

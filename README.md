@@ -1,16 +1,8 @@
 # OpenPrints
 
-<table>
-<tr>
-<td>
-
 **OpenPrints** is an open-source, decentralized ecosystem for discovering, publishing, and monetizing **3D-printable designs** on the **Nostr protocol** with **Lightning zaps**. Creators publish designs as Nostr events; a community-run indexer aggregates them; a thin client lets anyone browse, endorse, and support creators—no central authority or platform lock-in.
 
 Read more about the problem, approach, and our vision in [docs/vision-statement.md](docs/vision-statement.md).
-</td>
-<td width="72" valign="top"><img src="apps/client/public/favicon.svg" alt="OpenPrints" width="64" height="64" /></td>
-</tr>
-</table>
 
 
 ## Quick start
@@ -28,14 +20,12 @@ Quality checks: `make lint`, `make test`, `make check`. See [docs/dev-setup.md](
 
 ## State of the Union (2025-02-24)
 
-Phased plan: `[x]` done · `[~]` current · `[>]` next · `[ ]` upcoming · `[!]` blocked
-
 - [x] Phase 0 — Vision, Repo Setup, Plumbing, Docs
 - [x] Phase 1 — Event Handling CLI
 - [x] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
 - [x] Phase 3 — REST API
-- [~] Phase 4 — Client MVP (List + Detail Pages)
-- [>] Phase 5 — Design Publishing Flow
+- [ ] WIP - Phase 4 — Client MVP (List + Detail Pages)
+- [ ] Phase 5 — Design Publishing Flow
 - [ ] Phase 6 — Endorsements ("I printed this")
 - [ ] Phase 7 — Lightning Zaps
 - [ ] Phase 8 — File Storage Support
