@@ -1,13 +1,13 @@
 # OpenPrints Development Roadmap
 
-Phased plan for the OpenPrints PoC and beyond. Legend: `[x]` done, `[~]` current, `[>]` next, `[ ]` upcoming, `[!]` blocked.
+Phased plan for the OpenPrints PoC and beyond.
 
 - [x] Phase 0 — Vision, Repo Setup, Plumbing, Docs
 - [x] Phase 1 — Event Handling CLI
 - [x] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
 - [x] Phase 3 — REST API
-- [~] Phase 4 — Client MVP (List + Detail Pages)
-- [>] Phase 5 — Design Publishing Flow
+- [ ] WIP - Phase 4 — Client MVP (List + Detail Pages)
+- [ ] Phase 5 — Design Publishing Flow
 - [ ] Phase 6 — Endorsements ("I printed this")
 - [ ] Phase 7 — Lightning Zaps
 - [ ] Phase 8 — File Storage Support
