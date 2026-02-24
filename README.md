@@ -20,6 +20,12 @@ Quality checks: `make lint`, `make test`, `make check`. See [docs/dev-setup.md](
 
 ## State of the Union (2025-02-24)
 
+### Deploy
+- client: live on https://openprints.dev/ via CF
+- indexer: DEAD - I am doing as best as I can 
+
+### Roadmap
+
 - [x] Phase 0 — Vision, Repo Setup, Plumbing, Docs
 - [x] Phase 1 — Event Handling CLI
 - [x] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
