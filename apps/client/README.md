@@ -1,26 +1,16 @@
-# Astro Landing Page <picture><source media="(prefers-color-scheme: dark)" srcset="https://astro.build/assets/press/astro-icon-light.png"><source media="(prefers-color-scheme: light)" srcset="https://astro.build/assets/press/astro-icon-dark.png"><img align="right" valign="center" height="79" width="63" src="https://astro.build/assets/press/astro-icon-dark.png" alt="Astro logo" /></picture>
+# OpenPrints Client
 
-> An Astro + Tailwind CSS example/template for landing pages.
-
-<div align="center">
-
-[![Built with Astro](https://astro.badg.es/v2/built-with-astro/small.svg)](https://astro.build)
-
-</div>
-
-![Screenshots of Astro Landing Page](screenshots.jpg)
+Frontend for [OpenPrints](https://github.com/davidkuhnl/openprints)—an open, decentralized home for 3D-printable designs built on Nostr. Built with Astro and Tailwind CSS.
 
 ## Features
 
-- 💨 Tailwind CSS for styling
-- 🎨 Themeable
-  - CSS variables are defined in `src/styles/theme.css` and mapped to Tailwind classes (`tailwind.config.cjs`)
-- 🌙 Dark mode
-- 📱 Responsive (layout, images, typography)
-- ♿ Accessible (as measured by https://web.dev/measure/)
-- 🔎 SEO-enabled (as measured by https://web.dev/measure/)
-- 🔗 Open Graph tags for social media sharing
-- 💅 [Prettier](https://prettier.io/) setup for both [Astro](https://github.com/withastro/prettier-plugin-astro) and [Tailwind](https://github.com/tailwindlabs/prettier-plugin-tailwindcss)
+- Tailwind CSS for styling
+- Themeable (CSS variables in `src/styles/theme.css`, mapped in `tailwind.config.cjs`)
+- Dark mode
+- Responsive layout, images, and typography
+- Accessible and SEO-enabled
+- Open Graph tags for social sharing
+- Prettier setup for Astro and Tailwind
 
 ## Commands
 
@@ -28,17 +18,14 @@
 | :--------------------- | :------------------------------------------------ |
 | `npm install`          | Install dependencies                              |
 | `npm run dev`          | Start local dev server at `localhost:4321`        |
-| `npm run build`        | Build your production site to `./dist/`           |
-| `npm run preview`      | Preview your build locally, before deploying      |
-| `npm run astro ...`    | Run CLI commands like `astro add`, `astro check`  |
-| `npm run astro --help` | Get help using the Astro CLI                      |
-| `npm run format`       | Format code with [Prettier](https://prettier.io/) |
+| `npm run build`        | Build production site to `./dist/`                 |
+| `npm run preview`      | Preview the build locally                          |
+| `npm run astro ...`    | Run Astro CLI (`astro add`, `astro check`, etc.)   |
+| `npm run astro --help` | Astro CLI help                                    |
+| `npm run format`       | Format with Prettier                              |
 | `npm run clean`        | Remove `node_modules` and build output            |
 
 ## Credits
 
-- astronaut image
-  - source: https://github.com/withastro/astro-og-image; note: this repo is not available anymore
-- moon image
-  - source: https://unsplash.com/@nasa
-- other than that, a lot of material (showcase data, copy) was taken from official Astro sources, in particular https://astro.build/blog/introducing-astro/ and https://github.com/withastro/astro.build
+- Moon image: [Unsplash / NASA](https://unsplash.com/@nasa)
+- Client started from an Astro + Tailwind landing template
