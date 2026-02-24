@@ -22,7 +22,7 @@ Quality checks: `make lint`, `make test`, `make check`. See [docs/dev-setup.md](
 
 ### Deploy
 - client: live on https://openprints.dev/ via CF
-- indexer: DEAD - I am doing as best as I can 
+- indexer: limping on my trusty old raspberry pi
 
 ### Roadmap
 

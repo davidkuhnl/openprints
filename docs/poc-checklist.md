@@ -63,14 +63,14 @@
 
 ### 4. Minimal “Prod-ish” Deployment
 
-- [ ] **Indexer deployment**
-  - [ ] Deploy indexer (FastAPI) to a simple host (VPS / Fly / Render / Railway, etc.)
-  - [ ] Expose it under `https://api.openprints.dev` (DNS or Cloudflare Tunnel)
-  - [ ] Verify health/readiness endpoints and `GET /designs` work externally
-- [ ] **Client on Cloudflare Pages**
-  - [ ] Configure Astro build for Cloudflare Pages
-  - [ ] Point client to `https://api.openprints.dev` via env/config
-  - [ ] Attach `openprints.dev` or `app.openprints.dev` to the client Pages project
+- [x] **Indexer deployment**
+  - [x] Deploy indexer (FastAPI) to a simple host (VPS / Fly / Render / Railway, etc.)
+  - [x] Expose it under `https://api.openprints.dev` (DNS or Cloudflare Tunnel)
+  - [x] Verify health/readiness endpoints and `GET /designs` work externally
+- [x] **Client on Cloudflare Pages**
+  - [x] Configure Astro build for Cloudflare Pages
+  - [x] Point client to `https://api.openprints.dev` via env/config
+  - [x] Attach `openprints.dev` or `app.openprints.dev` to the client Pages project
 - [ ] **Deployment docs**
   - [ ] Add a short doc or section describing the PoC deployment layout:
     - [ ] Where the relay runs
