@@ -1,0 +1,76 @@
+---
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+const { limit = 6 } = Astro.props;
+---
+
+<section
+  class="recent-designs-grid grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+  data-api-base-url={apiBaseUrl}
+  data-limit={limit}
+>
+  <p class="col-span-full text-center text-offset">
+    Loading recent designs…
+  </p>
+</section>
+
+<script define:vars={{ apiBaseUrl, limit }}>
+  (function () {
+    const base =
+      typeof apiBaseUrl === "string" && apiBaseUrl
+        ? apiBaseUrl.replace(/\/$/, "")
+        : "";
+    if (!base) return;
+
+    const selector = ".recent-designs-grid";
+    const container = document.querySelector(selector);
+    if (!container) return;
+
+    const url = `${base}/designs?limit=${encodeURIComponent(
+      limit,
+    )}&order=latest_published_at_desc`;
+
+    fetch(url)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(res.statusText))))
+      .then((data) => {
+        const items = (data && data.items) || [];
+        if (!items.length) {
+          container.innerHTML =
+            '<p class="col-span-full text-center text-offset">No designs yet.</p>';
+          return;
+        }
+
+        container.innerHTML = "";
+        for (const d of items) {
+          const card = document.createElement("article");
+          card.className =
+            "flex h-full flex-col gap-2.5 rounded-xl border border-default bg-offset/40 p-4";
+
+          const name = d.name || "Untitled design";
+          const content = typeof d.content === "string" ? d.content : "";
+          const excerpt =
+            content.length > 140 ? `${content.slice(0, 140)}…` : content;
+
+          card.innerHTML = `
+            <h2 class="text-base font-medium tracking-tight text-default">
+              <a href="/app/designs/detail?id=${encodeURIComponent(
+                d.id,
+              )}" class="underline-offset-2 hover:underline">${name}</a>
+            </h2>
+            <p class="text-[10px] text-offset break-all">By ${d.pubkey}</p>
+            ${
+              excerpt
+                ? `<p class="mt-0.5 text-xs leading-relaxed text-offset">${excerpt}</p>`
+                : ""
+            }
+          `;
+
+          container.appendChild(card);
+        }
+      })
+      .catch(() => {
+        container.innerHTML =
+          '<p class="col-span-full text-center text-offset">Failed to load designs.</p>';
+      });
+  })();
+</script>
+

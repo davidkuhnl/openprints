@@ -1,0 +1,167 @@
+---
+import AppLayout from "~/layouts/app-layout.astro";
+
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+---
+
+<AppLayout title="OpenPrints – Design detail">
+  <div class="mx-auto flex max-w-5xl flex-col gap-3">
+    <a
+      href="/app/designs"
+      class="inline-flex w-fit items-center gap-1 text-[10px] text-offset underline-offset-2 hover:underline focus:outline-none focus-visible:outline-none"
+    >
+      <span>←</span>
+      <span>Back to designs</span>
+    </a>
+    <article
+      class="flex flex-col gap-2.5 rounded-xl border border-default bg-offset/30 p-4 sm:p-5"
+      data-api-base-url={apiBaseUrl}
+      data-design-id=""
+    >
+      <h1 class="text-lg font-semibold tracking-tight">Loading design…</h1>
+      <p class="text-xs text-offset">Fetching design details.</p>
+    </article>
+  </div>
+
+  <script define:vars={{ apiBaseUrl }}>
+    (function () {
+      const base =
+        typeof apiBaseUrl === "string" && apiBaseUrl
+          ? apiBaseUrl.replace(/\/$/, "")
+          : "";
+      if (!base) return;
+
+      const params = new URL(window.location.href).searchParams;
+      const id = params.get("id");
+      const root = document.querySelector("article[data-design-id]");
+
+      if (!root) return;
+      if (!id) {
+        root.innerHTML = `
+          <h1 class="text-lg font-semibold tracking-tight">Design not found</h1>
+          <p class="mt-1.5 text-xs text-offset">Missing design id in the URL.</p>
+          <div class="mt-4">
+            <a href="/app/designs" class="text-[10px] text-offset underline-offset-2 hover:underline">
+              ← Back to designs
+            </a>
+          </div>
+        `;
+        return;
+      }
+
+      const url = `${base}/designs/${encodeURIComponent(id)}`;
+
+      fetch(url)
+        .then((res) =>
+          res.ok ? res.json() : Promise.reject(new Error(res.statusText)),
+        )
+        .then((d) => {
+          const totalZaps =
+            typeof d.total_zaps === "number"
+              ? d.total_zaps
+              : typeof d.totalZaps === "number"
+              ? d.totalZaps
+              : "–";
+
+          const endorsements =
+            typeof d.endorsements_count === "number"
+              ? d.endorsements_count
+              : Array.isArray(d.endorsements)
+              ? d.endorsements.length
+              : "–";
+
+          const name = d.name || "Untitled design";
+          const description =
+            typeof d.content === "string" && d.content ? d.content : "";
+          const creator = d.pubkey || "Unknown creator";
+
+          const format = d.format || "–";
+          const sha256 = d.sha256 || "–";
+          const urlValue = d.url || "";
+
+          root.innerHTML = `
+            <div>
+              <header class="space-y-1.5 border-b border-default pb-4">
+                <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
+                  Design
+                </p>
+                <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">
+                  ${name}
+                </h1>
+                <p class="text-[10px] text-offset break-all">
+                  By ${creator}
+                </p>
+              </header>
+
+              <dl class="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="rounded-lg border border-default bg-default/40 px-3 py-2.5">
+                  <dt class="text-[10px] text-offset">Format</dt>
+                  <dd class="mt-1 text-xs font-medium text-default">${format}</dd>
+                </div>
+                <div class="rounded-lg border border-default bg-default/40 px-3 py-2.5">
+                  <dt class="text-[10px] text-offset">SHA-256</dt>
+                  <dd class="mt-1 break-all text-xs font-medium text-default">${sha256}</dd>
+                </div>
+                <div class="rounded-lg border border-default bg-default/40 px-3 py-2.5">
+                  <dt class="text-[10px] text-offset">Total zaps</dt>
+                  <dd class="mt-1 text-xs font-medium text-default">${totalZaps}</dd>
+                </div>
+                <div class="rounded-lg border border-default bg-default/40 px-3 py-2.5">
+                  <dt class="text-[10px] text-offset">Endorsements</dt>
+                  <dd class="mt-1 text-xs font-medium text-default">${endorsements}</dd>
+                </div>
+              </dl>
+
+              ${
+                description
+                  ? `<section class="mt-4 rounded-lg border border-default bg-default/40 p-3.5 sm:p-4">
+                      <p class="mb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
+                        Description
+                      </p>
+                      <p class="text-xs leading-relaxed text-offset">
+                        ${description}
+                      </p>
+                    </section>`
+                  : ""
+              }
+
+              <section class="mt-4 flex flex-wrap items-center gap-2">
+                ${
+                  urlValue
+                    ? `<a
+                        href="${urlValue}"
+                        class="inline-flex items-center gap-1.5 rounded-md border border-default px-2.5 py-1.5 text-[11px] font-medium text-default"
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open file
+                      </a>`
+                    : `<p class="text-xs text-offset">
+                        No file URL available yet for this design.
+                      </p>`
+                }
+                <a
+                  href="/app/designs"
+                  class="inline-flex items-center gap-1.5 rounded-md border border-default px-2.5 py-1.5 text-[11px] text-offset"
+                >
+                  Back to list
+                </a>
+              </section>
+            </div>
+          `;
+        })
+        .catch(() => {
+          root.innerHTML = `
+            <h1 class="text-lg font-semibold tracking-tight">Design not found</h1>
+            <p class="mt-1.5 text-xs text-offset">We couldn't load this design. It may have been removed or the link is invalid.</p>
+            <div class="mt-4">
+              <a href="/app/designs" class="text-[10px] text-offset underline-offset-2 hover:underline">
+                ← Back to designs
+              </a>
+            </div>
+          `;
+        });
+    })();
+  </script>
+</AppLayout>
+

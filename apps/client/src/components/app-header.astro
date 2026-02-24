@@ -1,0 +1,33 @@
+---
+import { Icon } from "astro-icon/components";
+import Logo from "~/components/Logo.astro";
+import ThemeSwitcher from "~/components/theme-switcher.astro";
+---
+
+<header
+  class="sticky top-0 z-40 w-full border-b border-default bg-default/90 px-4 py-2.5 text-default backdrop-blur sm:px-6 lg:px-8"
+>
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-4">
+    <a class="flex items-center gap-2 hover:text-intro-accent" href="/app">
+      <h1 class="sr-only">OpenPrints</h1>
+      <Logo color="currentColor" inline={true} />
+      <span
+        class="text-xs font-semibold tracking-[0.16em] uppercase"
+        style='font-family: "Typo Square Regular", system-ui, sans-serif;'
+      >
+        OpenPrints
+      </span>
+    </a>
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <a
+        href="/"
+        class="inline-flex items-center gap-1.5 rounded-md border border-default px-2.5 py-1 text-[10px] font-medium text-offset hover:text-default"
+      >
+        <Icon name="mdi:logout-variant" class="size-3" aria-hidden="true" />
+        <span>Exit app</span>
+      </a>
+      <ThemeSwitcher />
+    </div>
+  </div>
+</header>
+

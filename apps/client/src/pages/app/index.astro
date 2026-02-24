@@ -1,0 +1,23 @@
+---
+import AppLayout from "~/layouts/app-layout.astro";
+import RecentDesignsGrid from "~/components/recent-designs-grid.astro";
+---
+
+<AppLayout title="OpenPrints – App">
+  <section class="mx-auto flex max-w-6xl flex-col gap-6">
+    <header class="space-y-1.5">
+      <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
+          Designs
+      </p>
+      <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">
+        Recent designs
+      </h1>
+      <p class="max-w-2xl text-xs text-offset">
+        Browse the latest files from the network in a cleaner, distraction-free
+        view.
+      </p>
+    </header>
+    <RecentDesignsGrid limit={12} />
+  </section>
+</AppLayout>
+
