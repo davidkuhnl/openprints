@@ -1,0 +1,123 @@
+---
+import { Icon } from "astro-icon/components";
+
+export interface Props {
+  /** Base URL of the OpenPrints API, e.g. http://localhost:8080 */
+  apiBaseUrl?: string;
+}
+
+const { apiBaseUrl = "" } = Astro.props;
+---
+
+<div
+  class="status-card w-full max-w-md rounded-xl border border-intro-accent/30 bg-offset/50 p-5 shadow-sm"
+  data-api-base-url={apiBaseUrl}
+>
+  <div class="flex flex-col gap-4">
+    <a
+      href="#designs"
+      class="inline-flex items-center justify-center gap-2 border-2 border-intro-accent px-6 py-3 font-semibold text-intro-accent transition hover:bg-offset"
+    >
+      <Icon name="mdi:view-grid" class="size-5" aria-hidden="true" />
+      Browse designs
+    </a>
+
+    <dl class="grid grid-cols-1 gap-2 text-sm text-offset">
+      <div class="flex items-center justify-between gap-3 border-t border-intro-accent/20 pt-3">
+        <dt class="font-medium text-default">API</dt>
+        <dd class="status-api flex items-center gap-1.5" data-state="loading">
+          <span class="status-dot h-2 w-2 shrink-0 rounded-full bg-current" aria-hidden="true"></span>
+          <span class="status-text">Checking…</span>
+        </dd>
+      </div>
+      <div class="flex items-center justify-between gap-3 border-t border-intro-accent/20 pt-2">
+        <dt class="font-medium text-default">Indexer - DB</dt>
+        <dd class="status-indexer-db flex items-center gap-1.5" data-state="loading">
+          <span class="status-dot h-2 w-2 shrink-0 rounded-full bg-current" aria-hidden="true"></span>
+          <span class="status-text">Checking…</span>
+        </dd>
+      </div>
+      <div class="flex items-center justify-between gap-3 border-t border-intro-accent/20 pt-2">
+        <dt class="font-medium text-default">Indexer - Relays</dt>
+        <dd class="status-indexer-relays flex items-center gap-1.5" data-state="loading">
+          <span class="status-dot h-2 w-2 shrink-0 rounded-full bg-current" aria-hidden="true"></span>
+          <span class="status-text">Checking…</span>
+        </dd>
+      </div>
+    </dl>
+  </div>
+</div>
+
+<script define:vars={{ apiBaseUrl }}>
+  (function () {
+    const base =
+      typeof apiBaseUrl === "string" && apiBaseUrl
+        ? apiBaseUrl.replace(/\/$/, "")
+        : "";
+    const healthUrl = base ? `${base}/health` : "/health";
+    const readyUrl = base ? `${base}/ready` : "/ready";
+
+    function setStatus(selector, state, label) {
+      const el = document.querySelector(selector);
+      if (!el) return;
+      el.setAttribute("data-state", state);
+      const text = el.querySelector(".status-text");
+      if (text) text.textContent = label;
+      const dot = el.querySelector(".status-dot");
+      if (dot) {
+        dot.classList.remove("bg-green-500", "bg-red-500", "bg-amber-500");
+        if (state === "ok") dot.classList.add("bg-green-500");
+        else if (state === "error") dot.classList.add("bg-red-500");
+        else dot.classList.add("bg-amber-500");
+      }
+    }
+
+    function checkToStatus(checkValue) {
+      if (checkValue === "ok") return { state: "ok", label: "Healthy" };
+      if (checkValue === "not_configured") {
+        return { state: "loading", label: "Not configured" };
+      }
+      return { state: "error", label: "Unhealthy" };
+    }
+
+    // API status from /health
+    fetch(healthUrl)
+      .then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(res.statusText)),
+      )
+      .then((data) => {
+        const ok =
+          (data && data.status === "ok" && data.liveness === true) || false;
+        setStatus(".status-api", ok ? "ok" : "error", ok ? "Healthy" : "Unhealthy");
+      })
+      .catch(() => {
+        setStatus(".status-api", "error", "Unavailable");
+      });
+
+    // Indexer DB and relay checks from /ready
+    fetch(readyUrl)
+      .then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(res.statusText)),
+      )
+      .then((data) => {
+        const checks = (data && data.checks) || {};
+        const db = checkToStatus(checks.database);
+        setStatus(".status-indexer-db", db.state, db.label);
+
+        const relays = checkToStatus(checks.relays);
+        const relayCount =
+          data && typeof data.relay_count === "number"
+            ? data.relay_count
+            : null;
+        const relaysLabel =
+          typeof relayCount === "number"
+            ? `${relays.label} (${relayCount})`
+            : relays.label;
+        setStatus(".status-indexer-relays", relays.state, relaysLabel);
+      })
+      .catch(() => {
+        setStatus(".status-indexer-db", "error", "Unavailable");
+        setStatus(".status-indexer-relays", "error", "Unavailable");
+      });
+  })();
+</script>

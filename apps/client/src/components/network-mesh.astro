@@ -1,0 +1,145 @@
+---
+const { debug = false, variant = "hero" } = Astro.props;
+
+const containerClass =
+  variant === "footer"
+    ? "pointer-events-none absolute inset-x-0 bottom-0 h-full overflow-hidden"
+    : "pointer-events-none absolute inset-x-0 bottom-20 h-56 overflow-hidden";
+---
+
+<div
+  class={containerClass}
+  aria-hidden="true"
+>
+  <svg
+    data-network-mesh
+    class="h-full w-full"
+    data-debug={debug ? "true" : "false"}
+    viewBox="0 0 800 200"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <defs>
+      <filter data-mesh-glow x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="7" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+  </svg>
+</div>
+
+<script>
+  (function () {
+    const svgs = document.querySelectorAll("svg[data-network-mesh]");
+    if (!svgs.length) return;
+
+    svgs.forEach((svgEl, meshIndex) => {
+      const svg = svgEl as SVGSVGElement;
+      if (svg.dataset.networkMeshInitialized === "true") return;
+      svg.dataset.networkMeshInitialized = "true";
+
+      const debug = svg.dataset.debug === "true";
+
+      const glowFilter = svg.querySelector("filter[data-mesh-glow]");
+      const glowFilterId = `meshGlow-${meshIndex}-${Math.random().toString(36).slice(2, 9)}`;
+      if (glowFilter) {
+        glowFilter.setAttribute("id", glowFilterId);
+      }
+
+      const TRIANGLE = {
+        a: { x: 80, y: 200 },
+        b: { x: 720, y: 200 },
+        c: { x: 400, y: 0 },
+      };
+
+      const NODE_COUNT = 32;
+
+      const randomPointInTriangle = () => {
+        let u = Math.random();
+        let v = Math.random();
+        if (u + v > 1) {
+          u = 1 - u;
+          v = 1 - v;
+        }
+        const x =
+          TRIANGLE.a.x +
+          u * (TRIANGLE.b.x - TRIANGLE.a.x) +
+          v * (TRIANGLE.c.x - TRIANGLE.a.x);
+        const y =
+          TRIANGLE.a.y +
+          u * (TRIANGLE.b.y - TRIANGLE.a.y) +
+          v * (TRIANGLE.c.y - TRIANGLE.a.y);
+        return { x, y };
+      };
+
+      const nodes = Array.from({ length: NODE_COUNT }, () => {
+        const { x, y } = randomPointInTriangle();
+        const radius = 2 + Math.random() * 1.2;
+        const opacity = 0.35 + Math.random() * 0.25;
+        return { x, y, radius, opacity };
+      });
+
+      const pairs = new Set();
+      const connections = [];
+
+      for (let i = 0; i < nodes.length; i++) {
+        const distances = [];
+        for (let j = 0; j < nodes.length; j++) {
+          if (i === j) continue;
+          const dx = nodes[i].x - nodes[j].x;
+          const dy = nodes[i].y - nodes[j].y;
+          distances.push({ j, d: dx * dx + dy * dy });
+        }
+        distances.sort((a, b) => a.d - b.d);
+        const nearest = distances.slice(0, 3);
+        for (const { j } of nearest) {
+          const key = i < j ? `${i}-${j}` : `${j}-${i}`;
+          if (!pairs.has(key)) {
+            pairs.add(key);
+            connections.push({ from: nodes[i], to: nodes[j] });
+          }
+        }
+      }
+
+      const NS = "http://www.w3.org/2000/svg";
+
+      if (debug) {
+        const triangleOutline = document.createElementNS(NS, "polygon");
+        triangleOutline.setAttribute(
+          "points",
+          `${TRIANGLE.a.x},${TRIANGLE.a.y} ${TRIANGLE.b.x},${TRIANGLE.b.y} ${TRIANGLE.c.x},${TRIANGLE.c.y}`
+        );
+        triangleOutline.setAttribute("fill", "none");
+        triangleOutline.setAttribute("stroke", "yellow");
+        triangleOutline.setAttribute("stroke-width", "2");
+        triangleOutline.setAttribute("opacity", "0.8");
+        svg.appendChild(triangleOutline);
+      }
+
+      connections.forEach((conn, index) => {
+        const line = document.createElementNS(NS, "line");
+        line.setAttribute("x1", String(conn.from.x));
+        line.setAttribute("y1", String(conn.from.y));
+        line.setAttribute("x2", String(conn.to.x));
+        line.setAttribute("y2", String(conn.to.y));
+        line.setAttribute("stroke", "#22c55e");
+        line.setAttribute("stroke-width", "1.2");
+        line.setAttribute("opacity", "0.14");
+        if (index % 6 === 0 && glowFilter) line.setAttribute("filter", `url(#${glowFilterId})`);
+        svg.appendChild(line);
+      });
+
+      nodes.forEach((node) => {
+        const circle = document.createElementNS(NS, "circle");
+        circle.setAttribute("cx", String(node.x));
+        circle.setAttribute("cy", String(node.y));
+        circle.setAttribute("r", String(node.radius));
+        circle.setAttribute("fill", "#22c55e");
+        circle.setAttribute("opacity", String(node.opacity));
+        svg.appendChild(circle);
+      });
+    });
+  })();
+</script>

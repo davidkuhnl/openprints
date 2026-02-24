@@ -52,5 +52,15 @@ def ready(response: Response) -> dict:
     failed = [k for k, v in checks.items() if v not in ("ok", "not_configured")]
     if failed:
         response.status_code = 503
-        return {"status": "error", "ready": False, "checks": checks}
-    return {"status": "ok", "ready": True, "checks": checks}
+        return {
+            "status": "error",
+            "ready": False,
+            "checks": checks,
+            "relay_count": len(relay_urls),
+        }
+    return {
+        "status": "ok",
+        "ready": True,
+        "checks": checks,
+        "relay_count": len(relay_urls),
+    }

@@ -1,0 +1,49 @@
+---
+import { Icon } from "astro-icon/components";
+import NetworkMesh from "./network-mesh.astro";
+import type { FooterLink } from "~/types";
+
+const links: Array<FooterLink> = [
+  {
+    url: "https://astro.build/",
+    description: "Astro's official website",
+    icon: "mdi:home",
+  },
+  {
+    url: "https://github.com/mhyfritz/astro-landing-page",
+    description: "View source on GitHub",
+    icon: "fa-brands:github-alt",
+  },
+  {
+    url: "https://astro.build/chat",
+    description: "Astro on Discord",
+    icon: "fa-brands:discord",
+  },
+  {
+    url: "https://twitter.com/astrodotbuild",
+    description: "Astro on Twitter",
+    icon: "fa-brands:twitter",
+  },
+];
+---
+
+<footer
+  class="relative flex h-64 items-center justify-center overflow-hidden bg-gradient-to-b from-black via-slate-950 to-emerald-900"
+>
+  <NetworkMesh debug={false} variant="footer" />
+  <ul class="relative grid grid-cols-2 gap-4 sm:grid-cols-4">
+    {
+      links.map((link) => (
+        <li>
+          <a
+            class="flex size-16 items-center justify-center rounded-full border-2 border-emerald-300/70 p-4 text-emerald-100"
+            href={link.url}
+          >
+            <span class="sr-only">{link.description}</span>
+            <Icon class="size-full" name={link.icon} />
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</footer>

@@ -1,0 +1,38 @@
+---
+import Logo from "./Logo.astro";
+import NetworkMesh from "./network-mesh.astro";
+---
+<!-- TODO: Landing hero (logo + "penprints" h1) still shrinks/moves between 1024px–1536px; optimize so it only changes at lg (1024px) when the logo scales. See repo README Refactor Backlog. -->
+
+<section
+  class="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-emerald-900 via-slate-950 to-black px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24"
+>
+  <div
+    class="relative mx-auto flex w-full max-w-5xl items-start justify-center text-left"
+  >
+    <div class="flex w-full max-w-[52rem] items-start justify-center gap-0 sm:gap-1 md:gap-2 lg:gap-3">
+      <div class="shrink-0 origin-top scale-[0.85] pt-1 lg:scale-100 lg:pt-2">
+        <Logo color="#a7f3d0" />
+      </div>
+      <div class="max-w-[min(52rem,calc(100%-4.5rem))] space-y-3 sm:space-y-4">
+        <!-- Full site name for SEO and screen readers; visual heading is logo + span below -->
+        <h1 class="sr-only">Openprints</h1>
+        <div class="origin-top-left scale-[0.85] lg:scale-100 xs:scale-[0.8]">
+          <span
+            class="block text-balance text-6xl font-normal leading-[0.9] tracking-[0.04em] text-emerald-200 [transform:scaleX(1.3)] [transform-origin:left_center] xs:text-5xl"
+            style='font-family: "Typo Square Regular", system-ui, sans-serif;'
+            aria-hidden="true"
+          >
+            penprints
+          </span>
+        </div>
+        <p class="max-w-[18rem] pl-[clamp(0.5rem,2.8vw,1.5rem)] text-pretty text-sm leading-relaxed text-emerald-100/80 sm:max-w-[22rem] sm:text-base lg:max-w-[24rem] xl:max-w-[32rem]">
+          An open, decentralized home for 3D-printable designs built on Nostr. Discover, publish, and support creators without platform
+          lock-in.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <NetworkMesh debug={false} />
+</section>

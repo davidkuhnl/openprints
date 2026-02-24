@@ -1,0 +1,93 @@
+---
+const { color = "#e5e7eb", inline = false } = Astro.props;
+const svgClass = inline
+  ? "inline-block h-[0.9em] w-auto align-baseline shrink-0"
+  : "h-32 w-auto shrink-0 md:h-40 xs:h-28";
+---
+
+<svg
+  width="64"
+  height="120"
+  viewBox="68 35 64 120"
+  xmlns="http://www.w3.org/2000/svg"
+  class={svgClass}
+>
+  <!-- Extruder head -->
+  <rect
+    x="70"
+    y="40"
+    width="60"
+    height="50"
+    rx="12"
+    ry="12"
+    fill="none"
+    stroke={color}
+    stroke-width="5"
+  />
+
+  <!-- V-shaped nozzle (mint green fill) -->
+  <path
+    d="M92 97 L100 104 L108 97 Z"
+    fill="#4ADE80"
+    stroke="#4ADE80"
+    stroke-width="5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Network edges -->
+  <line
+    x1="100"
+    y1="121"
+    x2="80"
+    y2="146"
+    stroke={color}
+    stroke-width="3"
+    stroke-linecap="round"
+  />
+  <line
+    x1="100"
+    y1="121"
+    x2="120"
+    y2="146"
+    stroke={color}
+    stroke-width="3"
+    stroke-linecap="round"
+  />
+  <line
+    x1="80"
+    y1="146"
+    x2="120"
+    y2="146"
+    stroke={color}
+    stroke-width="4"
+    stroke-linecap="round"
+  />
+
+  <!-- Perspective ellipses -->
+  <ellipse
+    cx="100"
+    cy="121"
+    rx="9"
+    ry="5"
+    stroke={color}
+    stroke-width="3"
+  />
+  <ellipse
+    cx="80"
+    cy="146"
+    rx="9"
+    ry="5"
+    stroke={color}
+    stroke-width="3.5"
+  />
+  <ellipse
+    cx="120"
+    cy="146"
+    rx="9"
+    ry="5"
+    stroke={color}
+    stroke-width="3.5"
+  />
+</svg>
+
