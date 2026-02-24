@@ -229,3 +229,12 @@ class SQLiteIndexStore:
             content=r["content"],
             tags_json=r["tags_json"],
         )
+
+    async def get_counts(self) -> tuple[int, int]:
+        """Return (designs_count, versions_count) for stats."""
+        conn = self._conn_required()
+        async with conn.execute("SELECT COUNT(*) FROM designs") as cur:
+            (designs_count,) = await cur.fetchone()
+        async with conn.execute("SELECT COUNT(*) FROM design_versions") as cur:
+            (versions_count,) = await cur.fetchone()
+        return designs_count, versions_count

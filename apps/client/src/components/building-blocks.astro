@@ -1,0 +1,73 @@
+---
+import { Icon } from "astro-icon/components";
+import type { FeatureItem } from "~/types";
+
+const features: Array<FeatureItem> = [
+  {
+    title: "Open 3D Design Protocol",
+    description:
+      "Designs are Nostr events, not rows in a private database—portable, verifiable, and owned by your keypair.",
+    icon: "mdi:graph",
+  },
+  {
+    title: "Web-of-trust Discovery",
+    description:
+      "Zaps and Endorsement Nostr events are used to discover and support creators. Your reputation is built on your actions, not the platform.",
+    icon: "mdi:star",
+  },
+  {
+    title: "Creator-Owned Monetization",
+    description:
+      "Lightning zaps flow directly from supporters to creators with no platform custody or payout friction.",
+    icon: "mdi:flash",
+  },
+  {
+    title: "Searchable Open Indexer",
+    description:
+      "A public FastAPI indexer aggregates relay data into a queryable API for lists, search, and detail views.",
+    icon: "mdi:database-search",
+  },
+  {
+    title: "Simple or Decentralized Storage",
+    description:
+      "The designs can be hosted anywhere—S3, your own server, or a decentralized blob storage service like Blossom. If a design gets taken down, just host it somewhere else and broadcast the update. As long as the hash checks out, the show doesn't stop.",
+    icon: "mdi:cloud-sync",
+  },
+  {
+    title: "Censorship-Resistant by Design",
+    description:
+      "Multiple relays, open-source code, and a protocol-first approach reduce single points of failure or control.",
+    icon: "mdi:shield-lock-outline",
+  },
+];
+---
+
+<section
+  id="building-blocks"
+  class="flex scroll-mt-24 flex-col items-center gap-4 space-y-8"
+>
+  <div class="flex flex-col items-center gap-4">
+    <h2 class="text-center font-extrabold tracking-tight text-6xl text-intro-accent">
+      Building Blocks
+    </h2>
+  </div>
+  <p class="max-w-xl text-center font-extrabold text-2xl">
+    OpenPrints treats <span class="text-intro-accent">3D designs</span> as open
+    protocol data, not siloed marketplace inventory. It combines Nostr, Lightning,
+    and simple storage into a <span class="text-intro-accent">creator-owned</span>,
+    censorship-resistant foundation for printable models.
+  </p>
+  <ul class="grid max-w-6xl grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+    {
+      features.map(({ title, description, icon }) => (
+        <li class="flex flex-col items-center gap-4 border border-intro-accent/30 bg-offset p-6">
+          <div class="size-16 rounded-full border-2 border-intro-accent/50 p-3 text-intro-muted">
+            <Icon name={icon} class="size-full" />
+          </div>
+          <p class="text-center font-extrabold text-xl">{title}</p>
+          <p class="text-center text-offset text-sm">{description}</p>
+        </li>
+      ))
+    }
+  </ul>
+</section>

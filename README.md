@@ -424,6 +424,7 @@ Next Phase: **Phase 4 - Client MVP (List + Detail Pages)**
 
 Small cleanup tasks intended to be safe, independent, and easy to pick up in short sessions.
 
+- [ ] **Landing page hero:** Optimize responsive behavior so the logo + "penprints" heading only change at the `lg` (1024px) breakpoint; they currently still shrink/move between 1024px–1536px. See `apps/client/src/components/splash.astro` (TODO in file).
 - [ ] Centralize CLI response-envelope builders (`ok`, `errors`, `relay_results`) to avoid repeated JSON key literals across commands.
 - [ ] Add typed response models (`TypedDict` or dataclasses) for command outputs (`publish`, `subscribe`, `sign`, `build`).
 - [ ] Keep protocol/wire-level literals inline (Nostr message fields), but document which keys are intentionally protocol constants.
@@ -539,5 +540,5 @@ To require CI before merge, enable branch protection/rulesets in GitHub and mark
 
 # License
 
-**TBD** — likely MIT, BSD, or Apache 2.0.  
-OpenPrints will be fully open-source.
+OpenPrints is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.  
+See the `LICENSE` file in this repository for full terms.

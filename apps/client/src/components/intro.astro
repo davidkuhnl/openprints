@@ -1,0 +1,46 @@
+---
+import { Icon } from "astro-icon/components";
+import StatusCard from "~/components/status-card.astro";
+
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+---
+
+<section
+  id="intro"
+  class="flex scroll-mt-24 flex-col items-center gap-4 space-y-8"
+>
+  <div class="flex flex-col items-center gap-4">
+    <p class="text-sm font-medium uppercase tracking-wider text-intro-muted">
+      Built on Nostr
+    </p>
+    <h2 class="text-center font-extrabold tracking-tight text-6xl text-intro-accent">
+      Why OpenPrints
+    </h2>
+  </div>
+  <p class="max-w-xl text-center font-extrabold text-2xl">
+    OpenPrints does not hold anyone hostage: designs roam free as
+    <span class="text-intro-accent">Nostr events</span>; you keep ownership with your keys, and you support creators with
+    <span class="text-intro-accent">Lightning</span>—no platform in the middle.
+  </p>
+  <ul class="grid max-w-3xl grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
+    <li class="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-4 text-left text-offset">
+      <Icon name="mdi:magnify" class="size-12 text-intro-muted" aria-hidden="true" />
+      <p class="leading-relaxed"><strong class="text-default">Discover</strong> — Browse designs from the whole ecosystem</p>
+    </li>
+    <li class="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-4 text-left text-offset">
+      <Icon name="mdi:upload" class="size-12 text-intro-muted" aria-hidden="true" />
+      <p class="leading-relaxed"><strong class="text-default">Publish</strong> — Sign your designs using your Nostr identity</p>
+    </li>
+    <li class="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-4 text-left text-offset">
+      <Icon name="mdi:lightning-bolt" class="size-12 text-intro-muted" aria-hidden="true" />
+      <p class="leading-relaxed"><strong class="text-default">Support</strong> — Zap creators directly</p>
+    </li>
+    <li class="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-4 text-left text-offset">
+      <Icon name="mdi:open-in-new" class="size-12 text-intro-muted" aria-hidden="true" />
+      <p class="leading-relaxed"><strong class="text-default">Open</strong> — No lock-in, no single gatekeeper. Anyone can run the Indexer or the Client</p>
+    </li>
+  </ul>
+  <div class="flex justify-center pt-2">
+    <StatusCard apiBaseUrl={apiBaseUrl} />
+  </div>
+</section>

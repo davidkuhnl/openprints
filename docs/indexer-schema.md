@@ -169,6 +169,7 @@ For each incoming valid kind `33301` event:
 - Do we normalize/store tags in a separate table now, or defer until API search requirements force it?
 - Should `design_id` be stored with prefix (`openprints:`) or canonicalized without prefix?
 - Do we store only validated events, or store invalid events in a quarantine table for diagnostics?
+- How should we represent designs that are deleted or marked as corrupt (e.g. tombstone events, soft-delete flags, or a separate state table)?
 - Do we want a uniqueness constraint on `(pubkey, design_id, created_at)` in `design_events`, or only on `event_id`?
 
 ## Migration Strategy
