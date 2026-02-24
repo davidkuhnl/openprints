@@ -19,7 +19,7 @@ const { apiBaseUrl = "" } = Astro.props;
       class="inline-flex items-center justify-center gap-2 border-2 border-intro-accent px-6 py-3 font-semibold text-intro-accent transition hover:bg-offset"
     >
       <Icon name="mdi:view-grid" class="size-5" aria-hidden="true" />
-      Browse designs
+      <span class="browse-designs-label">Browse designs</span>
     </a>
 
     <dl class="grid grid-cols-1 gap-2 text-sm text-offset">
@@ -56,6 +56,7 @@ const { apiBaseUrl = "" } = Astro.props;
         : "";
     const healthUrl = base ? `${base}/health` : "/health";
     const readyUrl = base ? `${base}/ready` : "/ready";
+    const statsUrl = base ? `${base}/designs/stats` : "/designs/stats";
 
     function setStatus(selector, state, label) {
       const el = document.querySelector(selector);
@@ -94,12 +95,10 @@ const { apiBaseUrl = "" } = Astro.props;
         setStatus(".status-api", "error", "Unavailable");
       });
 
-    // Indexer DB and relay checks from /ready
+    // Indexer DB and relay checks from /ready (server returns 503 when not ready but still sends checks)
     fetch(readyUrl)
-      .then((res) =>
-        res.ok ? res.json() : Promise.reject(new Error(res.statusText)),
-      )
-      .then((data) => {
+      .then((res) => res.json().then((data) => ({ data })))
+      .then(({ data }) => {
         const checks = (data && data.checks) || {};
         const db = checkToStatus(checks.database);
         setStatus(".status-indexer-db", db.state, db.label);
@@ -119,5 +118,15 @@ const { apiBaseUrl = "" } = Astro.props;
         setStatus(".status-indexer-db", "error", "Unavailable");
         setStatus(".status-indexer-relays", "error", "Unavailable");
       });
+
+    // Design count for Browse designs button
+    fetch(statsUrl)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(res.statusText))))
+      .then((data) => {
+        const count = data && typeof data.designs === "number" ? data.designs : null;
+        const label = document.querySelector(".browse-designs-label");
+        if (label) label.textContent = count != null ? `Browse designs (${count})` : "Browse designs";
+      })
+      .catch(() => {});
   })();
 </script>

@@ -38,6 +38,13 @@ def test_designs_returns_503_when_no_store() -> None:
     assert "not configured" in (r.json().get("detail") or "").lower()
 
 
+def test_designs_stats_returns_503_when_no_store() -> None:
+    """When DB is not configured, GET /designs/stats returns 503."""
+    r = client.get("/designs/stats")
+    assert r.status_code == 503
+    assert "not configured" in (r.json().get("detail") or "").lower()
+
+
 def test_design_by_id_invalid_returns_400() -> None:
     r = client.get("/designs/not-valid-base64-id")
     assert r.status_code == 400

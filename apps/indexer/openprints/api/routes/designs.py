@@ -69,6 +69,19 @@ async def list_designs(
     }
 
 
+@router.get("/stats")
+async def design_stats() -> dict:
+    """Return total number of designs and versions."""
+    store = get_store()
+    if store is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Database not configured; run indexer with database_path first.",
+        )
+    designs_count, versions_count = await store.get_counts()
+    return {"designs": designs_count, "versions": versions_count}
+
+
 @router.get("/{design_api_id}")
 async def get_design(design_api_id: str) -> dict:
     """Return a single design by its API id (opaque id from list designs)."""
