@@ -1,0 +1,56 @@
+---
+// apps/client/src/components/recent-designs-grid.astro
+import DesignResultCard from "~/components/design-result-card.astro";
+
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+const { limit = 6 } = Astro.props;
+
+const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
+
+let items: any[] = [];
+let errorMessage: string | null = null;
+
+if (!base) {
+  errorMessage =
+    "API base URL is not configured. Check PUBLIC_OPENPRINTS_API_URL.";
+} else {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    order: "latest_published_at_desc",
+  });
+
+  const url = `${base}/designs?${params.toString()}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      errorMessage = `Failed to load designs (${res.status} ${res.statusText}).`;
+    } else {
+      const data = await res.json();
+      items = Array.isArray(data?.items) ? data.items : [];
+    }
+  } catch {
+    errorMessage =
+      "We couldn't load recent designs due to a network or server error.";
+  }
+}
+---
+
+<section class="recent-designs-grid grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+  {errorMessage && (
+    <article class="col-span-full rounded-xl border border-default bg-offset/30 p-4 text-center">
+      <p class="text-xs text-offset">{errorMessage}</p>
+    </article>
+  )}
+
+  {!errorMessage && items.length === 0 && (
+    <article class="col-span-full rounded-xl border border-default bg-offset/30 p-4 text-center">
+      <p class="text-xs text-offset">No designs yet.</p>
+    </article>
+  )}
+
+  {!errorMessage &&
+    items.length > 0 &&
+    items.map((design) => (
+      <DesignResultCard design={design} />
+    ))}
+</section>

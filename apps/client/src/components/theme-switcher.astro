@@ -9,14 +9,14 @@ import { Icon } from "astro-icon/components";
 <button
   id="theme-switcher"
   type="button"
-  class="-ml-12 origin-[right_center] scale-0 transition-all duration-500"
+  class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-default text-offset transition-colors duration-200 hover:text-default"
 >
   <div id="icon-theme-light">
-    <Icon name="mdi:white-balance-sunny" class="size-6" />
+    <Icon name="mdi:white-balance-sunny" class="size-4" />
     <span class="sr-only">Use light theme</span>
   </div>
   <div id="icon-theme-dark" class="hidden">
-    <Icon name="mdi:weather-night" class="size-6" />
+    <Icon name="mdi:weather-night" class="size-4" />
     <span class="sr-only">Use dark theme</span>
   </div>
 </button>
@@ -56,9 +56,3 @@ import { Icon } from "astro-icon/components";
 
   updateIcon();
 </script>
-
-<style>
-  :global(.fixed-header) #theme-switcher {
-    @apply ml-0 scale-100;
-  }
-</style>

@@ -1,0 +1,173 @@
+---
+import AppLayout from "~/layouts/app-layout.astro";
+import DesignResultCard from "~/components/design-result-card.astro";
+import DesignSearchControls from "~/components/design-search-controls.astro";
+
+export const prerender = false;
+
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
+
+const searchParams = Astro.url.searchParams;
+const q = (searchParams.get("q") ?? "").trim();
+
+const validOrders = new Set([
+  "latest_published_at_desc",
+  "latest_published_at_asc",
+  "first_published_at_desc",
+  "first_published_at_asc",
+]);
+const defaultOrder = "latest_published_at_desc";
+const orderParam = searchParams.get("order") ?? defaultOrder;
+const order = validOrders.has(orderParam) ? orderParam : defaultOrder;
+
+const parsedPage = Number.parseInt(searchParams.get("page") ?? "1", 10);
+const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
+
+const parsedLimit = Number.parseInt(searchParams.get("limit") ?? "24", 10);
+const limit = Number.isFinite(parsedLimit) && [12, 24, 48].includes(parsedLimit)
+  ? parsedLimit
+  : 24;
+const offset = (page - 1) * limit;
+
+let items: any[] = [];
+let total = 0;
+let errorMessage: string | null = null;
+
+if (!base) {
+  errorMessage =
+    "API base URL is not configured. Check PUBLIC_OPENPRINTS_API_URL.";
+} else {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+    order,
+  });
+  if (q) params.set("q", q);
+
+  const url = `${base}/designs?${params.toString()}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      errorMessage = `Failed to load designs (${res.status} ${res.statusText}).`;
+    } else {
+      const data = await res.json();
+      items = Array.isArray(data?.items) ? data.items : [];
+      total = typeof data?.total === "number" ? data.total : 0;
+    }
+  } catch {
+    errorMessage = "We couldn't load designs due to a network or server error.";
+  }
+}
+
+const start = total > 0 ? offset + 1 : 0;
+const end = total > 0 ? Math.min(offset + items.length, total) : 0;
+const totalPages = Math.max(1, Math.ceil(total / limit));
+const hasPrevPage = page > 1;
+const hasNextPage = page < totalPages;
+
+function buildPageHref(targetPage: number) {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (order !== defaultOrder) params.set("order", order);
+  if (limit !== 24) params.set("limit", String(limit));
+  if (targetPage > 1) params.set("page", String(targetPage));
+
+  const query = params.toString();
+  return query ? `/app/designs?${query}` : "/app/designs";
+}
+---
+
+<AppLayout title="OpenPrints – All designs">
+  <section class="mx-auto flex max-w-6xl flex-col gap-4">
+    <header class="space-y-1.5 border-b border-default pb-3">
+      <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
+        Designs
+      </p>
+      <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">
+        Search & browse designs
+      </h1>
+      <p class="max-w-2xl text-xs text-offset">
+        Explore indexed designs by name, sort order, and page size. Use filters
+        on the left and scan results on the right.
+      </p>
+    </header>
+
+    <div class="grid gap-4 lg:grid-cols-[18rem,1fr]">
+      <DesignSearchControls q={q} order={order} limit={limit} />
+
+      <div class="space-y-3">
+        <div class="flex items-center justify-between text-xs text-offset">
+          <p>
+            Showing <span class="text-default">{start}-{end}</span> of{" "}
+            <span class="text-default">{total}</span> designs
+            {q && (
+              <>
+                {" "}
+                for <span class="text-default">"{q}"</span>
+              </>
+            )}
+          </p>
+          <p>
+            Page {Math.min(page, totalPages)} / {totalPages}
+          </p>
+        </div>
+
+        {errorMessage && (
+          <article class="rounded-xl border border-default bg-offset/30 p-4">
+            <h2 class="text-sm font-semibold tracking-tight">Designs unavailable</h2>
+            <p class="mt-1.5 text-xs text-offset">{errorMessage}</p>
+          </article>
+        )}
+
+        {!errorMessage && items.length === 0 && (
+          <article class="rounded-xl border border-default bg-offset/30 p-4">
+            <h2 class="text-sm font-semibold tracking-tight">No matching designs</h2>
+            <p class="mt-1.5 text-xs text-offset">
+              Try a broader search term or reset the filters.
+            </p>
+          </article>
+        )}
+
+        {!errorMessage && items.length > 0 && (
+          <ul class="space-y-3">
+            {items.map((design) => (
+              <li>
+                <DesignResultCard design={design} />
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {!errorMessage && total > limit && (
+          <nav class="flex items-center justify-between rounded-xl border border-default bg-offset/30 px-3 py-2">
+            {hasPrevPage ? (
+              <a
+                href={buildPageHref(page - 1)}
+                class="inline-flex items-center gap-1 text-[11px] text-offset underline-offset-2 hover:underline"
+              >
+                <span>←</span>
+                <span>Previous</span>
+              </a>
+            ) : (
+              <span class="text-[11px] text-offset/50">← Previous</span>
+            )}
+
+            {hasNextPage ? (
+              <a
+                href={buildPageHref(page + 1)}
+                class="inline-flex items-center gap-1 text-[11px] text-offset underline-offset-2 hover:underline"
+              >
+                <span>Next</span>
+                <span>→</span>
+              </a>
+            ) : (
+              <span class="text-[11px] text-offset/50">Next →</span>
+            )}
+          </nav>
+        )}
+      </div>
+    </div>
+  </section>
+</AppLayout>
+

@@ -1,0 +1,74 @@
+---
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  value: string;
+  maxChars?: number;
+}
+
+const { value, maxChars = 10 } = Astro.props;
+const display =
+  value.length > maxChars ? value.slice(0, maxChars) + "…" : value;
+---
+
+<!-- Visible instance when value is non-empty -->
+{value.length > 0 && (
+  <span
+    class="truncate-copy inline-flex items-center gap-1"
+    data-full-value={value}
+  >
+    <span class="truncate-copy__text">{display}</span>
+    <button
+      type="button"
+      class="truncate-copy__btn inline-flex size-5 shrink-0 items-center justify-center rounded text-offset transition-colors hover:text-default focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+      aria-label="Copy full value"
+    >
+      <span class="truncate-copy__icon-copy" aria-hidden="true">
+        <Icon name="mdi:content-copy" class="size-3.5" aria-hidden="true" />
+      </span>
+      <span class="truncate-copy__icon-check" aria-hidden="true">
+        <Icon name="mdi:check" class="size-3.5" aria-hidden="true" />
+      </span>
+    </button>
+  </span>
+)}
+
+<style is:global>
+  .truncate-copy__icon-check {
+    display: none;
+  }
+  .truncate-copy__btn--copied .truncate-copy__icon-copy {
+    display: none;
+  }
+  .truncate-copy__btn--copied .truncate-copy__icon-check {
+    display: block;
+  }
+</style>
+
+<script>
+  (function () {
+    const CLS_WRAP = "truncate-copy";
+    const CLS_BTN = "truncate-copy__btn";
+
+    const COPIED_CLASS = "truncate-copy__btn--copied";
+    const COPIED_DURATION_MS = 1500;
+
+    document.body.addEventListener("click", (e) => {
+      const target = e.target instanceof Element ? e.target : null;
+      const btn = target?.closest(`.${CLS_BTN}`) ?? null;
+      if (!btn) return;
+      const wrap = btn.closest(`.${CLS_WRAP}`);
+      const full = wrap?.getAttribute("data-full-value");
+      if (full == null) return;
+      navigator.clipboard.writeText(full).then(() => {
+        btn.classList.add(COPIED_CLASS);
+        btn.setAttribute("aria-label", "Copied!");
+        const prevLabel = "Copy full value";
+        setTimeout(() => {
+          btn.classList.remove(COPIED_CLASS);
+          btn.setAttribute("aria-label", prevLabel);
+        }, COPIED_DURATION_MS);
+      }).catch(() => {});
+    });
+  })();
+</script>

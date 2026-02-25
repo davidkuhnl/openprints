@@ -1,0 +1,27 @@
+---
+interface Props {
+  count?: number;
+  /** "card" = lighter, smaller thumbnails for result cards */
+  variant?: "default" | "card";
+}
+
+const { count = 3, variant = "default" } = Astro.props as Props;
+const isCard = variant === "card";
+const boxClass = isCard
+  ? "flex h-24 w-24 shrink-0 items-center justify-center rounded-md border border-default/40 bg-default/20"
+  : "flex h-28 w-28 shrink-0 items-center justify-center rounded-md border border-default bg-gradient-to-br from-slate-700/25 via-slate-600/20 to-slate-500/25";
+---
+
+<div class="flex gap-1.5">
+  {Array.from({ length: count }).map((_, i) => (
+    <div
+      class={boxClass}
+      aria-hidden="true"
+    >
+      <span class="text-[9px] tracking-[0.12em] text-offset/60">
+        mock
+      </span>
+    </div>
+  ))}
+</div>
+

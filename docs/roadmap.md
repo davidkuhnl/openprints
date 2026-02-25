@@ -6,7 +6,7 @@ Phased plan for the OpenPrints PoC and beyond.
 - [x] Phase 1 — Event Handling CLI
 - [x] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
 - [x] Phase 3 — REST API
-- [ ] WIP - Phase 4 — Client MVP (List + Detail Pages)
+- [x] Phase 4 — Client MVP (List + Detail Pages)
 - [ ] Phase 5 — Design Publishing Flow
 - [ ] Phase 6 — Endorsements ("I printed this")
 - [ ] Phase 7 — Lightning Zaps
@@ -95,7 +95,7 @@ Phased plan for the OpenPrints PoC and beyond.
 
 ---
 
-### [~] Phase 4 — Client MVP (List + Detail Pages)
+### [x] Phase 4 — Client MVP (List + Detail Pages)
 
 **Goal:** Ship an Astro-based web client that lists designs and shows a detail page, using the indexer's REST API, with SSR for speed and SEO.
 
@@ -206,6 +206,7 @@ Phased plan for the OpenPrints PoC and beyond.
 - **OpenPrints relay:** Run a relay that carries OpenPrints-relevant events only (designs, endorsements, zaps, etc.) for availability and discovery.
 - **User onboarding:** Actively reach out to established creators to migrate and monetize their designs on OpenPrints.
 - **Nostr client integration:** Work with other clients (e.g. Primal) on interpreting OpenPrints kind events where it makes sense, so designs and endorsements can surface in generic Nostr feeds and UIs.
+- **User profiles:** Add profile pages that tie a user's OpenPrints designs and endorsements to their Nostr identity, with integration to Nostr clients (e.g. Primal) to deep-link from a profile to the user's related notes.
 - **Curated lists and meta work:** Add support for curating lists of designs and other meta work (e.g. collections, featured picks, editorial).
 - **Design file verification:** Verify the design file hash (e.g. sha256) and surface verification status in the client (e.g. "verified" / "mismatch").
 - **Design file analysis and rendering:** Analyze and render the design file directly in the client, using data from the indexer and/or from Blossom uploads (e.g. 3D preview, mesh stats).

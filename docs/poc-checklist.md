@@ -2,26 +2,26 @@
 
 > Temporary working checklist for getting to a public PoC and a draft OpenSats application.
 
-**Current state:** Phases 0–3 done (vision/repo/plumbing, Event Handling CLI, Indexer Core, REST API with `GET /designs`, `GET /designs/stats`, `GET /designs/{id}`). Rudimentary Astro client and marketing/landing page in `apps/client`; list/detail pages not yet wired to API. LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY at repo root. README cleaned up with State of the Union and phase list; vision, roadmap, dev-setup, architecture, event-schema in `docs/`. `docs/README-backup.md` removed (redundant with other docs).
+**Current state:** Phases 0–3 done (vision/repo/plumbing, Event Handling CLI, Indexer Core, REST API with `GET /designs`, `GET /designs/stats`, `GET /designs/{id}`). Client MVP v1 in `apps/client` with marketing/landing page, API-backed design list + search, and detail page wired to the indexer API. LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY at repo root. README cleaned up with State of the Union and phase list; vision, roadmap, dev-setup, architecture, event-schema in `docs/`. `docs/README-backup.md` removed (redundant with other docs).
 
 ---
 
 ### 1. Client MVP (List + Detail)
 
-- [ ] **Bootstrap client** _(marketing/landing page in place; list + detail not yet)_
+- [x] **Bootstrap client** _(marketing/landing page plus first-pass list + detail views in place)_
   - [x] Initialize Astro project structure in `apps/client`
   - [x] Add basic layout, navigation, and logo
   - [x] Add simple styling and mobile-friendly layout
-- [ ] **List page**
-  - [ ] Configure API base URL via env/config (e.g. `OPENPRINTS_API_BASE_URL`)
-  - [ ] Call `GET /designs` from the indexer API
-  - [ ] Render a list of design cards (title, creator/pubkey, date, category)
-  - [ ] Handle empty/loading/error states gracefully
-- [ ] **Detail page**
-  - [ ] Route by opaque design id (from list `items[].id`)
-  - [ ] Call `GET /designs/{id}` to fetch full metadata
-  - [ ] Show key fields (name, format, sha256, url, license, preview if present)
-  - [ ] Include a clear “Download file” link/button
+- [x] **List page**
+  - [x] Configure API base URL via env/config (e.g. `PUBLIC_OPENPRINTS_API_URL`)
+  - [x] Call `GET /designs` from the indexer API
+  - [x] Render a list of design cards (title, creator/pubkey, date, category)
+  - [x] Handle empty/loading/error states gracefully
+- [x] **Detail page**
+  - [x] Route by opaque design id (from list `items[].id`)
+  - [x] Call `GET /designs/{id}` to fetch full metadata
+  - [x] Show key fields (name, format, sha256, url, license, preview if present)
+  - [x] Include a clear “Download file” link/button
 - [ ] **End-to-end demo**
   - [ ] Ensure `make test-drive` (or equivalent) populates designs that appear in the client
   - [ ] Document in README: “how to run the PoC” (commands + URLs)
@@ -63,14 +63,14 @@
 
 ### 4. Minimal “Prod-ish” Deployment
 
-- [ ] **Indexer deployment**
-  - [ ] Deploy indexer (FastAPI) to a simple host (VPS / Fly / Render / Railway, etc.)
-  - [ ] Expose it under `https://api.openprints.dev` (DNS or Cloudflare Tunnel)
-  - [ ] Verify health/readiness endpoints and `GET /designs` work externally
-- [ ] **Client on Cloudflare Pages**
-  - [ ] Configure Astro build for Cloudflare Pages
-  - [ ] Point client to `https://api.openprints.dev` via env/config
-  - [ ] Attach `openprints.dev` or `app.openprints.dev` to the client Pages project
+- [x] **Indexer deployment**
+  - [x] Deploy indexer (FastAPI) to a simple host (VPS / Fly / Render / Railway, etc.)
+  - [x] Expose it under `https://api.openprints.dev` (DNS or Cloudflare Tunnel)
+  - [x] Verify health/readiness endpoints and `GET /designs` work externally
+- [x] **Client on Cloudflare Pages**
+  - [x] Configure Astro build for Cloudflare Pages
+  - [x] Point client to `https://api.openprints.dev` via env/config
+  - [x] Attach `openprints.dev` or `app.openprints.dev` to the client Pages project
 - [ ] **Deployment docs**
   - [ ] Add a short doc or section describing the PoC deployment layout:
     - [ ] Where the relay runs

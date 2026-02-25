@@ -1,0 +1,117 @@
+---
+import AppLayout from "~/layouts/app-layout.astro";
+import RecentDesignsGrid from "~/components/recent-designs-grid.astro";
+import DesignSearchControls from "~/components/design-search-controls.astro";
+import MockMarker from "~/components/mock-marker.astro";
+import { Icon } from "astro-icon/components";
+
+export const prerender = false;
+
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
+
+let totalDesigns: number | null = null;
+let totalVersions: number | null = null;
+const popularCategories = [
+  { name: "Tools", icon: "mdi:hammer-wrench", count: 1842 },
+  { name: "Holders", icon: "mdi:shape-outline", count: 1296 },
+  { name: "Home", icon: "mdi:home-outline", count: 963 },
+  { name: "Toys", icon: "mdi:toy-brick-outline", count: 741 },
+] as const;
+
+if (base) {
+  try {
+    const statsRes = await fetch(`${base}/designs/stats`);
+    if (statsRes.ok) {
+      const stats = await statsRes.json();
+      totalDesigns =
+        typeof stats?.designs === "number" ? stats.designs : null;
+      totalVersions =
+        typeof stats?.versions === "number" ? stats.versions : null;
+    }
+  } catch {
+    // Keep null stats on network errors; page still renders.
+  }
+}
+---
+
+<AppLayout title="OpenPrints – App">
+  <section class="mx-auto flex max-w-6xl flex-col gap-5">
+    <header class="rounded-2xl border border-default bg-offset/30 p-4 sm:p-5">
+      <div class="grid gap-4 lg:grid-cols-[1.15fr,22rem]">
+        <div class="space-y-2">
+          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
+            OpenPrints app
+          </p>
+          <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">
+            Discover and browse designs. Publish open work that stays yours.
+          </h1>
+          <p class="max-w-2xl text-xs leading-relaxed text-offset">
+            Start searching right away, then dive into full design details with
+            previews, file metadata, endorsements, and zaps.
+          </p>
+
+          <div class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-offset">
+            <span class="inline-flex items-center gap-1 rounded-full border border-default px-2.5 py-1">
+              <Icon name="mdi:shape-outline" class="size-3" aria-hidden="true" />
+              <span class="text-default">{totalDesigns ?? "—"}</span>
+              designs
+            </span>
+            <span class="inline-flex items-center gap-1 rounded-full border border-default px-2.5 py-1">
+              <Icon name="mdi:layers-outline" class="size-3" aria-hidden="true" />
+              <span class="text-default">{totalVersions ?? "—"}</span>
+              versions
+            </span>
+            <a
+              href="/app/designs"
+              class="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2.5 py-1 text-default transition-colors hover:text-emerald-400"
+            >
+              <Icon name="mdi:arrow-right" class="size-3" aria-hidden="true" />
+              Browse all designs
+            </a>
+          </div>
+        </div>
+
+        <DesignSearchControls />
+      </div>
+    </header>
+
+    <section class="relative mt-3 rounded-xl border border-default bg-offset/20 p-4">
+      <MockMarker top={30} right={300} rotation={0} />
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-offset">
+          Popular categories
+        </h2>
+        <a
+          href="/app/designs"
+          class="text-[11px] text-offset underline-offset-2 hover:underline"
+        >
+          Explore all designs →
+        </a>
+      </div>
+
+      <div class="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        {popularCategories.map((category) => (
+          <article class="flex h-20 w-full items-center justify-between rounded-md border border-default/40 bg-default/20 px-3">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex size-7 items-center justify-center rounded-md border border-default/50 bg-default/30">
+                <Icon name={category.icon} class="size-4 text-emerald-400" aria-hidden="true" />
+              </span>
+              <span class="text-xs font-medium text-default">{category.name}</span>
+            </div>
+            <span class="text-[10px] text-offset">{category.count}</span>
+          </article>
+        ))}
+      </div>
+    </section>
+
+    <section class="mt-3 space-y-1.5">
+      <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">Recent designs</h2>
+      <p class="max-w-2xl text-xs text-offset">
+        The newest designs from the network, ready to inspect and download.
+      </p>
+      <RecentDesignsGrid limit={12} />
+    </section>
+  </section>
+</AppLayout>
+

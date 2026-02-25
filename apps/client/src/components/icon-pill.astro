@@ -1,0 +1,28 @@
+---
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  icon?: string;
+  title?: string;
+  /** Optional Tailwind text color class applied only to the icon (e.g. "text-emerald-400"). */
+  iconColor?: string;
+}
+
+const { icon, title, iconColor } = Astro.props;
+const iconClass = ["size-3.5 shrink-0", iconColor ?? "text-offset"].join(" ");
+---
+
+<span
+  class="inline-flex items-center gap-1.5 rounded-md border border-default px-2 py-1 text-[10px] text-offset"
+  title={title}
+>
+  {icon && (
+    <Icon
+      name={icon}
+      class={iconClass}
+      aria-hidden="true"
+    />
+  )}
+  <slot />
+</span>
+

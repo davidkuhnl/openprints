@@ -1,4 +1,5 @@
 ---
+import RecentDesignsGrid from "~/components/recent-designs-grid.astro";
 ---
 
 <section
@@ -11,11 +12,18 @@
     </h2>
   </div>
   <p class="max-w-xl text-center font-extrabold text-2xl">
-    Designs from the network will appear here.
+    A quick peek at what’s live in the indexer.
   </p>
-  <div class="max-w-6xl">
-    <p class="text-center text-offset">
-      Connect to the indexer to see recent designs. Coming soon.
-    </p>
+  <div class="max-w-6xl w-full">
+    <RecentDesignsGrid limit={6} />
+    <div class="mt-6 text-center">
+      <a
+        href="/app"
+        class="inline-flex items-center justify-center gap-2 border border-intro-accent px-4 py-2 text-sm font-semibold text-intro-accent transition hover:bg-offset"
+      >
+        Open app
+      </a>
+    </div>
   </div>
 </section>
+

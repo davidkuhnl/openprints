@@ -2,6 +2,8 @@
 
 INDEXER_DIR := apps/indexer
 CLIENT_DIR := apps/client
+FORCE_MAIN ?= false
+DEPLOY_BRANCH_FLAG :=
 INFRA_DIR := infra
 FILE ?= tests/fixtures/stub_design.stl
 SHA256 ?=
@@ -143,4 +145,14 @@ cli-keygen:
 	@cd $(INDEXER_DIR) && uv run openprints-cli keygen
 
 client-deploy:
-	@cd $(CLIENT_DIR) && npm run build && npx wrangler pages deploy dist --project-name=openprints-client
+	@cd $(CLIENT_DIR) && npm run build && \
+		npx wrangler pages deploy dist \
+			--project-name=openprints-client \
+			$(DEPLOY_BRANCH_FLAG)
+
+ifeq ($(FORCE_MAIN),true)
+DEPLOY_BRANCH_FLAG := --branch=main
+endif
+ifeq ($(FORCE_MAIN),1)
+DEPLOY_BRANCH_FLAG := --branch=main
+endif

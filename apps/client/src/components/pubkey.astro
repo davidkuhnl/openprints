@@ -1,0 +1,12 @@
+---
+import TruncateCopy from "~/components/truncate-copy.astro";
+
+interface Props {
+  value: string;
+  maxChars?: number;
+}
+
+const { value, maxChars = 10 } = Astro.props;
+---
+<!-- This has been refactored into oblivion and we should eventually just get rid of it. Can't be bothered to do it rn. -->
+<TruncateCopy value={value} maxChars={maxChars} />

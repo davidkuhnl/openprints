@@ -1,0 +1,33 @@
+---
+import type { FooterLink } from "~/types";
+
+const links: Array<FooterLink> = [
+  {
+    url: "https://github.com/davidkuhnl/openprints",
+    description: "OpenPrints on GitHub",
+    icon: "fa-brands:github",
+  },
+];
+---
+
+<footer class="border-t border-default bg-default/80 px-4 py-3 sm:px-6 lg:px-8">
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-3">
+    <p class="text-[10px] text-offset">
+      OpenPrints · experimental app preview
+    </p>
+    <nav aria-label="App footer links">
+      <ul class="flex items-center gap-3 text-[10px] text-offset">
+        {
+          links.map((link) => (
+            <li>
+              <a href={link.url} class="underline-offset-2 hover:underline">
+                {link.description}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+</footer>
+

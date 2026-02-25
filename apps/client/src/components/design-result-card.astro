@@ -1,0 +1,83 @@
+---
+import Pubkey from "~/components/pubkey.astro";
+import TimestampDisplay from "~/components/timestamp-display.astro";
+import PreviewMocks from "~/components/preview-mocks.astro";
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  design: {
+    id: string;
+    name?: string | null;
+    content?: string | null;
+    pubkey?: string | null;
+    latest_published_at?: unknown;
+    format?: string | null;
+  };
+}
+
+const { design } = Astro.props;
+const name = design.name || "Untitled design";
+const description =
+  typeof design.content === "string" ? design.content.trim() : "";
+const excerpt =
+  description.length > 120 ? `${description.slice(0, 120)}…` : description;
+---
+
+<article class="flex flex-col gap-1 rounded-xl border border-default bg-offset/30 px-3.5 py-2.5 sm:px-4 sm:py-3 transition hover:bg-offset/40 hover:border-emerald-400/40">
+  <!-- (1) HEADER BLOCK -->
+  <header class="pb-2 mb-2 border-b border-default/60">
+    <h2 class="text-sm font-medium text-default">
+      <a
+        href={`/app/designs/${encodeURIComponent(design.id)}`}
+        class="underline-offset-2 hover:underline"
+      >
+        {name}
+      </a>
+    </h2>
+
+    <div class="mt-1 mb-1.5 flex flex-wrap items-center gap-3 text-[11px] text-offset">
+      <span class="inline-flex items-center gap-1">
+        <Icon
+          name="mdi:account-outline"
+          class="size-3 text-offset"
+          aria-hidden="true"
+        />
+        <Pubkey value={design.pubkey || "Unknown creator"} maxChars={10} />
+      </span>
+
+      {design.latest_published_at != null && (
+        <span class="inline-flex items-center gap-1">
+          <Icon
+            name="mdi:clock-outline"
+            class="size-3 text-offset"
+            aria-hidden="true"
+          />
+          <TimestampDisplay value={design.latest_published_at} agoFormat />
+        </span>
+      )}
+
+      {design.format && (
+        <span class="inline-flex items-center gap-1 text-emerald-400/80">
+          <Icon
+            name="mdi:file-outline"
+            class="size-3 text-offset"
+            aria-hidden="true"
+          />
+          {design.format}
+        </span>
+      )}
+    </div>
+  </header>
+
+  <!-- (2) SHORT DESCRIPTION -->
+  {excerpt && (
+    <p class="mb-2 text-xs text-offset line-clamp-2">
+      {excerpt}
+    </p>
+  )}
+
+  <!-- (3) THUMBNAIL STRIP -->
+  <div class="mt-1.5 flex justify-end">
+    <PreviewMocks count={3} variant="card" />
+  </div>
+</article>
