@@ -1,0 +1,220 @@
+---
+import AppLayout from "~/layouts/app-layout.astro";
+import TruncateCopy from "~/components/truncate-copy.astro";
+import TimestampDisplay from "~/components/timestamp-display.astro";
+import IconPill from "~/components/icon-pill.astro";
+import Pubkey from "~/components/pubkey.astro";
+
+export const prerender = false;
+
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
+
+const { id } = Astro.params;
+
+let design: any = null;
+let errorTitle: string | null = null;
+let errorMessage: string | null = null;
+
+if (!base) {
+  errorTitle = "Design not available";
+  errorMessage =
+    "API base URL is not configured. Check PUBLIC_OPENPRINTS_API_URL.";
+} else if (!id) {
+  errorTitle = "Design not found";
+  errorMessage = "Missing design id in the URL.";
+} else {
+  const url = `${base}/designs/${encodeURIComponent(id)}`;
+
+  try {
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      errorTitle = "Design not found";
+      errorMessage = `API responded with ${res.status} ${res.statusText} for this design.`;
+    } else {
+      design = await res.json();
+    }
+  } catch (err: any) {
+    errorTitle = "Design not found";
+    errorMessage =
+      "We couldn't load this design due to a network or server error.";
+  }
+}
+
+function getTotalZaps(d: any) {
+  if (!d) return "–";
+  if (typeof d.total_zaps === "number") return d.total_zaps;
+  if (typeof d.totalZaps === "number") return d.totalZaps;
+  return "–";
+}
+
+function getEndorsements(d: any) {
+  if (!d) return "–";
+  if (typeof d.endorsements_count === "number") return d.endorsements_count;
+  if (Array.isArray(d.endorsements)) return d.endorsements.length;
+  return "–";
+}
+
+const name = design && design.name ? design.name : "Untitled design";
+
+const description =
+  design && typeof design.content === "string" ? design.content : "";
+
+const creatorRaw =
+  design && design.pubkey ? design.pubkey : "Unknown creator";
+
+const creatorMaxChars = 10;
+
+const format = design && design.format ? design.format : "–";
+
+const sha256Raw = design && design.sha256 ? design.sha256 : "–";
+const sha256MaxChars = 12;
+
+const firstPublishedAt =
+  design && design.first_published_at ? design.first_published_at : null;
+const latestPublishedAt =
+  design && design.latest_published_at ? design.latest_published_at : null;
+
+const totalZaps = getTotalZaps(design);
+const endorsements = getEndorsements(design);
+
+const urlValue = design && design.url ? design.url : "";
+---
+
+<AppLayout title="OpenPrints – Design detail">
+  <!-- Keep this so the TruncateCopy script can attach to .truncate-copy elements -->
+  <TruncateCopy value="" />
+
+  <div class="mx-auto flex max-w-5xl flex-col gap-3">
+    <a
+      href="/app/designs"
+      class="inline-flex w-fit items-center gap-1 text-[10px] text-offset underline-offset-2 hover:underline focus:outline-none focus-visible:outline-none"
+    >
+      <span>←</span>
+      <span>Back to designs</span>
+    </a>
+
+    <article class="flex flex-col gap-2.5 rounded-xl border border-default bg-offset/30 p-4 sm:p-5">
+      {errorMessage && (
+        <>
+          <h1 class="text-lg font-semibold tracking-tight">
+            {errorTitle ?? "Design not found"}
+          </h1>
+          <p class="mt-1.5 text-xs text-offset">{errorMessage}</p>
+          <div class="mt-4">
+            <a
+              href="/app/designs"
+              class="text-[10px] text-offset underline-offset-2 hover:underline"
+            >
+              ← Back to designs
+            </a>
+          </div>
+        </>
+      )}
+
+      {!errorMessage && !design && (
+        <>
+          <h1 class="text-lg font-semibold tracking-tight">Loading design…</h1>
+          <p class="text-xs text-offset">Fetching design details.</p>
+        </>
+      )}
+
+      {!errorMessage && design && (
+        <div>
+          <header class="space-y-1.5 border-b border-default pb-4">
+            <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
+              Design
+            </p>
+            <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">
+              {name}
+            </h1>
+            <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-offset">
+              <IconPill icon="mdi:account" title="Creator">
+                <Pubkey value={creatorRaw} maxChars={creatorMaxChars} />
+              </IconPill>
+
+              {firstPublishedAt && (
+                <IconPill icon="mdi:calendar-start" title="First published">
+                  <TimestampDisplay value={firstPublishedAt} agoFormat />
+                </IconPill>
+              )}
+
+              {latestPublishedAt && (
+                <IconPill icon="mdi:update" title="Updated">
+                  <TimestampDisplay value={latestPublishedAt} agoFormat />
+                </IconPill>
+              )}
+            </div>
+          </header>
+
+          {description && (
+            <div class="mt-2 space-y-3">
+              <p class="text-xs leading-relaxed text-offset">
+                {description}
+              </p>
+              <div class="flex gap-2">
+                <div class="h-28 w-28 rounded-md border border-default bg-default/40"></div>
+                <div class="h-28 w-28 rounded-md border border-default bg-default/40"></div>
+                <div class="h-28 w-28 rounded-md border border-default bg-default/40"></div>
+                <div class="h-28 w-28 rounded-md border border-default bg-default/40"></div>
+                <div class="h-28 w-28 rounded-md border border-default bg-default/40"></div>
+              </div>
+            </div>
+          )}
+
+          <dl class="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="rounded-lg border border-default bg-default/40 px-3 py-2.5">
+              <dt class="text-[10px] text-offset">Format</dt>
+              <dd class="mt-1 text-xs font-medium text-default">
+                {format}
+              </dd>
+            </div>
+
+            <div class="rounded-lg border border-default bg-default/40 px-3 py-2.5">
+              <dt class="text-[10px] text-offset">SHA-256</dt>
+              <dd class="mt-1 text-xs font-medium text-default">
+                {sha256Raw === "–" ? (
+                  "–"
+                ) : (
+                  <TruncateCopy value={sha256Raw} maxChars={sha256MaxChars} />
+                )}
+              </dd>
+            </div>
+
+            <div class="rounded-lg border border-default bg-default/40 px-3 py-2.5">
+              <dt class="text-[10px] text-offset">Total zaps</dt>
+              <dd class="mt-1 text-xs font-medium text-default">
+                {totalZaps}
+              </dd>
+            </div>
+
+            <div class="rounded-lg border border-default bg-default/40 px-3 py-2.5">
+              <dt class="text-[10px] text-offset">Endorsements</dt>
+              <dd class="mt-1 text-xs font-medium text-default">
+                {endorsements}
+              </dd>
+            </div>
+          </dl>
+
+          <section class="mt-4 flex flex-wrap items-center gap-2">
+            {urlValue ? (
+              <a
+                href={urlValue}
+                class="inline-flex items-center gap-1.5 rounded-md border border-default px-2.5 py-1.5 text-[11px] font-medium text-default"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open file
+              </a>
+            ) : (
+              <p class="text-xs text-offset">
+                No file URL available yet for this design.
+              </p>
+            )}
+          </section>
+        </div>
+      )}
+    </article>
+  </div>
+</AppLayout>

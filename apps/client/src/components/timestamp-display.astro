@@ -1,0 +1,67 @@
+---
+interface Props {
+  value: any;
+  emptyText?: string;
+  agoFormat?: boolean;
+}
+
+const { value, emptyText = "–", agoFormat = false } = Astro.props;
+
+function getDateFromInput(input: any): Date | null {
+  if (input == null) return null;
+
+  const n = typeof input === "number" ? input : Number(input);
+  if (!Number.isFinite(n)) return null;
+
+  const ms = n > 1e12 ? n : n * 1000;
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return null;
+
+  return d;
+}
+
+function formatTimestamp(d: Date | null) {
+  if (!d) return null;
+
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatAgo(d: Date | null) {
+  if (!d) return null;
+
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  if (!Number.isFinite(diffMs) || diffMs < 0) return null;
+
+  const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+
+  if (days <= 0 && hours <= 0) {
+    return "just now";
+  }
+
+  if (days <= 0) {
+    return `${hours}h ago`;
+  }
+
+  if (hours <= 0) {
+    return `${days}d ago`;
+  }
+
+  return `${days}d ${hours}h ago`;
+}
+
+const date = getDateFromInput(value);
+const formatted = formatTimestamp(date);
+const display = agoFormat ? formatAgo(date) ?? formatted : formatted;
+---
+
+<span title={formatted ?? undefined}>{display ?? emptyText}</span>
+

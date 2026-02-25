@@ -1,0 +1,25 @@
+---
+import { Icon } from "astro-icon/components";
+
+interface Props {
+  icon?: string;
+  title?: string;
+}
+
+const { icon, title } = Astro.props;
+---
+
+<span
+  class="inline-flex items-center gap-1.5 rounded-md border border-default px-2 py-1 text-[10px] text-offset"
+  title={title}
+>
+  {icon && (
+    <Icon
+      name={icon}
+      class="size-3.5 shrink-0 text-offset"
+      aria-hidden="true"
+    />
+  )}
+  <slot />
+</span>
+

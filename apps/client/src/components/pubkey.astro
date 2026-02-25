@@ -1,5 +1,5 @@
 ---
-import { Icon } from "astro-icon/components";
+import TruncateCopy from "~/components/truncate-copy.astro";
 
 interface Props {
   value: string;
@@ -7,20 +7,6 @@ interface Props {
 }
 
 const { value, maxChars = 10 } = Astro.props;
-const display =
-  value.length > maxChars ? value.slice(0, maxChars) + "…" : value;
 ---
 
-<span class="inline-flex items-center gap-1.5 rounded-md border border-default px-2 py-1 text-[10px] text-offset">
-  <Icon
-    name="mdi:account"
-    class="size-3.5 shrink-0 text-offset"
-    aria-hidden="true"
-  />
-  <span
-    class="truncate-copy inline-flex items-center gap-1"
-    data-full-value={value}
-  >
-    <span class="truncate-copy__text">{display}</span>
-  </span>
-</span>
+<TruncateCopy value={value} maxChars={maxChars} />

@@ -52,7 +52,7 @@ const { limit = 6 } = Astro.props;
 
           card.innerHTML = `
             <h2 class="text-base font-medium tracking-tight text-default">
-              <a href="/app/designs/detail?id=${encodeURIComponent(
+              <a href="/app/designs/${encodeURIComponent(
                 d.id,
               )}" class="underline-offset-2 hover:underline">${name}</a>
             </h2>

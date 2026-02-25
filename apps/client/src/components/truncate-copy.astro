@@ -11,26 +11,6 @@ const display =
   value.length > maxChars ? value.slice(0, maxChars) + "…" : value;
 ---
 
-<!-- Hidden clone source for dynamically injected .truncate-copy elements -->
-<div
-  id="truncate-copy-button-source"
-  class="hidden"
-  aria-hidden="true"
->
-  <button
-    type="button"
-    class="truncate-copy__btn inline-flex size-5 shrink-0 items-center justify-center rounded text-offset transition-colors hover:text-default focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
-    aria-label="Copy full value"
-  >
-    <span class="truncate-copy__icon-copy" aria-hidden="true">
-      <Icon name="mdi:content-copy" class="size-3.5" aria-hidden="true" />
-    </span>
-    <span class="truncate-copy__icon-check" aria-hidden="true">
-      <Icon name="mdi:check" class="size-3.5" aria-hidden="true" />
-    </span>
-  </button>
-</div>
-
 <!-- Visible instance when value is non-empty -->
 {value.length > 0 && (
   <span
@@ -69,22 +49,6 @@ const display =
   (function () {
     const CLS_WRAP = "truncate-copy";
     const CLS_BTN = "truncate-copy__btn";
-    const SOURCE_ID = "truncate-copy-button-source";
-
-    /** @param {Element} wrap */
-    // @ts-ignore - Astro script; wrap is Element from querySelectorAll
-    function initElement(wrap) {
-      if (wrap.querySelector(`.${CLS_BTN}`)) return;
-      const source = document.getElementById(SOURCE_ID);
-      const templateBtn = source?.querySelector(`.${CLS_BTN}`);
-      if (!templateBtn) return;
-      const btn = templateBtn.cloneNode(true);
-      wrap.appendChild(btn);
-    }
-
-    function initAll() {
-      document.querySelectorAll(`.${CLS_WRAP}`).forEach(initElement);
-    }
 
     const COPIED_CLASS = "truncate-copy__btn--copied";
     const COPIED_DURATION_MS = 1500;
@@ -106,10 +70,5 @@ const display =
         }, COPIED_DURATION_MS);
       }).catch(() => {});
     });
-
-    initAll();
-
-    const observer = new MutationObserver(() => initAll());
-    observer.observe(document.body, { childList: true, subtree: true });
   })();
 </script>

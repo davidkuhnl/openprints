@@ -39,7 +39,7 @@ const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
           const name = d.name || "Untitled design";
 
           li.innerHTML = `
-            <a href="/app/designs/detail?id=${encodeURIComponent(
+            <a href="/app/designs/${encodeURIComponent(
               d.id,
             )}" class="text-sm font-medium tracking-tight text-default hover:underline">
               ${name}
