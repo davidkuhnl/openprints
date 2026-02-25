@@ -4,6 +4,9 @@ import TruncateCopy from "~/components/truncate-copy.astro";
 import TimestampDisplay from "~/components/timestamp-display.astro";
 import IconPill from "~/components/icon-pill.astro";
 import Pubkey from "~/components/pubkey.astro";
+import MockMarker from "~/components/mock-marker.astro";
+import MockDisclaimer from "~/components/mock-disclaimer.astro";
+import { Icon } from "astro-icon/components";
 
 export const prerender = false;
 
@@ -200,7 +203,7 @@ const zapsList: any[] =
 
             <!-- meta pills row -->
             <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-offset">
-              <IconPill icon="mdi:account" title="Creator">
+              <IconPill icon="mdi:account" title="Creator" iconColor="text-emerald-400">
                 <Pubkey value={creatorRaw} maxChars={creatorMaxChars} />
               </IconPill>
 
@@ -252,7 +255,7 @@ const zapsList: any[] =
           )}
 
           <!-- File / URL / SHA section -->
-          <section class="mt-4 rounded-lg border border-default bg-default/40 p-3 sm:flex sm:items-center sm:justify-between sm:gap-4">
+          <section class="mt-3 rounded-lg border border-default bg-default/40 p-3 sm:flex sm:items-center sm:justify-between sm:gap-4">
             <div class="min-w-0 text-xs">
               <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-offset">
                 File
@@ -266,7 +269,14 @@ const zapsList: any[] =
 
                   {sha256Raw !== "–" && (
                     <p class="mt-1 text-[10px] text-offset">
-                      SHA-256{" "}
+                      <span class="inline-flex items-center gap-1">
+                        <Icon
+                          name="mdi:identifier"
+                          class="size-3"
+                          aria-hidden="true"
+                        />
+                        <span>SHA-256</span>
+                      </span>{" "}
                       <span class="inline-block align-middle">
                         <TruncateCopy
                           value={sha256Raw}
@@ -287,7 +297,7 @@ const zapsList: any[] =
               <div class="mt-3 shrink-0 sm:mt-0">
                 <a
                   href={urlValue}
-                  class="inline-flex items-center gap-1.5 rounded-md border border-default px-3 py-1.5 text-[11px] font-medium text-default"
+                  class="inline-flex items-center gap-1.5 rounded-md border border-default px-3 py-1.5 text-[11px] font-medium text-default transition-colors hover:text-emerald-400"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -298,10 +308,16 @@ const zapsList: any[] =
           </section>
 
           <!-- Endorsements & Zaps two-column layout -->
-          <section class="mt-6 grid gap-4 md:grid-cols-2">
+          <section class="mt-4 grid gap-4 md:grid-cols-2">
             <!-- Endorsements column -->
-            <div>
-              <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-offset">
+            <div class="relative">
+                  <MockMarker top={15} right={70} rotation={0} />
+              <h2 class="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.16em] text-offset">
+                <Icon
+                  name="mdi:heart-outline"
+                  class="size-3 shrink-0 text-offset"
+                  aria-hidden="true"
+                />
                 Latest endorsements
               </h2>
 
@@ -312,7 +328,7 @@ const zapsList: any[] =
               ) : (
                 <ul class="mt-2 space-y-2">
                   {endorsementsList.map((endorsement) => (
-                    <li class="rounded-lg border border-default bg-default/40 px-3 py-2.5">
+                    <li class="rounded-lg border border-default border-l-2 border-l-emerald-400 bg-default/40 px-3 py-2.5">
                       <div class="flex items-center justify-between gap-2 text-[10px] text-offset">
                         <Pubkey
                           value={
@@ -340,8 +356,14 @@ const zapsList: any[] =
             </div>
 
             <!-- Zaps column -->
-            <div>
-              <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-offset">
+            <div class="relative">
+              <MockMarker top={15} right={70} rotation={0} />
+              <h2 class="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.16em] text-offset">
+                <Icon
+                  name="mdi:lightning-bolt"
+                  class="size-3 shrink-0"
+                  aria-hidden="true"
+                />
                 Top zaps
               </h2>
 
@@ -373,5 +395,7 @@ const zapsList: any[] =
         </div>
       )}
     </article>
+
+    <MockDisclaimer />
   </div>
 </AppLayout>

@@ -4,9 +4,12 @@ import { Icon } from "astro-icon/components";
 interface Props {
   icon?: string;
   title?: string;
+  /** Optional Tailwind text color class applied only to the icon (e.g. "text-emerald-400"). */
+  iconColor?: string;
 }
 
-const { icon, title } = Astro.props;
+const { icon, title, iconColor } = Astro.props;
+const iconClass = ["size-3.5 shrink-0", iconColor ?? "text-offset"].join(" ");
 ---
 
 <span
@@ -16,7 +19,7 @@ const { icon, title } = Astro.props;
   {icon && (
     <Icon
       name={icon}
-      class="size-3.5 shrink-0 text-offset"
+      class={iconClass}
       aria-hidden="true"
     />
   )}
