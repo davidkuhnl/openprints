@@ -18,10 +18,10 @@ This brings up the local Nostr relay, indexer, and (with a bit of config) the As
 
 Quality checks: `make lint`, `make test`, `make check`. See [docs/dev-setup.md](docs/dev-setup.md) for the full list.
 
-## State of the Union (2025-02-24)
+## State of the Union (2026-02-25)
 
 ### Deploy
-- client: live on https://openprints.dev/ via CF
+- client: live on https://openprints.dev/ via CF talking to the indexer api via a secure tunnel
 - indexer: limping on my trusty old raspberry pi
 
 ### Roadmap
@@ -30,8 +30,8 @@ Quality checks: `make lint`, `make test`, `make check`. See [docs/dev-setup.md](
 - [x] Phase 1 — Event Handling CLI
 - [x] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
 - [x] Phase 3 — REST API
-- [ ] WIP - Phase 4 — Client MVP (List + Detail Pages)
-- [ ] Phase 5 — Design Publishing Flow
+- [x] Phase 4 — Client MVP (List + Detail Pages + search)
+- [ ] WIP Phase 5 — Design Publishing Flow
 - [ ] Phase 6 — Endorsements ("I printed this")
 - [ ] Phase 7 — Lightning Zaps
 - [ ] Phase 8 — File Storage Support

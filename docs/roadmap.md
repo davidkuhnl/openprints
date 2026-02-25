@@ -6,7 +6,7 @@ Phased plan for the OpenPrints PoC and beyond.
 - [x] Phase 1 — Event Handling CLI
 - [x] Phase 2 — Indexer Core (Relay Subscriptions + Reducer + DB)
 - [x] Phase 3 — REST API
-- [ ] WIP - Phase 4 — Client MVP (List + Detail Pages)
+- [x] Phase 4 — Client MVP (List + Detail Pages)
 - [ ] Phase 5 — Design Publishing Flow
 - [ ] Phase 6 — Endorsements ("I printed this")
 - [ ] Phase 7 — Lightning Zaps
@@ -95,7 +95,7 @@ Phased plan for the OpenPrints PoC and beyond.
 
 ---
 
-### [~] Phase 4 — Client MVP (List + Detail Pages)
+### [x] Phase 4 — Client MVP (List + Detail Pages)
 
 **Goal:** Ship an Astro-based web client that lists designs and shows a detail page, using the indexer's REST API, with SSR for speed and SEO.
 
