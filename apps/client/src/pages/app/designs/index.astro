@@ -97,7 +97,7 @@ function buildPageHref(targetPage: number) {
       <DesignSearchControls q={q} order={order} limit={limit} />
 
       <div class="space-y-3">
-        <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] text-offset">
+        <div class="flex items-center justify-between text-xs text-offset">
           <p>
             Showing <span class="text-default">{start}-{end}</span> of{" "}
             <span class="text-default">{total}</span> designs
@@ -108,7 +108,7 @@ function buildPageHref(targetPage: number) {
               </>
             )}
           </p>
-          <p class="text-[10px] uppercase tracking-[0.14em] text-offset/80">
+          <p>
             Page {Math.min(page, totalPages)} / {totalPages}
           </p>
         </div>
