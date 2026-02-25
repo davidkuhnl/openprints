@@ -6,6 +6,7 @@ import IconPill from "~/components/icon-pill.astro";
 import Pubkey from "~/components/pubkey.astro";
 import MockMarker from "~/components/mock-marker.astro";
 import MockDisclaimer from "~/components/mock-disclaimer.astro";
+import PreviewMocks from "~/components/preview-mocks.astro";
 import { Icon } from "astro-icon/components";
 
 export const prerender = false;
@@ -244,13 +245,7 @@ const zapsList: any[] =
               <p class="text-xs leading-relaxed text-offset">
                 {description}
               </p>
-              <div class="flex gap-2">
-                <div class="h-28 w-28 rounded-md border border-default bg-default/40"></div>
-                <div class="h-28 w-28 rounded-md border border-default bg-default/40"></div>
-                <div class="h-28 w-28 rounded-md border border-default bg-default/40"></div>
-                <div class="h-28 w-28 rounded-md border border-default bg-default/40"></div>
-                <div class="h-28 w-28 rounded-md border border-default bg-default/40"></div>
-              </div>
+              <PreviewMocks count={5} />
             </div>
           )}
 

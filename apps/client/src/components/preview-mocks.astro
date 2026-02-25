@@ -1,0 +1,21 @@
+---
+interface Props {
+  count?: number;
+}
+
+const { count = 3 } = Astro.props as Props;
+---
+
+<div class="flex gap-2">
+  {Array.from({ length: count }).map((_, i) => (
+    <div
+      class="flex h-28 w-28 shrink-0 items-center justify-center rounded-md border border-default bg-gradient-to-br from-slate-700/25 via-slate-600/20 to-slate-500/25"
+      aria-hidden="true"
+    >
+      <span class="text-[9px] tracking-[0.12em] text-offset/60">
+        mock
+      </span>
+    </div>
+  ))}
+</div>
+

@@ -4,13 +4,13 @@ const { limit = 6 } = Astro.props;
 ---
 
 <section
-  class="recent-designs-grid grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+  class="recent-designs-grid grid gap-3 md:grid-cols-2 lg:grid-cols-3"
   data-api-base-url={apiBaseUrl}
   data-limit={limit}
 >
-  <p class="col-span-full text-center text-offset">
-    Loading recent designs…
-  </p>
+  <article class="col-span-full rounded-xl border border-default bg-offset/30 p-4 text-center">
+    <p class="text-xs text-offset">Loading recent designs…</p>
+  </article>
 </section>
 
 <script define:vars={{ apiBaseUrl, limit }}>
@@ -25,6 +25,27 @@ const { limit = 6 } = Astro.props;
     const container = document.querySelector(selector);
     if (!container) return;
 
+    function formatAgo(value) {
+      if (value == null) return "";
+      const n = typeof value === "number" ? value : Number(value);
+      if (!Number.isFinite(n)) return "";
+      const ms = n > 1e12 ? n : n * 1000;
+      const date = new Date(ms);
+      if (Number.isNaN(date.getTime())) return "";
+
+      const diffMs = Date.now() - date.getTime();
+      if (!Number.isFinite(diffMs) || diffMs < 0) return "";
+
+      const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const days = Math.floor(totalHours / 24);
+      const hours = totalHours % 24;
+
+      if (days <= 0 && hours <= 0) return "just now";
+      if (days <= 0) return `${hours}h ago`;
+      if (hours <= 0) return `${days}d ago`;
+      return `${days}d ${hours}h ago`;
+    }
+
     const url = `${base}/designs?limit=${encodeURIComponent(
       limit,
     )}&order=latest_published_at_desc`;
@@ -35,7 +56,7 @@ const { limit = 6 } = Astro.props;
         const items = (data && data.items) || [];
         if (!items.length) {
           container.innerHTML =
-            '<p class="col-span-full text-center text-offset">No designs yet.</p>';
+            '<article class="col-span-full rounded-xl border border-default bg-offset/30 p-4 text-center"><p class="text-xs text-offset">No designs yet.</p></article>';
           return;
         }
 
@@ -43,25 +64,51 @@ const { limit = 6 } = Astro.props;
         for (const d of items) {
           const card = document.createElement("article");
           card.className =
-            "flex h-full flex-col gap-2.5 rounded-xl border border-default bg-offset/40 p-4";
+            "flex h-full flex-col gap-2 rounded-xl border border-default bg-offset/30 p-3.5 sm:p-4";
 
           const name = d.name || "Untitled design";
           const content = typeof d.content === "string" ? d.content : "";
           const excerpt =
-            content.length > 140 ? `${content.slice(0, 140)}…` : content;
+            content.length > 120 ? `${content.slice(0, 120)}…` : content;
+          const format = typeof d.format === "string" && d.format ? d.format : "";
+          const updatedAgo = formatAgo(d.latest_published_at);
 
           card.innerHTML = `
-            <h2 class="text-base font-medium tracking-tight text-default">
-              <a href="/app/designs/${encodeURIComponent(
-                d.id,
-              )}" class="underline-offset-2 hover:underline">${name}</a>
-            </h2>
-            <p class="text-[10px] text-offset break-all">By ${d.pubkey}</p>
-            ${
-              excerpt
-                ? `<p class="mt-0.5 text-xs leading-relaxed text-offset">${excerpt}</p>`
-                : ""
-            }
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-3">
+              <div class="min-w-0 flex-1 space-y-2">
+                <h2 class="text-sm font-medium tracking-tight text-default">
+                  <a href="/app/designs/${encodeURIComponent(
+                    d.id,
+                  )}" class="underline-offset-2 hover:underline">${name}</a>
+                </h2>
+                <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-offset">
+                  <span class="inline-flex max-w-full items-center rounded-md border border-default px-2 py-1">
+                    <span class="mr-1 text-offset/80">By</span>
+                    <span class="truncate">${d.pubkey}</span>
+                  </span>
+                  ${
+                    updatedAgo
+                      ? `<span class="inline-flex items-center rounded-md border border-default px-2 py-1">${updatedAgo}</span>`
+                      : ""
+                  }
+                  ${
+                    format
+                      ? `<span class="inline-flex items-center rounded-md border border-default px-2 py-1">${format}</span>`
+                      : ""
+                  }
+                </div>
+                ${
+                  excerpt
+                    ? `<p class="text-xs leading-relaxed text-offset">${excerpt}</p>`
+                    : ""
+                }
+              </div>
+              <div class="mt-1 flex gap-2 sm:mt-0 sm:self-center">
+                <div class="h-28 w-28 shrink-0 rounded-md border border-default bg-default/40" aria-hidden="true"></div>
+                <div class="h-28 w-28 shrink-0 rounded-md border border-default bg-default/40" aria-hidden="true"></div>
+                <div class="h-28 w-28 shrink-0 rounded-md border border-default bg-default/40" aria-hidden="true"></div>
+              </div>
+            </div>
           `;
 
           container.appendChild(card);
@@ -69,7 +116,7 @@ const { limit = 6 } = Astro.props;
       })
       .catch(() => {
         container.innerHTML =
-          '<p class="col-span-full text-center text-offset">Failed to load designs.</p>';
+          '<article class="col-span-full rounded-xl border border-default bg-offset/30 p-4 text-center"><p class="text-xs text-offset">Failed to load designs.</p></article>';
       });
   })();
 </script>
