@@ -44,6 +44,17 @@ if (!base) {
 
 function getTotalZaps(d: any) {
   if (!d) return "–";
+
+  // Prefer aggregating from individual zaps when available
+  if (Array.isArray(d.zaps) && d.zaps.length > 0) {
+    const total = d.zaps.reduce((sum: number, zap: any) => {
+      const amount = getZapAmount(zap);
+      return typeof amount === "number" ? sum + amount : sum;
+    }, 0);
+
+    if (total > 0) return total;
+  }
+
   if (typeof d.total_zaps === "number") return d.total_zaps;
   if (typeof d.totalZaps === "number") return d.totalZaps;
   return "–";
@@ -51,8 +62,10 @@ function getTotalZaps(d: any) {
 
 function getEndorsements(d: any) {
   if (!d) return "–";
-  if (typeof d.endorsements_count === "number") return d.endorsements_count;
+  // Use endorsements array length when present (real or fake data),
+  // otherwise fall back to any pre-computed count from the API.
   if (Array.isArray(d.endorsements)) return d.endorsements.length;
+  if (typeof d.endorsements_count === "number") return d.endorsements_count;
   return "–";
 }
 
@@ -84,10 +97,48 @@ const firstPublishedAt =
 const latestPublishedAt =
   design && design.latest_published_at ? design.latest_published_at : null;
 
+const urlValue = design && design.url ? design.url : "";
+
+// Dev-only fake data to visually test endorsements/zaps layout and meta counts.
+// This only runs in development and feeds both the "Top endorsements/zaps"
+// lists and the meta pills (total zaps & endorsements count).
+if (import.meta.env.DEV && design) {
+  if (
+    !Array.isArray(design.endorsements) ||
+    design.endorsements.length === 0
+  ) {
+    design.endorsements = [
+      {
+        pubkey: "npub1endorseraaaa",
+        content: "Really solid design, prints cleanly at 0.2mm.",
+        created_at: Date.now() - 1000 * 60 * 60 * 2, // 2h ago
+      },
+      {
+        pubkey: "npub1endorserbbbb",
+        content: "Used this in a prototype and it held up great.",
+        created_at: Date.now() - 1000 * 60 * 60 * 24, // 1 day ago
+      },
+      {
+        pubkey: "npub1endorsercccc",
+        content: "Nice balance of material usage and strength.",
+        created_at: Date.now() - 1000 * 60 * 60 * 72, // 3 days ago
+      },
+    ];
+  }
+
+  if (!Array.isArray(design.zaps) || design.zaps.length === 0) {
+    design.zaps = [
+      { pubkey: "npub1zapperaaaa", amount: 500 },
+      { pubkey: "npub1zapperbbbb", amount: 250 },
+      { pubkey: "npub1zappercccc", amount: 100 },
+      { pubkey: "npub1zapperdddd", amount: 50 },
+    ];
+  }
+}
+
+// Totals and counts use real data when present, or dev-only fake data above.
 const totalZaps = getTotalZaps(design);
 const endorsementsCount = getEndorsements(design);
-
-const urlValue = design && design.url ? design.url : "";
 
 // Lists for bottom section
 const endorsementsList: any[] =
@@ -172,7 +223,7 @@ const zapsList: any[] =
               )}
 
               {totalZaps !== "–" && (
-                <IconPill icon="mdi:flash-outline" title="Total zaps">
+                <IconPill icon="mdi:lightning-bolt" title="Total zaps">
                   {totalZaps}
                 </IconPill>
               )}
@@ -240,7 +291,7 @@ const zapsList: any[] =
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Open file
+                  Download file
                 </a>
               </div>
             )}
@@ -251,7 +302,7 @@ const zapsList: any[] =
             <!-- Endorsements column -->
             <div>
               <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-offset">
-                Top endorsements
+                Latest endorsements
               </h2>
 
               {endorsementsList.length === 0 ? (
