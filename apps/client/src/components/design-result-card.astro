@@ -23,7 +23,7 @@ const excerpt =
   description.length > 120 ? `${description.slice(0, 120)}…` : description;
 ---
 
-<article class="flex flex-col gap-1 rounded-xl border border-default bg-offset/30 px-3.5 py-2.5 sm:px-4 sm:py-3 transition hover:bg-offset/40">
+<article class="flex flex-col gap-1 rounded-xl border border-default bg-offset/30 px-3.5 py-2.5 sm:px-4 sm:py-3 transition hover:bg-offset/40 hover:border-emerald-400/40">
   <!-- (1) HEADER BLOCK -->
   <header class="pb-2 mb-2 border-b border-default/60">
     <h2 class="text-sm font-medium text-default">
@@ -57,7 +57,7 @@ const excerpt =
       )}
 
       {design.format && (
-        <span class="inline-flex items-center gap-1 opacity-70">
+        <span class="inline-flex items-center gap-1 text-emerald-400/80">
           <Icon
             name="mdi:file-outline"
             class="size-3 text-offset"
