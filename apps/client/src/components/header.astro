@@ -13,7 +13,7 @@ const navItems: Array<NavItem> = [
 
 <header
   id="page-header"
-  class="absolute bottom-0 z-20 flex w-full items-center justify-between border-b border-transparent px-8 py-4 text-white"
+  class="backdrop-blur absolute bottom-0 z-20 flex w-full items-center justify-between border-b border-transparent px-8 py-4 text-white"
 >
   <a class="flex items-center gap-3 hover:text-emerald-400" href="#">
     <h1 class="sr-only">OpenPrints</h1>
@@ -48,40 +48,84 @@ const navItems: Array<NavItem> = [
       >
         <Icon name="mdi:menu" class="size-8" />
       </button>
-      <ThemeSwitcher />
-    </div>
-    <div id="menu-modal" class="modal hidden" aria-hidden="true">
-      <div class="fixed inset-0 bg-default px-8 py-4 text-default">
-        <div class="space-y-4" role="dialog" aria-modal="true">
-          <header class="text-right">
-            <button
-              id="close-nav-button"
-              type="button"
-              class="btn"
-              aria-label="Close navigation"
-            >
-              <Icon name="mdi:close" class="size-8" />
-            </button>
-          </header>
-          <div class="flex justify-center">
-            <Logo color="currentColor" />
-          </div>
-          <nav>
-            <ul class="flex flex-col">
-              {
-                navItems.map(({ title, url }) => (
-                  <li>
-                    <a class="block py-4 text-center text-xl" href={url}>
-                      {title}
-                    </a>
-                  </li>
-                ))
-              }
-            </ul>
-          </nav>
-        </div>
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <a
+          href="/app"
+          class="hidden sm:inline-flex h-8 items-center gap-1.5 rounded-md border border-current/40 px-2.5 text-[10px] text-sm font-medium text-current transition-colors hover:border-emerald-400 hover:text-emerald-400"
+        >
+          <Icon name="mdi:arrow-right" class="size-3" aria-hidden="true" />
+          <span>App</span>
+        </a>
+        <ThemeSwitcher />
       </div>
     </div>
+<div id="menu-modal" class="modal hidden" aria-hidden="true">
+  <div class="fixed inset-0 bg-default px-6 py-4 text-default">
+    <div
+      class="flex h-full flex-col"
+      role="dialog"
+      aria-modal="true"
+    >
+      <!-- Top bar: logo + close -->
+      <header class="flex items-center justify-between">
+        <a href="#" class="flex items-center gap-2">
+          <Logo color="currentColor" inline={true} />
+          <span
+            class="text-xs font-semibold tracking-[0.18em] uppercase text-offset"
+            style='font-family: "Typo Square Regular", system-ui, sans-serif;'
+          >
+            OpenPrints
+          </span>
+        </a>
+        <button
+          id="close-nav-button"
+          type="button"
+          class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-default text-offset hover:text-default"
+          aria-label="Close navigation"
+        >
+          <Icon name="mdi:close" class="size-4" aria-hidden="true" />
+        </button>
+      </header>
+
+      <!-- Main nav -->
+      <nav class="mt-10 flex flex-1 flex-col items-center justify-start">
+        <ul class="flex w-full max-w-xs flex-col items-stretch gap-4 text-center">
+          <!-- Primary CTA -->
+          <li>
+            <a
+              href="/app"
+              class="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-default px-3 text-[11px] font-medium text-offset transition-colors hover:text-emerald-400 hover:border-emerald-400"
+            >
+              <Icon name="mdi:arrow-right" class="size-3" aria-hidden="true" />
+              <span>Open app</span>
+            </a>
+          </li>
+
+          <!-- Divider -->
+          <li>
+            <div class="mx-auto h-px w-16 bg-default/50" aria-hidden="true" />
+          </li>
+
+          <!-- Section links -->
+          {navItems.map(({ title, url }) => (
+            <li>
+              <a
+                class="block py-2 text-lg font-medium hover:text-emerald-400"
+                href={url}
+              >
+                {title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <footer class="mt-6 text-center text-[10px] text-offset/70">
+        Tap a section to jump, or open the app for full search and details.
+      </footer>
+    </div>
+  </div>
+</div>
   </div>
 </header>
 

@@ -21,10 +21,12 @@ const orderOptions = [
 
 const limitOptions = [12, 24, 48] as const;
 
-const applyButtonClass =
-  q.trim() !== ""
-    ? "inline-flex items-center gap-1 rounded-md border border-emerald-400 bg-emerald-400/10 px-3 py-1.5 text-[11px] font-medium text-emerald-400 transition-colors hover:text-emerald-400"
-    : "inline-flex items-center gap-1 rounded-md border border-default px-3 py-1.5 text-[11px] font-medium text-default transition-colors hover:text-emerald-400";
+const applyButtonClassBase =
+  "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-[11px] font-medium transition-colors";
+const applyButtonClassEmpty =
+  "border-default text-default hover:text-emerald-400";
+const applyButtonClassActive =
+  "border-emerald-400 bg-emerald-400/10 text-emerald-400 hover:text-emerald-400";
 ---
 
 <aside class="h-fit rounded-xl border border-default/60 bg-offset/20 p-4">
@@ -38,6 +40,7 @@ const applyButtonClass =
         Query
       </span>
       <input
+        id="design-search-q"
         type="search"
         name="q"
         value={q}
@@ -78,8 +81,9 @@ const applyButtonClass =
 
     <div class="flex items-center gap-2 pt-1">
       <button
+        id="design-search-apply"
         type="submit"
-        class={applyButtonClass}
+        class={`${applyButtonClassBase} ${applyButtonClassEmpty}`}
       >
         <Icon name="mdi:magnify" class="size-3.5" aria-hidden="true" />
         Apply
@@ -93,3 +97,16 @@ const applyButtonClass =
     </div>
   </form>
 </aside>
+
+<script define:vars={{ applyButtonClassBase, applyButtonClassEmpty, applyButtonClassActive }}>
+  const input = document.getElementById("design-search-q");
+  const btn = document.getElementById("design-search-apply");
+  if (input && btn) {
+    const update = () => {
+      const active = input.value.trim() !== "";
+      btn.className = `${applyButtonClassBase} ${active ? applyButtonClassActive : applyButtonClassEmpty}`;
+    };
+    update();
+    input.addEventListener("input", update);
+  }
+</script>
