@@ -103,6 +103,28 @@ const latestPublishedAt =
 
 const urlValue = design && design.url ? design.url : "";
 
+let previewImages: string[] = [];
+
+if (design && (design as any).tags_json) {
+  try {
+    const rawTags =
+      typeof (design as any).tags_json === "string"
+        ? JSON.parse((design as any).tags_json)
+        : (design as any).tags_json;
+
+    const previews = rawTags && rawTags.preview;
+
+    if (Array.isArray(previews)) {
+      previewImages = previews.filter(
+        (item: unknown): item is string =>
+          typeof item === "string" && item.trim().length > 0
+      );
+    }
+  } catch {
+    // Ignore malformed tags_json
+  }
+}
+
 // Dev-only fake data to visually test endorsements/zaps layout and meta counts.
 // This only runs in development and feeds both the "Top endorsements/zaps"
 // lists and the meta pills (total zaps & endorsements count).
@@ -245,7 +267,20 @@ const zapsList: any[] =
               <p class="text-xs leading-relaxed text-offset">
                 {description}
               </p>
-              <PreviewMocks count={5} variant="card" />
+              {previewImages.length > 0 ? (
+                <div class="flex flex-wrap gap-1.5">
+                  {previewImages.map((src) => (
+                    <img
+                      src={src}
+                      loading="lazy"
+                      alt={`Preview of ${name}`}
+                      class="h-24 w-24 shrink-0 rounded-md border border-default/40 bg-default/20 object-cover"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <PreviewMocks count={5} variant="card" />
+              )}
             </div>
           )}
 
