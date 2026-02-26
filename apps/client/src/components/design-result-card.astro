@@ -12,6 +12,7 @@ interface Props {
     pubkey?: string | null;
     latest_published_at?: unknown;
     format?: string | null;
+    tags_json?: unknown;
   };
 }
 
@@ -21,6 +22,28 @@ const description =
   typeof design.content === "string" ? design.content.trim() : "";
 const excerpt =
   description.length > 120 ? `${description.slice(0, 120)}…` : description;
+
+let previewImages: string[] = [];
+
+if (design.tags_json) {
+  try {
+    const rawTags =
+      typeof design.tags_json === "string"
+        ? JSON.parse(design.tags_json)
+        : design.tags_json;
+
+    const previews = rawTags && (rawTags as any).preview;
+
+    if (Array.isArray(previews)) {
+      previewImages = previews.filter(
+        (item: unknown): item is string =>
+          typeof item === "string" && item.trim().length > 0
+      );
+    }
+  } catch {
+    // Ignore malformed tags_json
+  }
+}
 ---
 
 <article class="flex flex-col gap-1 rounded-xl border border-default bg-offset/30 px-3.5 py-2.5 sm:px-4 sm:py-3 transition hover:bg-offset/40 hover:border-emerald-400/40">
@@ -78,6 +101,19 @@ const excerpt =
 
   <!-- (3) THUMBNAIL STRIP -->
   <div class="mt-1.5 flex justify-end">
-    <PreviewMocks count={3} variant="card" />
+    {previewImages.length > 0 ? (
+      <div class="flex flex-wrap gap-1.5">
+        {previewImages.map((src) => (
+          <img
+            src={src}
+            loading="lazy"
+            alt={`Preview of ${name}`}
+            class="h-16 w-16 shrink-0 rounded-md border border-default/40 bg-default/20 object-cover"
+          />
+        ))}
+      </div>
+    ) : (
+      <PreviewMocks count={3} variant="card" />
+    )}
   </div>
 </article>
