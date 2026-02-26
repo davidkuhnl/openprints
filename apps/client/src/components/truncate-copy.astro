@@ -7,8 +7,13 @@ interface Props {
 }
 
 const { value, maxChars = 10 } = Astro.props;
+// When truncating: first x chars + "…" + last y chars, x + y = maxChars; if odd, x > y
+const x = Math.ceil(maxChars / 2);
+const y = Math.floor(maxChars / 2);
 const display =
-  value.length > maxChars ? value.slice(0, maxChars) + "…" : value;
+  value.length > maxChars
+    ? value.slice(0, x) + "…" + value.slice(-y)
+    : value;
 ---
 
 <!-- Visible instance when value is non-empty -->
