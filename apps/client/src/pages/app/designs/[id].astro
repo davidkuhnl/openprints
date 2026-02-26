@@ -94,7 +94,7 @@ const creatorMaxChars = 10;
 const format = design && design.format ? design.format : "–";
 
 const sha256Raw = design && design.sha256 ? design.sha256 : "–";
-const sha256MaxChars = 44; // show more of the hash, still truncatable
+const sha256MaxChars = 16; // show more of the hash, still truncatable
 
 const firstPublishedAt =
   design && design.first_published_at ? design.first_published_at : null;
@@ -245,7 +245,7 @@ const zapsList: any[] =
               <p class="text-xs leading-relaxed text-offset">
                 {description}
               </p>
-              <PreviewMocks count={5} />
+              <PreviewMocks count={5} variant="card" />
             </div>
           )}
 
@@ -262,24 +262,32 @@ const zapsList: any[] =
                     {urlValue}
                   </p>
 
-                  {sha256Raw !== "–" && (
-                    <p class="mt-1 text-[10px] text-offset">
-                      <span class="inline-flex items-center gap-1">
-                        <Icon
-                          name="mdi:identifier"
-                          class="size-3"
-                          aria-hidden="true"
-                        />
-                        <span>SHA-256</span>
-                      </span>{" "}
-                      <span class="inline-block align-middle">
-                        <TruncateCopy
-                          value={sha256Raw}
-                          maxChars={sha256MaxChars}
-                        />
+                {sha256Raw !== "–" && (
+                  <div class="mt-1 flex items-center text-[10px] text-offset">
+                    {/* label + icon */}
+                    <span class="inline-flex items-center gap-1">
+                      <Icon
+                        name="mdi:identifier"
+                        class="size-3"
+                        aria-hidden="true"
+                      />
+                      <span class="uppercase tracking-[0.08em]">
+                        SHA-256
                       </span>
-                    </p>
-                  )}
+                    </span>
+
+                    {/* separator dot */}
+                    <span class="mx-1 text-offset/40">•</span>
+
+                    {/* hash value */}
+                    <span class="inline-flex items-center font-mono">
+                      <TruncateCopy
+                        value={sha256Raw}
+                        maxChars={sha256MaxChars}
+                      />
+                    </span>
+                  </div>
+                )}
                 </>
               ) : (
                 <p class="mt-1 text-xs text-offset">
