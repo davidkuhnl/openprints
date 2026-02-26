@@ -57,14 +57,14 @@ This layout may evolve as the project grows, but this is the intended developmen
 Clone via SSH:
 
 ```bash
-git clone git@github.com:<your-org-or-user>/openprints.git
+git clone git@github.com:davidkuhnl/openprints.git
 cd openprints
 ```
 
 Or clone via HTTPS:
 
 ```bash
-git clone https://github.com/<your-org-or-user>/openprints.git
+git clone https://github.com/davidkuhnl/openprints.git
 cd openprints
 ```
 

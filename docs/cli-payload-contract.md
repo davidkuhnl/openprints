@@ -18,6 +18,7 @@ Current signer backend in CLI:
 Utility commands:
 
 - `openprints-cli keygen` can generate local dev `nsec`/`npub` values for testing.
+- `make cli-hash` can compute SHA256 of a given file
 
 ## Publish Output Contract (Current)
 

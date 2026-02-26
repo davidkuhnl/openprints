@@ -1,20 +1,5 @@
 # OpenPrints Nostr Event Schema
 
-
-# TODO:
-- [x] for the name of the design - what does human readable mean? What about accents and weird chars? What are the limitations
-- [x] do the tags support arrays?
-    - yes by duplicating the tag key
-- [x] should the endorsement be append only? What if I want to "unlike"? And if so, I need to only allow one per pubkey
-    - it will be an updatable event scoped down to a design version
-    - the version endorsements will be deduped per user on the design level
-- [x] how exactly does the zap receipts event look like - how do I reference the design? there are many zaps, is the indexer not going to choke on sifting through all of them?
-    - zaps are on event id's not the "d" tag
-    - event's id is the hash of the event, the id then get's signed
-    - will process zaps in the indexer now and later will carve out a standalone zap indexer
-
-
-
 ## 1. Title & Overview
 
 OpenPrints publishes 3D-printing design metadata as Nostr events. It uses **parameterized replaceable events** so each design can be updated over time (e.g. fixing metadata or linking a new file). This document defines the small set of kinds and tag schema used by OpenPrints. It is a canonical “mini-NIP” for the project, not a general-purpose Nostr NIP.

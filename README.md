@@ -11,18 +11,22 @@ From the repo root:
 
 ```bash
 make setup
-docker compose up
+docker compose up # Starts the dev relay
+make test-drive   # Walks you through the cli functionality and publishes design to the local relay and indexes it via the local indexer
+make cli-server # Runs the OpenPrints API on 
+cd apps/client & npm run dev # Runs the web client on http://localhost:4321/ that should show the local indexer results
 ```
 
 This brings up the local Nostr relay, indexer, and (with a bit of config) the Astro client. **Full instructions**, prerequisites, and all `make`/CLI details are in [Development Setup](docs/dev-setup.md).
 
 Quality checks: `make lint`, `make test`, `make check`. See [docs/dev-setup.md](docs/dev-setup.md) for the full list.
 
-## State of the Union (2026-02-25)
+## State of the Union (2026-02-26)
 
 ### Deploy
 - client: live on https://openprints.dev/ via CF talking to the indexer api via a secure tunnel
 - indexer: limping on my trusty old raspberry pi
+- data: a few test designs pushed through the pipeline and available in the live client
 
 ### Roadmap
 
