@@ -17,6 +17,9 @@ def run_db_stats(args) -> int:
     if config_errors:
         print_json({"ok": False, "errors": config_errors})
         return 1
+    if config is None:
+        print_json({"ok": False, "errors": [{"message": "config failed to load"}]})
+        return 1
 
     database_path = resolve_database_path(config)
     if not database_path or database_path.strip().lower() == ":memory:":
@@ -86,6 +89,9 @@ def run_db_wipe(args) -> int:
     config, config_errors, _ = load_app_config(getattr(args, "config", None))
     if config_errors:
         print_json({"ok": False, "errors": config_errors})
+        return 1
+    if config is None:
+        print_json({"ok": False, "errors": [{"message": "config failed to load"}]})
         return 1
 
     database_path = resolve_database_path(config)

@@ -338,6 +338,7 @@ dependencies = [
     { name = "bech32" },
     { name = "coincurve" },
     { name = "fastapi" },
+    { name = "pydantic" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "websockets" },
 ]
@@ -356,6 +357,7 @@ requires-dist = [
     { name = "bech32", specifier = ">=1.2.0" },
     { name = "coincurve", specifier = ">=20.0.0" },
     { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "pydantic", specifier = ">=2.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
     { name = "websockets", specifier = ">=12.0" },
 ]

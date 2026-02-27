@@ -74,10 +74,6 @@ def _resolve_port(args) -> int | None:
         except ValueError:
             return None
     config, _errors, _path = load_app_config(None)
-    raw = config.get("api_port")
-    if raw is not None:
-        try:
-            return int(raw)
-        except (TypeError, ValueError):
-            return None
-    return 8080
+    if config is None:
+        return 8080
+    return config.api.api_port

@@ -7,7 +7,6 @@ from pathlib import Path
 from fastapi import FastAPI
 
 from openprints.common.config import load_app_config, resolve_database_path
-from openprints.common.errors import invalid_type
 from openprints.indexer.store_sqlite import SQLiteIndexStore
 
 # Module-level store and config for lifespan (open/close store with app).
@@ -17,20 +16,14 @@ _relay_urls: list[str] = []
 
 
 def get_api_config():
-    """Load indexer config for API (database path, relay_urls for /ready)."""
+    """Load app config for API (database path, relay_urls for /ready)."""
     config, errors, _ = load_app_config(None)
     if errors:
         return None, errors
+    if config is None:
+        return None, [{"message": "config failed to load"}]
     db_path = resolve_database_path(config)
-    relay_urls: list[str] = []
-    raw = config.get("relays")
-    if isinstance(raw, list):
-        relay_urls = [u for u in raw if isinstance(u, str) and u.strip()]
-        if len(relay_urls) != len(raw):
-            return None, [invalid_type("config.relays", "a list of relay URL strings")]
-    elif raw is not None:
-        return None, [invalid_type("config.relays", "a list of relay URL strings")]
-
+    relay_urls = list(config.indexer.relays) if config.indexer.relays else []
     return {"database_path": db_path, "relay_urls": relay_urls}, None
 
 
