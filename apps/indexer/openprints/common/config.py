@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field, StrictFloat, StrictInt, field_validator
 from openprints.common.error_codes import INVALID_TYPE, INVALID_VALUE
 from openprints.common.errors import make_error
 
-ENV_DATABASE_PATH = "OPENPRINTS_INDEX_DATABASE_PATH"
 ENV_CONFIG_PATH = "OPENPRINTS_CONFIG"
 DEFAULT_CONFIG_FILENAME = "openprints.toml"
 
