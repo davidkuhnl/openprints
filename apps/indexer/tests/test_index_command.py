@@ -67,7 +67,6 @@ def test_index_uses_config_file_defaults(tmp_path, monkeypatch) -> None:
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
-    monkeypatch.delenv("OPENPRINTS_RELAY_URL", raising=False)
     monkeypatch.delenv("OPENPRINTS_RELAY_URLS", raising=False)
     monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
 

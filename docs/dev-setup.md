@@ -203,7 +203,7 @@ Publish relay selection (single relay for now):
 
 - `make cli-publish RELAY=ws://localhost:7447`
 - Example with retries: `make cli-publish RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`
-- If `RELAY` is not provided, CLI falls back to `OPENPRINTS_RELAY_URL`, then first entry in `OPENPRINTS_RELAY_URLS`, then default `ws://localhost:7447`.
+- If `RELAY` is not provided, CLI falls back to `OPENPRINTS_RELAY_URLS` (comma-separated list), then default `ws://localhost:7447`.
 - `publish` output is machine-readable JSON with `ok`, `errors`, and `relay_results`.
 - Planned enhancement: publish fan-out to multiple relays in one command (instead of current single-relay behavior).
 - Retries are for transport/timeouts only; relay `OK=false` is intentionally treated as a hard failure (no retry).

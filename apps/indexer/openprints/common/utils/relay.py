@@ -10,19 +10,12 @@ def resolve_relay_urls(
     cli_relays: list[str] | None,
     *,
     configured_relays: list[str] | None = None,
-    include_env: bool = True,
-    default_relays: list[str] | None = None,
 ) -> tuple[list[str], list[dict[str, str]]]:
     relays: list[str] = []
     if cli_relays:
         relays = [value.strip() for value in cli_relays if value and value.strip()]
 
-    if not relays and include_env:
-        single = os.environ.get("OPENPRINTS_RELAY_URL", "").strip()
-        if single:
-            relays = [single]
-
-    if not relays and include_env:
+    if not relays:
         relay_list = os.environ.get("OPENPRINTS_RELAY_URLS", "").strip()
         if relay_list:
             relays = [value.strip() for value in relay_list.split(",") if value.strip()]
@@ -30,8 +23,12 @@ def resolve_relay_urls(
     if not relays:
         relays = [value.strip() for value in (configured_relays or []) if value and value.strip()]
 
+    # VV: The defautl is hardcoded here for now for convenience to provide the out-of-the-box
+    #  dev setup experience. This way we are able to run the default
+    #  `build | sign | publish | subscribe` pipeline without having to configure the relay.
+    # I might move this to keep things cleaner in the future.
     if not relays:
-        relays = default_relays or ["ws://localhost:7447"]
+        relays = ["ws://localhost:7447"]
 
     for relay in relays:
         if not (relay.startswith("ws://") or relay.startswith("wss://")):
