@@ -1,5 +1,6 @@
 ---
 import TruncateCopy from "~/components/truncate-copy.astro";
+import { nip19 } from "nostr-tools";
 
 interface Props {
   value: string;
@@ -7,6 +8,18 @@ interface Props {
 }
 
 const { value, maxChars = 10 } = Astro.props;
+
+const isHexPubkey = (s: string): boolean => /^[0-9a-f]{64}$/i.test(s);
+
+let displayValue = value;
+
+if (isHexPubkey(value)) {
+  try {
+    displayValue = nip19.npubEncode(value);
+  } catch (err) {
+    console.error("Failed to encode pubkey to npub:", err);
+  }
+}
 ---
-<!-- This has been refactored into oblivion and we should eventually just get rid of it. Can't be bothered to do it rn. -->
-<TruncateCopy value={value} maxChars={maxChars} />
+
+<TruncateCopy value={displayValue} maxChars={maxChars} />
