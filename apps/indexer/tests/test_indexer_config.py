@@ -1,4 +1,4 @@
-"""Tests for openprints.common.config."""
+"""Tests for openprints.common.config and openprints.common.settings."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from openprints.common.config import (
     ENV_CONFIG_PATH,
     AppConfig,
     load_app_config,
-    resolve_database_path,
 )
+from openprints.common.settings import build_runtime_settings
 
 
 def test_load_app_config_none_when_no_file(monkeypatch, tmp_path) -> None:
@@ -116,18 +116,32 @@ def test_load_app_config_database_and_api_sections(tmp_path) -> None:
     assert path is not None
 
 
-def test_resolve_database_path_from_config() -> None:
-    config = AppConfig()
-    config.database.database_path = "openprints.db"
-    assert resolve_database_path(config) == "openprints.db"
-    config.database.database_path = None
-    assert resolve_database_path(config) is None
+def test_resolve_database_path_from_config(tmp_path) -> None:
+    config_file = tmp_path / "db.toml"
+    config_file.write_text('[database]\ndatabase_path = "openprints.db"\n', encoding="utf-8")
+    settings, errors, _ = build_runtime_settings(config_path=str(config_file))
+    assert errors == []
+    assert settings is not None
+    assert settings.database_path == "openprints.db"
+
+    config_file.write_text("[database]\n", encoding="utf-8")
+    settings, errors, _ = build_runtime_settings(config_path=str(config_file))
+    assert errors == []
+    assert settings is not None
+    assert settings.database_path is None
 
 
-def test_resolve_database_path_log_none(monkeypatch) -> None:
+def test_resolve_database_path_log_none(monkeypatch, tmp_path) -> None:
     monkeypatch.delenv("OPENPRINTS_INDEX_DATABASE_PATH", raising=False)
-    config = AppConfig()
-    config.database.database_path = "log"
-    assert resolve_database_path(config) is None
-    config.database.database_path = "none"
-    assert resolve_database_path(config) is None
+    config_file = tmp_path / "db.toml"
+    config_file.write_text('[database]\ndatabase_path = "log"\n', encoding="utf-8")
+    settings, errors, _ = build_runtime_settings(config_path=str(config_file))
+    assert errors == []
+    assert settings is not None
+    assert settings.database_path is None
+
+    config_file.write_text('[database]\ndatabase_path = "none"\n', encoding="utf-8")
+    settings, errors, _ = build_runtime_settings(config_path=str(config_file))
+    assert errors == []
+    assert settings is not None
+    assert settings.database_path is None

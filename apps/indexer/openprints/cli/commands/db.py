@@ -7,21 +7,21 @@ from pathlib import Path
 
 import aiosqlite
 
-from openprints.common.config import load_app_config, resolve_database_path
+from openprints.common.settings import build_runtime_settings
 from openprints.common.utils.output import print_json
 
 
 def run_db_stats(args) -> int:
     """Print indexer database stats and a short list of designs."""
-    config, config_errors, _ = load_app_config(getattr(args, "config", None))
-    if config_errors:
-        print_json({"ok": False, "errors": config_errors})
+    settings, errors, _ = build_runtime_settings(config_path=getattr(args, "config", None))
+    if errors:
+        print_json({"ok": False, "errors": errors})
         return 1
-    if config is None:
+    if settings is None:
         print_json({"ok": False, "errors": [{"message": "config failed to load"}]})
         return 1
 
-    database_path = resolve_database_path(config)
+    database_path = settings.database_path
     if not database_path or database_path.strip().lower() == ":memory:":
         print_json({"ok": False, "error": "No database path configured; nothing to inspect."})
         return 1
@@ -86,15 +86,15 @@ async def _run_db_stats(path: Path, limit: int) -> int:
 
 def run_db_wipe(args) -> int:
     """Wipe the indexer SQLite database. Requires --force."""
-    config, config_errors, _ = load_app_config(getattr(args, "config", None))
-    if config_errors:
-        print_json({"ok": False, "errors": config_errors})
+    settings, errors, _ = build_runtime_settings(config_path=getattr(args, "config", None))
+    if errors:
+        print_json({"ok": False, "errors": errors})
         return 1
-    if config is None:
+    if settings is None:
         print_json({"ok": False, "errors": [{"message": "config failed to load"}]})
         return 1
 
-    database_path = resolve_database_path(config)
+    database_path = settings.database_path
     if not database_path or database_path.strip().lower() == ":memory:":
         print_json({"ok": False, "error": "No database path configured; nothing to wipe."})
         return 1

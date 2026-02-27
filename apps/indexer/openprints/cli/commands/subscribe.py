@@ -16,9 +16,9 @@ from openprints.common.relay_protocol import (
     new_sub_id,
     serialize_message,
 )
+from openprints.common.settings import CliOverrides, build_runtime_settings
 from openprints.common.utils.logging import configure_logging
 from openprints.common.utils.output import print_json
-from openprints.common.utils.relay import resolve_relay_url
 
 logger = logging.getLogger(__name__)
 
@@ -115,10 +115,16 @@ async def _subscribe_once(
 
 def run_subscribe(args: Namespace) -> int:
     configure_logging()
-    relay, relay_errors = resolve_relay_url(args)
-    if relay_errors:
-        print_json({"ok": False, "errors": relay_errors})
+    cli = CliOverrides(
+        relay=[args.relay] if getattr(args, "relay", None) else None,
+    )
+    _settings, relay_errors, _ = build_runtime_settings(cli=cli)
+    if relay_errors or _settings is None:
+        print_json(
+            {"ok": False, "errors": relay_errors or [{"message": "failed to resolve relay"}]}
+        )
         return 1
+    relay = _settings.relay_urls[0]
 
     logger.info(
         "subscribe_start",

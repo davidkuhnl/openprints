@@ -170,15 +170,6 @@ def load_app_config(
     return config, [], str(path)
 
 
-def resolve_database_path(config: AppConfig) -> str | None:
-    """Resolve DB path from env and config. None means log-only."""
-    raw_env = os.environ.get(ENV_DATABASE_PATH, "").strip()
-    if raw_env:
-        return _normalize_database_path(raw_env) or None
-    value = config.database.database_path
-    return _normalize_database_path(value) if value else None
-
-
 def _resolve_default_config_path() -> Path | None:
     for base_dir in (Path.cwd(), _PACKAGE_DIR):
         candidate = base_dir / DEFAULT_CONFIG_FILENAME
