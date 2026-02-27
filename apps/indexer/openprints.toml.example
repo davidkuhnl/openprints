@@ -1,11 +1,8 @@
-# Copy to: apps/indexer/openprints.indexer.toml
+# Copy to: apps/indexer/openprints.toml
 # Then run: make cli-index
 
 [index]
-# Optional single relay:
-# relay = "ws://localhost:7447"
-
-# Optional multi-relay list:
+# Required relay list (one or more ws:// or wss:// URLs):
 relays = ["ws://localhost:7447"]
 
 # Optional SQLite database path (omit or set to "log" for log-only, no persistence):

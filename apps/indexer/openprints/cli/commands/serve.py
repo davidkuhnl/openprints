@@ -5,15 +5,15 @@ from __future__ import annotations
 import logging
 import os
 
+from openprints.common.config import load_app_config
 from openprints.common.utils.logging import configure_logging
-from openprints.indexer.config import load_indexer_config
 
 
 def run_serve(args) -> int:
     """Start the API server. Config and port from args/env.
     Uses project logging (OPENPRINTS_LOG_LEVEL, OPENPRINTS_LOG_FORMAT)."""
     if getattr(args, "config", None):
-        os.environ["OPENPRINTS_INDEXER_CONFIG"] = args.config
+        os.environ["OPENPRINTS_CONFIG"] = args.config
 
     # Use --log-level for OPENPRINTS_LOG_LEVEL so configure_logging picks it up
     log_level_arg = getattr(args, "log_level", None)
@@ -73,7 +73,7 @@ def _resolve_port(args) -> int | None:
             return int(raw)
         except ValueError:
             return None
-    config, _errors, _path = load_indexer_config(None)
+    config, _errors, _path = load_app_config(None)
     raw = config.get("api_port")
     if raw is not None:
         try:

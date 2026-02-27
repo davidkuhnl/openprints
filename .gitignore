@@ -67,7 +67,7 @@ coverage/
 # ------------------------------
 # Local config (create from .example)
 # ------------------------------
-apps/indexer/openprints.indexer.toml
+apps/indexer/openprints.toml
 
 # ------------------------------
 # Runtime data (local/dev)

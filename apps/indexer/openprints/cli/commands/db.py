@@ -7,13 +7,13 @@ from pathlib import Path
 
 import aiosqlite
 
+from openprints.common.config import load_app_config, resolve_database_path
 from openprints.common.utils.output import print_json
-from openprints.indexer.config import load_indexer_config, resolve_database_path
 
 
 def run_db_stats(args) -> int:
     """Print indexer database stats and a short list of designs."""
-    config, config_errors, _ = load_indexer_config(getattr(args, "config", None))
+    config, config_errors, _ = load_app_config(getattr(args, "config", None))
     if config_errors:
         print_json({"ok": False, "errors": config_errors})
         return 1
@@ -83,7 +83,7 @@ async def _run_db_stats(path: Path, limit: int) -> int:
 
 def run_db_wipe(args) -> int:
     """Wipe the indexer SQLite database. Requires --force."""
-    config, config_errors, _ = load_indexer_config(getattr(args, "config", None))
+    config, config_errors, _ = load_app_config(getattr(args, "config", None))
     if config_errors:
         print_json({"ok": False, "errors": config_errors})
         return 1

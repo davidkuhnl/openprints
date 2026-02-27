@@ -6,11 +6,11 @@ import os
 from argparse import Namespace
 from typing import Any
 
+from openprints.common.config import load_app_config, resolve_database_path
 from openprints.common.errors import invalid_type, invalid_value
 from openprints.common.utils.logging import configure_logging
 from openprints.common.utils.output import print_json
 from openprints.common.utils.relay import resolve_relay_urls
-from openprints.indexer.config import load_indexer_config, resolve_database_path
 from openprints.indexer.coordinator import IndexerCoordinator
 from openprints.indexer.store import LogOnlyIndexStore
 from openprints.indexer.store_sqlite import SQLiteIndexStore
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def run_index(args: Namespace) -> int:
-    config, config_errors, config_source = load_indexer_config(args.config)
+    config, config_errors, config_source = load_app_config(args.config)
     if config_errors:
         print_json({"ok": False, "errors": config_errors})
         return 1
@@ -182,12 +182,6 @@ def _resolve_config_relays(config: dict[str, Any]) -> tuple[list[str] | None, li
         return values or None, []
     if raw is not None:
         return None, [invalid_type("config.relays", "a list of relay URL strings")]
-
-    single = config.get("relay")
-    if isinstance(single, str) and single.strip():
-        return [single.strip()], []
-    if single is not None:
-        return None, [invalid_type("config.relay", "a relay URL string")]
 
     return None, []
 

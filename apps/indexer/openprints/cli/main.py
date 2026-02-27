@@ -140,8 +140,9 @@ def _build_parser() -> argparse.ArgumentParser:
         "--config",
         default=None,
         help=(
-            "Optional path to indexer TOML config (default: ./openprints.indexer.toml "
-            "if present). CLI flags override config."
+            "Optional path to OpenPrints TOML config "
+            "(default: ./openprints.toml). "
+            "CLI flags override config."
         ),
     )
     index_parser.add_argument(
@@ -195,7 +196,7 @@ def _build_parser() -> argparse.ArgumentParser:
     serve_parser.add_argument(
         "--config",
         default=None,
-        help="Path to indexer TOML config (same as index command; used for database_path).",
+        help="Path to OpenPrints TOML config (same as index command; used for database_path).",
     )
     serve_parser.add_argument(
         "--port",
@@ -221,7 +222,7 @@ def _build_parser() -> argparse.ArgumentParser:
     stats_parser.add_argument(
         "--config",
         default=None,
-        help="Path to indexer TOML config (same as index command).",
+        help="Path to OpenPrints TOML config (same as index command).",
     )
     stats_parser.add_argument(
         "--limit",
@@ -237,7 +238,7 @@ def _build_parser() -> argparse.ArgumentParser:
     wipe_parser.add_argument(
         "--config",
         default=None,
-        help="Path to indexer TOML config (same as index command).",
+        help="Path to OpenPrints TOML config (same as index command).",
     )
     wipe_parser.add_argument(
         "--force",

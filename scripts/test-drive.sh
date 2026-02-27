@@ -115,7 +115,7 @@ _pause
 _sep
 _step 5 "Start the indexer in another terminal:"
 _cmd "make cli-index"
-echo -e "${D}(Ensure database_path is set in apps/indexer/openprints.indexer.toml so events are persisted.)${R}"
+echo -e "${D}(Ensure database_path is set in apps/indexer/openprints.toml so events are persisted.)${R}"
 _wait_enter "the indexer is running"
 
 # --- 6) Ask user to run DB stats (initial) ---

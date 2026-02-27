@@ -9,17 +9,19 @@ from openprints.common.errors import invalid_type, invalid_value
 
 ENV_DATABASE_PATH = "OPENPRINTS_INDEX_DATABASE_PATH"
 
-DEFAULT_CONFIG_FILENAME = "openprints.indexer.toml"
-ENV_CONFIG_PATH = "OPENPRINTS_INDEXER_CONFIG"
+ENV_CONFIG_PATH = "OPENPRINTS_CONFIG"
+
+DEFAULT_CONFIG_FILENAME = "openprints.toml"
 
 # Directory containing this module; used as fallback search path for default config.
 _PACKAGE_DIR = Path(__file__).resolve().parent
 
 
-def load_indexer_config(
+def load_app_config(
     config_path: str | None,
 ) -> tuple[dict[str, Any], list[dict[str, str]], str | None]:
     path_value = (config_path or "").strip() or os.environ.get(ENV_CONFIG_PATH, "").strip()
+
     if path_value:
         path = Path(path_value)
         if not path.is_absolute():
@@ -27,11 +29,8 @@ def load_indexer_config(
         if not path.exists():
             return {}, [invalid_value("config", f"config file not found: {path}")], None
     else:
-        # Try cwd first, then directory containing this module.
-        path = Path.cwd() / DEFAULT_CONFIG_FILENAME
-        if not path.exists():
-            path = _PACKAGE_DIR / DEFAULT_CONFIG_FILENAME
-        if not path.exists():
+        path = _resolve_default_config_path()
+        if path is None:
             return {}, [], None
 
     try:
@@ -69,3 +68,11 @@ def resolve_database_path(config: dict[str, Any]) -> str | None:
     if not value or value.lower() in ("log", "none"):
         return None
     return value
+
+
+def _resolve_default_config_path() -> Path | None:
+    for base_dir in (Path.cwd(), _PACKAGE_DIR):
+        candidate = base_dir / DEFAULT_CONFIG_FILENAME
+        if candidate.exists():
+            return candidate
+    return None

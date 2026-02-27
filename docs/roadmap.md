@@ -68,7 +68,7 @@ Phased plan for the OpenPrints PoC and beyond.
 - Async relay workers (multi-relay, configurable list, backoff/retries) subscribing to kind `33301` (designs); kinds `33311`/`9735` reserved for later phases.
 - Reducer: map raw events to internal design model; replaceable events (newest `created_at` wins per `pubkey` + `d`). Store interface with in-memory/log-only and SQLite implementations.
 - SQLite schema: `designs`, `design_versions`; FK `designs.latest_event_id` → `design_versions.event_id`; events persisted to DB.
-- `index` CLI and TOML config (`openprints.indexer.toml`). DB: `openprints db wipe --force`, `openprints db stats`; `make cli-db-wipe`, `make cli-db-stats`; inspection in `docs/dev-setup.md`.
+- `index` CLI and TOML config (`openprints.toml`). DB: `openprints db wipe --force`, `openprints db stats`; `make cli-db-wipe`, `make cli-db-stats`; inspection in `docs/dev-setup.md`.
 - Health endpoints: `GET /health`, `GET /ready` on configurable port (see docs).
 - End-to-end test drive: `make test-drive` / `scripts/test-drive.sh` (relay wipe, relay up, key, DB wipe option, indexer + stats, publish 2 designs + update, tear down).
 
@@ -87,7 +87,7 @@ Phased plan for the OpenPrints PoC and beyond.
 - FastAPI app at `openprints.api` (same package as indexer). Swagger UI at `/docs`, OpenAPI at `/openapi.json`; ReDoc off.
 - Endpoints: `GET /health`, `GET /ready`; `GET /designs` (list with pagination and `q` for name search), `GET /designs/stats`, `GET /designs/{id}` (single design by API id).
 - Design id: opaque base64url-encoded id (from list `items[].id`); store key remains `(pubkey, design_id)`; API encodes/decodes for stable URLs.
-- Run: `openprints serve` or `uvicorn openprints.api:app --port 8080`; config via indexer TOML and `OPENPRINTS_API_PORT` (default 8080). See `docs/dev-setup.md`.
+- Run: `openprints serve` or `uvicorn openprints.api:app --port 8080`; config via OpenPrints TOML and `OPENPRINTS_API_PORT` (default 8080). See `docs/dev-setup.md`.
 
 **Done when:**
 
