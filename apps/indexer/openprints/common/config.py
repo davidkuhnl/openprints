@@ -158,16 +158,9 @@ def load_app_config(
     if api_raw is not None and not isinstance(api_raw, dict):
         return None, [make_error(INVALID_TYPE, "config.api", "a TOML table/object")], None
 
-    # Database path can be in [database] or (legacy) in [index]
-    db_section = database_raw or {}
-    if db_section.get("database_path") is None and isinstance(indexer_raw, dict):
-        db_path = indexer_raw.get("database_path") or indexer_raw.get("database")
-        if db_path is not None:
-            db_section = {**db_section, "database_path": db_path}
-
     try:
         config = AppConfig(
-            database=DatabaseConfig(**db_section),
+            database=DatabaseConfig(**(database_raw or {})),
             indexer=IndexerConfig(**(indexer_raw or {})),
             api=ApiConfig(**(api_raw or {})),
         )
