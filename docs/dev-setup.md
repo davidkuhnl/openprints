@@ -124,11 +124,11 @@ Run the OpenPrints HTTP API (FastAPI):
 # From repo root: use indexer config and optional port
 make cli-serve
 # or with config and port
-make cli-serve INDEX_CONFIG=apps/indexer/openprints.indexer.toml API_PORT=8080
+make cli-serve INDEX_CONFIG=apps/indexer/openprints.toml API_PORT=8080
 
 # Or from apps/indexer with uv
 uv run openprints-cli serve
-# or run uvicorn directly (config from OPENPRINTS_INDEXER_CONFIG and cwd)
+# or run uvicorn directly (config from OPENPRINTS_CONFIG and cwd)
 uv run uvicorn openprints.api:app --host 0.0.0.0 --port 8080
 ```
 
@@ -203,7 +203,7 @@ Publish relay selection (single relay for now):
 
 - `make cli-publish RELAY=ws://localhost:7447`
 - Example with retries: `make cli-publish RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`
-- If `RELAY` is not provided, CLI falls back to `OPENPRINTS_RELAY_URL`, then first entry in `OPENPRINTS_RELAY_URLS`, then default `ws://localhost:7447`.
+- If `RELAY` is not provided, CLI falls back to `OPENPRINTS_RELAY_URLS` (comma-separated list), then default `ws://localhost:7447`.
 - `publish` output is machine-readable JSON with `ok`, `errors`, and `relay_results`.
 - Planned enhancement: publish fan-out to multiple relays in one command (instead of current single-relay behavior).
 - Retries are for transport/timeouts only; relay `OK=false` is intentionally treated as a hard failure (no retry).
@@ -221,12 +221,12 @@ Subscribe relay selection (single relay for now):
 Indexer pipeline (multi-relay, SQLite optional):
 
 - `make cli-index` runs the in-process indexer (relay workers + shared queue + reducer). With a configured `database_path`, events are persisted to SQLite.
-- Config file (optional): `make setup` creates `openprints.indexer.toml` from `.example` when missing; the file is not committed (edit locally as needed).
+- Config file (optional): `make setup` creates `openprints.toml` from `.example` when missing; the file is not committed (edit locally as needed).
 - Database: set `database_path = "openprints.db"` in config (or env `OPENPRINTS_INDEX_DATABASE_PATH`) to persist; omit or set to `"log"` for log-only. Wipe with `make cli-db-wipe` (requires `--force`; uses same config).
 - Single relay via CLI override: `make cli-index INDEX_RELAY=ws://localhost:7447`
 - Multiple relays: `make cli-index RELAYS=ws://localhost:7447,wss://relay.example`
 - Runtime knobs:
-  - `INDEX_CONFIG` (optional config path; defaults to `apps/indexer/openprints.indexer.toml` when present)
+  - `INDEX_CONFIG` (optional config path; defaults to `apps/indexer/openprints.toml`)
   - `INDEX_KIND` (default `33301`)
   - `INDEX_QUEUE_MAXSIZE` (default `1000`)
   - `INDEX_TIMEOUT` (default `8.0`)
@@ -247,7 +247,7 @@ When `database_path` is set, the indexer writes to two tables:
 
 Quick inspection from the repo root:
 
-- `make cli-db-stats` — prints DB path, row counts for `designs` and `design_versions`, and the latest N designs (default 10). Use `INDEX_CONFIG` if your config lives elsewhere. Example: `make cli-db-stats` or `make cli-db-stats INDEX_CONFIG=openprints.indexer.toml`.
+- `make cli-db-stats` — prints DB path, row counts for `designs` and `design_versions`, and the latest N designs (default 10). Use `INDEX_CONFIG` if your config lives elsewhere. Example: `make cli-db-stats` or `make cli-db-stats INDEX_CONFIG=openprints.toml`.
 
 Direct SQL (from `apps/indexer` if your path is relative):
 

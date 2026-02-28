@@ -52,10 +52,10 @@ def _args(**overrides: object) -> Namespace:
 
 
 def test_index_uses_config_file_defaults(tmp_path, monkeypatch) -> None:
-    (tmp_path / "openprints.indexer.toml").write_text(
+    (tmp_path / "openprints.toml").write_text(
         "\n".join(
             [
-                "[index]",
+                "[indexer]",
                 'relays = ["ws://relay-from-config:7447"]',
                 "kind = 33309",
                 "queue_maxsize = 77",
@@ -67,7 +67,6 @@ def test_index_uses_config_file_defaults(tmp_path, monkeypatch) -> None:
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
-    monkeypatch.delenv("OPENPRINTS_RELAY_URL", raising=False)
     monkeypatch.delenv("OPENPRINTS_RELAY_URLS", raising=False)
     monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
 
@@ -83,11 +82,11 @@ def test_index_uses_config_file_defaults(tmp_path, monkeypatch) -> None:
 
 
 def test_index_cli_overrides_config(tmp_path, monkeypatch) -> None:
-    config_path = tmp_path / "openprints.indexer.toml"
+    config_path = tmp_path / "openprints.toml"
     config_path.write_text(
         "\n".join(
             [
-                "[index]",
+                "[indexer]",
                 'relays = ["ws://relay-from-config:7447"]',
                 "kind = 12345",
                 "queue_maxsize = 77",
@@ -122,11 +121,11 @@ def test_index_cli_overrides_config(tmp_path, monkeypatch) -> None:
 
 
 def test_index_config_log_level_applies_when_env_missing(tmp_path, monkeypatch) -> None:
-    config_path = tmp_path / "openprints.indexer.toml"
+    config_path = tmp_path / "openprints.toml"
     config_path.write_text(
         "\n".join(
             [
-                "[index]",
+                "[indexer]",
                 "log_level = 'INFO'",
             ]
         ),
@@ -150,17 +149,17 @@ def test_index_returns_1_when_config_file_not_found(capsys) -> None:
 
 
 def test_index_returns_1_when_config_relays_invalid_type(tmp_path, monkeypatch) -> None:
-    config_path = tmp_path / "openprints.indexer.toml"
-    config_path.write_text("[index]\nrelays = [123]\n", encoding="utf-8")
+    config_path = tmp_path / "openprints.toml"
+    config_path.write_text("[indexer]\nrelays = [123]\n", encoding="utf-8")
     monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
     result = index_cmd.run_index(_args(config=str(config_path), relay=["ws://r:7447"]))
     assert result == 1
 
 
 def test_index_returns_1_when_relay_url_invalid(tmp_path, monkeypatch) -> None:
-    config_path = tmp_path / "openprints.indexer.toml"
+    config_path = tmp_path / "openprints.toml"
     config_path.write_text(
-        '[index]\nrelays = ["http://invalid:7447"]\n',
+        '[indexer]\nrelays = ["http://invalid:7447"]\n',
         encoding="utf-8",
     )
     monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
@@ -169,9 +168,9 @@ def test_index_returns_1_when_relay_url_invalid(tmp_path, monkeypatch) -> None:
 
 
 def test_index_returns_1_when_config_kind_invalid_type(tmp_path, monkeypatch) -> None:
-    config_path = tmp_path / "openprints.indexer.toml"
+    config_path = tmp_path / "openprints.toml"
     config_path.write_text(
-        '[index]\nrelays = ["ws://r:7447"]\nkind = "33301"\n',
+        '[indexer]\nrelays = ["ws://r:7447"]\nkind = "33301"\n',
         encoding="utf-8",
     )
     monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
@@ -180,9 +179,9 @@ def test_index_returns_1_when_config_kind_invalid_type(tmp_path, monkeypatch) ->
 
 
 def test_index_returns_1_when_config_log_level_invalid(tmp_path, monkeypatch) -> None:
-    config_path = tmp_path / "openprints.indexer.toml"
+    config_path = tmp_path / "openprints.toml"
     config_path.write_text(
-        '[index]\nrelays = ["ws://r:7447"]\nlog_level = "TRACE"\n',
+        '[indexer]\nrelays = ["ws://r:7447"]\nlog_level = "TRACE"\n',
         encoding="utf-8",
     )
     monkeypatch.delenv("OPENPRINTS_LOG_LEVEL", raising=False)
@@ -192,9 +191,9 @@ def test_index_returns_1_when_config_log_level_invalid(tmp_path, monkeypatch) ->
 
 
 def test_index_returns_1_when_max_retries_negative(tmp_path, monkeypatch) -> None:
-    config_path = tmp_path / "openprints.indexer.toml"
+    config_path = tmp_path / "openprints.toml"
     config_path.write_text(
-        '[index]\nrelays = ["ws://r:7447"]\nmax_retries = -1\n',
+        '[indexer]\nrelays = ["ws://r:7447"]\nmax_retries = -1\n',
         encoding="utf-8",
     )
     monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
@@ -203,9 +202,9 @@ def test_index_returns_1_when_max_retries_negative(tmp_path, monkeypatch) -> Non
 
 
 def test_index_returns_1_when_duration_negative(tmp_path, monkeypatch) -> None:
-    config_path = tmp_path / "openprints.indexer.toml"
+    config_path = tmp_path / "openprints.toml"
     config_path.write_text(
-        '[index]\nrelays = ["ws://r:7447"]\nduration = -1.0\n',
+        '[indexer]\nrelays = ["ws://r:7447"]\nduration = -1.0\n',
         encoding="utf-8",
     )
     monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
@@ -214,9 +213,9 @@ def test_index_returns_1_when_duration_negative(tmp_path, monkeypatch) -> None:
 
 
 def test_index_prints_stats_on_success(tmp_path, monkeypatch, capsys) -> None:
-    config_path = tmp_path / "openprints.indexer.toml"
+    config_path = tmp_path / "openprints.toml"
     config_path.write_text(
-        '[index]\nrelays = ["ws://r:7447"]\nduration = 0.001\n',
+        '[indexer]\nrelays = ["ws://r:7447"]\nduration = 0.001\n',
         encoding="utf-8",
     )
     monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)

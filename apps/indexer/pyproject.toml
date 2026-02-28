@@ -8,6 +8,7 @@ dependencies = [
   "bech32>=1.2.0",
   "coincurve>=20.0.0",
   "fastapi>=0.115.0",
+  "pydantic>=2.0.0",
   "uvicorn[standard]>=0.32.0",
   "websockets>=12.0",
 ]

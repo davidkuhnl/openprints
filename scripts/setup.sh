@@ -90,9 +90,9 @@ echo ""
 if [[ -f "$REPO_ROOT/apps/indexer/pyproject.toml" ]]; then
   echo "Setting up indexer (uv sync)..."
   (cd "$REPO_ROOT/apps/indexer" && uv sync)
-  if [[ ! -f "$REPO_ROOT/apps/indexer/openprints.indexer.toml" ]] && [[ -f "$REPO_ROOT/apps/indexer/openprints.indexer.toml.example" ]]; then
-    cp "$REPO_ROOT/apps/indexer/openprints.indexer.toml.example" "$REPO_ROOT/apps/indexer/openprints.indexer.toml"
-    echo "Created apps/indexer/openprints.indexer.toml from example."
+  if [[ ! -f "$REPO_ROOT/apps/indexer/openprints.toml" ]] && [[ -f "$REPO_ROOT/apps/indexer/openprints.toml.example" ]]; then
+    cp "$REPO_ROOT/apps/indexer/openprints.toml.example" "$REPO_ROOT/apps/indexer/openprints.toml"
+    echo "Created apps/indexer/openprints.toml from example."
   fi
   echo "Indexer deps ready."
 elif [[ -f "$REPO_ROOT/apps/indexer/requirements.txt" ]]; then

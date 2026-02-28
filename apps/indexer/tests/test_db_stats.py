@@ -27,7 +27,7 @@ def test_db_stats_no_database_configured(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     config_path = tmp_path / "config.toml"
-    config_path.write_text('[index]\nrelays = ["ws://localhost:7447"]\n')
+    config_path.write_text('[indexer]\nrelays = ["ws://localhost:7447"]\n')
     args = Namespace(config=str(config_path), limit=10)
     code = run_db_stats(args)
     assert code == 1
@@ -38,7 +38,7 @@ def test_db_stats_no_database_configured(
 
 def test_db_stats_memory_rejected(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     config_path = tmp_path / "config.toml"
-    config_path.write_text('[index]\ndatabase_path = ":memory:"\n')
+    config_path.write_text('[database]\ndatabase_path = ":memory:"\n')
     args = Namespace(config=str(config_path), limit=10)
     code = run_db_stats(args)
     assert code == 1
@@ -52,7 +52,7 @@ def test_db_stats_database_file_not_found(
 ) -> None:
     config_path = tmp_path / "config.toml"
     db_path = tmp_path / "missing.db"
-    config_path.write_text(f'[index]\ndatabase_path = "{db_path}"\n')
+    config_path.write_text(f'[database]\ndatabase_path = "{db_path}"\n')
     args = Namespace(config=str(config_path), limit=10)
     code = run_db_stats(args)
     assert code == 1
@@ -64,7 +64,7 @@ def test_db_stats_database_file_not_found(
 def test_db_stats_success_empty_db(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     db_path = tmp_path / "openprints.db"
     config_path = tmp_path / "config.toml"
-    config_path.write_text(f'[index]\ndatabase_path = "{db_path}"\n')
+    config_path.write_text(f'[database]\ndatabase_path = "{db_path}"\n')
 
     async def create_empty_db() -> None:
         store = SQLiteIndexStore(db_path)
@@ -85,7 +85,7 @@ def test_db_stats_success_empty_db(tmp_path: Path, capsys: pytest.CaptureFixture
 def test_db_stats_success_with_designs(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     db_path = tmp_path / "openprints.db"
     config_path = tmp_path / "config.toml"
-    config_path.write_text(f'[index]\ndatabase_path = "{db_path}"\n')
+    config_path.write_text(f'[database]\ndatabase_path = "{db_path}"\n')
 
     version_row = DesignVersionRow(
         event_id="e" * 64,
@@ -141,7 +141,7 @@ def test_db_stats_limit_zero_no_latest_section(
 ) -> None:
     db_path = tmp_path / "openprints.db"
     config_path = tmp_path / "config.toml"
-    config_path.write_text(f'[index]\ndatabase_path = "{db_path}"\n')
+    config_path.write_text(f'[database]\ndatabase_path = "{db_path}"\n')
 
     async def create_empty_db() -> None:
         store = SQLiteIndexStore(db_path)

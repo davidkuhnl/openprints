@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from openprints.indexer.config import load_indexer_config, resolve_database_path
+from openprints.common.settings import build_runtime_settings
 from openprints.indexer.store_sqlite import SQLiteIndexStore
 
 # Module-level store and config for lifespan (open/close store with app).
@@ -16,19 +16,16 @@ _relay_urls: list[str] = []
 
 
 def get_api_config():
-    """Load indexer config for API (database path, relay_urls for /ready)."""
-    config, errors, _ = load_indexer_config(None)
+    """Load app config for API (database path, relay_urls for /ready)."""
+    settings, errors, _ = build_runtime_settings()
     if errors:
         return None, errors
-    db_path = resolve_database_path(config)
-    relay_urls: list[str] = []
-    raw = config.get("relays")
-    if isinstance(raw, list):
-        relay_urls = [u for u in raw if isinstance(u, str) and u.strip()]
-    single = config.get("relay")
-    if isinstance(single, str) and single.strip() and not relay_urls:
-        relay_urls = [single.strip()]
-    return {"database_path": db_path, "relay_urls": relay_urls}, None
+    if settings is None:
+        return None, [{"message": "failed to build runtime settings"}]
+    return {
+        "database_path": settings.database_path,
+        "relay_urls": list(settings.relay_urls),
+    }, None
 
 
 async def open_store(app: FastAPI) -> None:

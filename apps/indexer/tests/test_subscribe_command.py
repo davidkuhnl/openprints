@@ -188,19 +188,22 @@ def test_subscribe_once_limit_zero_continues_after_eose_until_timeout(monkeypatc
 
 
 def test_subscribe_resolve_relay_url_fallbacks(monkeypatch) -> None:
-    monkeypatch.delenv("OPENPRINTS_RELAY_URL", raising=False)
+    from openprints.common.settings import build_runtime_settings
+
     monkeypatch.delenv("OPENPRINTS_RELAY_URLS", raising=False)
-    relay, errors = subscribe_cmd.resolve_relay_url(_args())
+    settings, errors, _ = build_runtime_settings()
     assert errors == []
-    assert relay == "ws://localhost:7447"
+    assert settings is not None
+    assert settings.relay_urls[0] == "ws://localhost:7447"
 
-    monkeypatch.setenv("OPENPRINTS_RELAY_URL", "ws://env-relay:7447")
-    relay, errors = subscribe_cmd.resolve_relay_url(_args())
+    monkeypatch.setenv("OPENPRINTS_RELAY_URLS", "ws://env-relay:7447")
+    settings, errors, _ = build_runtime_settings()
     assert errors == []
-    assert relay == "ws://env-relay:7447"
+    assert settings is not None
+    assert settings.relay_urls[0] == "ws://env-relay:7447"
 
-    monkeypatch.delenv("OPENPRINTS_RELAY_URL", raising=False)
     monkeypatch.setenv("OPENPRINTS_RELAY_URLS", "ws://first:7447,ws://second:7447")
-    relay, errors = subscribe_cmd.resolve_relay_url(_args())
+    settings, errors, _ = build_runtime_settings()
     assert errors == []
-    assert relay == "ws://first:7447"
+    assert settings is not None
+    assert settings.relay_urls[0] == "ws://first:7447"

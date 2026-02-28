@@ -30,3 +30,6 @@ These scripts are the lower-level commands behind Make targets:
 - `scripts/test-drive.sh` — end-to-end test drive: export dev key, start relay, prompt to run indexer and DB stats, publish two designs and an update, then tear down (relay wipe + DB wipe). Run from repo root: `./scripts/test-drive.sh`.
 
 Default relay base URL is `http://localhost:7447` and default relay WebSocket URL is `ws://localhost:7447`. Override with `RELAY_BASE_URL` / `RELAY_WS_URL` when needed.
+
+## Event Helpers
+Scripts in `./event-helpers` are generally scripts that should help with publishing meaningful events to the local relay for eas of testing. They are maintained at best-effort basis and might be removed once the project is mature enough.

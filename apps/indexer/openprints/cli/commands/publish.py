@@ -10,9 +10,9 @@ from openprints.common.errors import invalid_json, invalid_value
 from openprints.common.event_types import SignedEvent
 from openprints.common.event_utils import verify_event_signature
 from openprints.common.payload_contract import validate_payload
+from openprints.common.settings import CliOverrides, build_runtime_settings
 from openprints.common.utils.input import read_text_input
 from openprints.common.utils.output import print_json
-from openprints.common.utils.relay import resolve_relay_url
 
 
 async def _publish_event_to_relay(
@@ -91,10 +91,16 @@ def run_publish(args: Namespace) -> int:
         print_json({"ok": False, "errors": [invalid_value("event", sig_error)]})
         return 1
 
-    relay, relay_errors = resolve_relay_url(args)
-    if relay_errors:
-        print_json({"ok": False, "errors": relay_errors})
+    cli = CliOverrides(
+        relay=[args.relay] if getattr(args, "relay", None) else None,
+    )
+    _settings, relay_errors, _ = build_runtime_settings(cli=cli)
+    if relay_errors or _settings is None:
+        print_json(
+            {"ok": False, "errors": relay_errors or [{"message": "failed to resolve relay"}]}
+        )
         return 1
+    relay = _settings.relay_urls[0]
 
     retries = max(0, int(args.retries))
     retry_backoff_s = max(0.0, int(args.retry_backoff_ms) / 1000.0)

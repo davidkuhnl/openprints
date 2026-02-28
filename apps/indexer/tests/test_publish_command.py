@@ -128,7 +128,7 @@ def test_publish_rejects_empty_input(monkeypatch, capsys) -> None:
 
 
 def test_publish_uses_env_relay_url(monkeypatch, capsys) -> None:
-    monkeypatch.setenv("OPENPRINTS_RELAY_URL", "ws://env-relay:7447")
+    monkeypatch.setenv("OPENPRINTS_RELAY_URLS", "ws://env-relay:7447")
     monkeypatch.setattr(sys, "stdin", StringIO(json.dumps(valid_signed_payload())))
     monkeypatch.setattr(publish_cmd, "_publish_event_to_relay", _publish_success)
 
@@ -141,7 +141,6 @@ def test_publish_uses_env_relay_url(monkeypatch, capsys) -> None:
 
 
 def test_publish_uses_first_openprints_relay_urls_entry(monkeypatch, capsys) -> None:
-    monkeypatch.delenv("OPENPRINTS_RELAY_URL", raising=False)
     monkeypatch.setenv("OPENPRINTS_RELAY_URLS", "ws://first:7447,ws://second:7447")
     monkeypatch.setattr(sys, "stdin", StringIO(json.dumps(valid_signed_payload())))
     monkeypatch.setattr(publish_cmd, "_publish_event_to_relay", _publish_success)
