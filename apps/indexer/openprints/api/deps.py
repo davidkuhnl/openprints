@@ -21,7 +21,7 @@ def get_api_config():
     if errors:
         return None, errors
     if settings is None:
-        return None, [{"message": "config failed to load"}]
+        return None, [{"message": "failed to build runtime settings"}]
     return {
         "database_path": settings.database_path,
         "relay_urls": list(settings.relay_urls),

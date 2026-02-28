@@ -144,12 +144,12 @@ def load_app_config(
     if not isinstance(parsed, dict):
         return None, [make_error(INVALID_TYPE, "config", "a TOML table/object")], None
 
-    # Build section dicts; allow [indexer] or legacy [index] for indexer section
+    # Build section dicts
     database_raw = parsed.get("database")
     if database_raw is not None and not isinstance(database_raw, dict):
         return None, [make_error(INVALID_TYPE, "config.database", "a TOML table/object")], None
 
-    indexer_raw = parsed.get("indexer") or parsed.get("index")
+    indexer_raw = parsed.get("indexer")
     if indexer_raw is not None and not isinstance(indexer_raw, dict):
         return None, [make_error(INVALID_TYPE, "config.indexer", "a TOML table/object")], None
 

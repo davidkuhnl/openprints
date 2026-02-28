@@ -18,7 +18,7 @@ def run_db_stats(args) -> int:
         print_json({"ok": False, "errors": errors})
         return 1
     if settings is None:
-        print_json({"ok": False, "errors": [{"message": "config failed to load"}]})
+        print_json({"ok": False, "errors": [{"message": "failed to build runtime settings"}]})
         return 1
 
     database_path = settings.database_path
@@ -91,7 +91,7 @@ def run_db_wipe(args) -> int:
         print_json({"ok": False, "errors": errors})
         return 1
     if settings is None:
-        print_json({"ok": False, "errors": [{"message": "config failed to load"}]})
+        print_json({"ok": False, "errors": [{"message": "failed to build runtime settings"}]})
         return 1
 
     database_path = settings.database_path

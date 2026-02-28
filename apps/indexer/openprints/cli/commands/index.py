@@ -34,6 +34,7 @@ def run_index(args: Namespace) -> int:
         print_json({"ok": False, "errors": errors})
         return 1
     if settings is None:
+        print_json({"ok": False, "errors": [{"message": "failed to build runtime settings"}]})
         return 1
 
     if settings.max_retries < 0:

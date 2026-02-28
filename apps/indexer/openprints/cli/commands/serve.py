@@ -7,6 +7,7 @@ import os
 
 from openprints.common.settings import CliOverrides, build_runtime_settings
 from openprints.common.utils.logging import configure_logging
+from openprints.common.utils.output import print_json
 
 
 def run_serve(args) -> int:
@@ -20,13 +21,9 @@ def run_serve(args) -> int:
     )
     settings, errors, _ = build_runtime_settings(config_path=getattr(args, "config", None), cli=cli)
     if errors:
-        from openprints.common.utils.output import print_json
-
         print_json({"ok": False, "errors": errors})
         return 1
     if settings is None:
-        from openprints.common.utils.output import print_json
-
         print_json({"ok": False, "errors": [{"message": "failed to load settings"}]})
         return 1
 
@@ -41,8 +38,6 @@ def run_serve(args) -> int:
 
     port = settings.api_port
     if port < 1 or port > 65535:
-        from openprints.common.utils.output import print_json
-
         err = "Invalid port. Use config api_port, OPENPRINTS_API_PORT, or --port (1-65535)."
         print_json({"ok": False, "error": err})
         return 1
