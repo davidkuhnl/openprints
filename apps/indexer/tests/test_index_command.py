@@ -6,10 +6,8 @@ from types import SimpleNamespace
 import openprints.cli.commands.index as index_cmd
 
 
-class _FakeCoordinator:
+class _FakeDesignIndexer:
     init_args: dict[str, object] = {}
-    ran_for_duration: float | None = None
-    ran_until_cancelled: bool = False
 
     def __init__(
         self,
@@ -21,7 +19,7 @@ class _FakeCoordinator:
         max_retries: int,
         store=None,
     ) -> None:
-        _FakeCoordinator.init_args = {
+        _FakeDesignIndexer.init_args = {
             "relays": relays,
             "kind": kind,
             "timeout_s": timeout_s,
@@ -30,11 +28,25 @@ class _FakeCoordinator:
         }
         self.reducer = SimpleNamespace(stats=SimpleNamespace(processed=0, reduced=0, duplicates=0))
 
+    async def run(self, stop_event) -> None:
+        return
+
+
+class _FakeIndexerApp:
+    ran_for_duration: float | None = None
+    ran_until_cancelled: bool = False
+
+    def __init__(self, *, design_indexer: _FakeDesignIndexer) -> None:
+        self.design_indexer = design_indexer
+
     async def run_for(self, duration_s: float) -> None:
-        _FakeCoordinator.ran_for_duration = duration_s
+        _FakeIndexerApp.ran_for_duration = duration_s
 
     async def run_until_cancelled(self) -> None:
-        _FakeCoordinator.ran_until_cancelled = True
+        _FakeIndexerApp.ran_until_cancelled = True
+
+    async def stop(self) -> None:
+        return
 
 
 def _args(**overrides: object) -> Namespace:
@@ -49,6 +61,11 @@ def _args(**overrides: object) -> Namespace:
     }
     base.update(overrides)
     return Namespace(**base)
+
+
+def _patch_runtime(monkeypatch) -> None:
+    monkeypatch.setattr(index_cmd, "DesignIndexer", _FakeDesignIndexer)
+    monkeypatch.setattr(index_cmd, "IndexerApp", _FakeIndexerApp)
 
 
 def test_index_uses_config_file_defaults(tmp_path, monkeypatch) -> None:
@@ -68,17 +85,17 @@ def test_index_uses_config_file_defaults(tmp_path, monkeypatch) -> None:
     )
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("OPENPRINTS_RELAY_URLS", raising=False)
-    monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
+    _patch_runtime(monkeypatch)
 
     result = index_cmd.run_index(_args())
 
     assert result == 0
-    assert _FakeCoordinator.init_args["relays"] == ["ws://relay-from-config:7447"]
-    assert _FakeCoordinator.init_args["kind"] == 33309
-    assert _FakeCoordinator.init_args["queue_maxsize"] == 77
-    assert _FakeCoordinator.init_args["timeout_s"] == 2.5
-    assert _FakeCoordinator.init_args["max_retries"] == 4
-    assert _FakeCoordinator.ran_for_duration == 1.25
+    assert _FakeDesignIndexer.init_args["relays"] == ["ws://relay-from-config:7447"]
+    assert _FakeDesignIndexer.init_args["kind"] == 33309
+    assert _FakeDesignIndexer.init_args["queue_maxsize"] == 77
+    assert _FakeDesignIndexer.init_args["timeout_s"] == 2.5
+    assert _FakeDesignIndexer.init_args["max_retries"] == 4
+    assert _FakeIndexerApp.ran_for_duration == 1.25
 
 
 def test_index_cli_overrides_config(tmp_path, monkeypatch) -> None:
@@ -97,7 +114,7 @@ def test_index_cli_overrides_config(tmp_path, monkeypatch) -> None:
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
+    _patch_runtime(monkeypatch)
 
     result = index_cmd.run_index(
         _args(
@@ -112,12 +129,12 @@ def test_index_cli_overrides_config(tmp_path, monkeypatch) -> None:
     )
 
     assert result == 0
-    assert _FakeCoordinator.init_args["relays"] == ["ws://relay-from-cli:7447"]
-    assert _FakeCoordinator.init_args["kind"] == 33301
-    assert _FakeCoordinator.init_args["queue_maxsize"] == 1000
-    assert _FakeCoordinator.init_args["timeout_s"] == 8.0
-    assert _FakeCoordinator.init_args["max_retries"] == 12
-    assert _FakeCoordinator.ran_until_cancelled is True
+    assert _FakeDesignIndexer.init_args["relays"] == ["ws://relay-from-cli:7447"]
+    assert _FakeDesignIndexer.init_args["kind"] == 33301
+    assert _FakeDesignIndexer.init_args["queue_maxsize"] == 1000
+    assert _FakeDesignIndexer.init_args["timeout_s"] == 8.0
+    assert _FakeDesignIndexer.init_args["max_retries"] == 12
+    assert _FakeIndexerApp.ran_until_cancelled is True
 
 
 def test_index_config_log_level_applies_when_env_missing(tmp_path, monkeypatch) -> None:
@@ -132,12 +149,12 @@ def test_index_config_log_level_applies_when_env_missing(tmp_path, monkeypatch) 
         encoding="utf-8",
     )
     monkeypatch.delenv("OPENPRINTS_LOG_LEVEL", raising=False)
-    monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
+    _patch_runtime(monkeypatch)
 
     result = index_cmd.run_index(_args(config=str(config_path), duration=0.01))
 
     assert result == 0
-    assert _FakeCoordinator.ran_for_duration == 0.01
+    assert _FakeIndexerApp.ran_for_duration == 0.01
     assert index_cmd.os.environ.get("OPENPRINTS_LOG_LEVEL") == "INFO"
 
 
@@ -151,7 +168,7 @@ def test_index_returns_1_when_config_file_not_found(capsys) -> None:
 def test_index_returns_1_when_config_relays_invalid_type(tmp_path, monkeypatch) -> None:
     config_path = tmp_path / "openprints.toml"
     config_path.write_text("[indexer]\nrelays = [123]\n", encoding="utf-8")
-    monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
+    _patch_runtime(monkeypatch)
     result = index_cmd.run_index(_args(config=str(config_path), relay=["ws://r:7447"]))
     assert result == 1
 
@@ -162,7 +179,7 @@ def test_index_returns_1_when_relay_url_invalid(tmp_path, monkeypatch) -> None:
         '[indexer]\nrelays = ["http://invalid:7447"]\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
+    _patch_runtime(monkeypatch)
     result = index_cmd.run_index(_args(config=str(config_path), duration=0.01))
     assert result == 1
 
@@ -173,7 +190,7 @@ def test_index_returns_1_when_config_kind_invalid_type(tmp_path, monkeypatch) ->
         '[indexer]\nrelays = ["ws://r:7447"]\nkind = "33301"\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
+    _patch_runtime(monkeypatch)
     result = index_cmd.run_index(_args(config=str(config_path)))
     assert result == 1
 
@@ -185,7 +202,7 @@ def test_index_returns_1_when_config_log_level_invalid(tmp_path, monkeypatch) ->
         encoding="utf-8",
     )
     monkeypatch.delenv("OPENPRINTS_LOG_LEVEL", raising=False)
-    monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
+    _patch_runtime(monkeypatch)
     result = index_cmd.run_index(_args(config=str(config_path), duration=0.01))
     assert result == 1
 
@@ -196,7 +213,7 @@ def test_index_returns_1_when_max_retries_negative(tmp_path, monkeypatch) -> Non
         '[indexer]\nrelays = ["ws://r:7447"]\nmax_retries = -1\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
+    _patch_runtime(monkeypatch)
     result = index_cmd.run_index(_args(config=str(config_path), duration=0.01))
     assert result == 1
 
@@ -207,7 +224,7 @@ def test_index_returns_1_when_duration_negative(tmp_path, monkeypatch) -> None:
         '[indexer]\nrelays = ["ws://r:7447"]\nduration = -1.0\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
+    _patch_runtime(monkeypatch)
     result = index_cmd.run_index(_args(config=str(config_path)))
     assert result == 1
 
@@ -218,7 +235,7 @@ def test_index_prints_stats_on_success(tmp_path, monkeypatch, capsys) -> None:
         '[indexer]\nrelays = ["ws://r:7447"]\nduration = 0.001\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr(index_cmd, "IndexerCoordinator", _FakeCoordinator)
+    _patch_runtime(monkeypatch)
     result = index_cmd.run_index(_args(config=str(config_path)))
     assert result == 0
     out = capsys.readouterr().out

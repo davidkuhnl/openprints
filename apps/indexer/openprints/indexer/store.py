@@ -48,6 +48,8 @@ class IndexStore(Protocol):
 
     async def upsert_design_current(self, row: DesignCurrentRow) -> None: ...
 
+    async def ensure_identity_pending(self, pubkey: str, first_seen_at: int) -> None: ...
+
 
 class LogOnlyIndexStore:
     """Store that only logs upserts; no persistence. For dev/testing."""
@@ -73,4 +75,10 @@ class LogOnlyIndexStore:
                 "latest_event_id": row.latest_event_id,
                 "version_count": row.version_count,
             },
+        )
+
+    async def ensure_identity_pending(self, pubkey: str, first_seen_at: int) -> None:
+        logger.info(
+            "ensure_identity_pending",
+            extra={"pubkey": pubkey, "first_seen_at": first_seen_at},
         )

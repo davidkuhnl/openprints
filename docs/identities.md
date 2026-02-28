@@ -52,3 +52,83 @@ Finally, we'll introduce a new logical component (initially part of the main ind
 - We will not store any history of the user identity metadata. OpenPrints does not aim to be a user profile hub, it merely needs the user profile data for better UX in the client
 - Once the client app is mature enough, we will most likely allow the user (especially the ones that came to the Nostr ecosystem through us) to fill in their profile metadata and we will broadcast the 0 kind event on their behalf to the configured relays.
 - Future versions of OpenPrints may choose to validate `nip05` values, but this is not required for the current implementation.
+
+
+## Identity Implementation Notes
+- these notes are here just for managing context while I am implementing the pipeline and will be removed after.
+
+High-level implementation plan for spinning up the identity pipeline:
+
+1. Reorganize the current indexer into a **DesignIndexer**:
+   - Extract the existing `IndexerCoordinator` logic into a `DesignIndexer` class that:
+     - spins up `RelayWorker`s for kind `33301`
+     - owns the reducer/queue
+     - exposes basic stats (processed/reduced/duplicates).
+   - Keep behavior identical for now; this should be a pure refactor.
+
+2. Introduce an **IndexerApp** (or similar “app coordinator”) on top:
+   - `IndexerApp` holds:
+     - one `DesignIndexer`
+     - (later) one `IdentityIndexer`
+   - It owns the shared `stop_event` and orchestrates starting/stopping both pipelines.
+   - Wire the existing CLI (`run_index`) to construct `DesignIndexer` + `IndexerApp` instead of directly using the old coordinator.
+
+3. Add **identity seeding** to the design pipeline (log-only first):
+   - Extend `IndexStore` with a no-op/log-only `ensure_identity_pending(pubkey, first_seen_at)` method.
+   - In `ReducerWorker.reduce_one`, after validating `pubkey`, call:
+     - `await self._store.ensure_identity_pending(pubkey, envelope.received_at)`
+   - With `LogOnlyIndexStore`, this should just log the call so you can confirm pubkeys are being “seen” correctly.
+
+4. Add the **`identities` table** and real DB support:
+   - Extend `SQLiteIndexStore` to:
+     - create an `identities` table with:
+       - `pubkey` (PK, TEXT)
+       - `status` (`pending | fetched | failed`)
+       - `pubkey_first_seen_at`, `pubkey_last_seen_at`
+       - profile fields: `name`, `display_name`, `about`, `picture`, `banner`, `website`, `nip05`, `lud06`, `lud16`, `profile_raw_json`
+       - `profile_fetched_at`, `fetch_last_attempt_at`, `retry_count`
+     - implement `ensure_identity_pending` to upsert:
+       - new row → `status='pending'`, timestamps set
+       - existing row → update `last_seen_at`.
+   - Switch the CLI to use `SQLiteIndexStore` by default in dev so identities actually persist.
+
+5. Implement the **IdentityIndexer** pipeline (log-only first):
+   - Create an `IdentityIndexer` class with:
+     - `__init__(store, relays, batch_size, stale_after_s, ...)`
+     - `run(stop_event)` loop that:
+       - periodically asks the store for pubkeys needing refresh (e.g. `status='pending'` or stale `profile_fetched_at`)
+       - for now, just logs which pubkeys it *would* fetch metadata for, without talking to relays yet.
+   - Integrate `IdentityIndexer` into `IndexerApp` so the CLI runs both:
+     - `DesignIndexer.run(stop_event)`
+     - `IdentityIndexer.run(stop_event)` (only when using a real DB store).
+
+6. Wire up **real kind-0 fetching** in IdentityIndexer:
+   - Implement a `fetch_kind0_for_pubkeys(pubkeys, relays)` helper that:
+     - opens short-lived WebSocket connections to the configured relays
+     - sends a `REQ` with `kinds:[0]` and `authors:[pubkey1, pubkey2, ...]`
+     - listens for responses until EOSE/timeout
+     - parses `event["content"]` JSON into metadata dicts keyed by `pubkey`.
+   - In `IdentityIndexer.run`, replace the log-only part with:
+     - call `fetch_kind0_for_pubkeys` for each batch
+     - call `store.update_identity_profile(pubkey, metadata)` for all returned profiles
+     - update `status`, `profile_fetched_at`, `last_attempt_at`, and `retry_count` as appropriate.
+
+7. Add **staleness + backoff** logic:
+   - In the store, expose a way to select:
+     - `status='pending'` identities, and
+     - `status='fetched'` identities whose `profile_fetched_at` is older than a configured threshold.
+   - In `IdentityIndexer`, respect:
+     - `last_attempt_at` + `retry_count` to avoid hammering relays for pubkeys that never return a kind-0.
+   - This gives you both:
+     - initial metadata resolution, and
+     - periodic refresh of existing profiles.
+
+8. Hook up the **client to `identities`**:
+   - Ensure the API layer exposes identity info for pubkeys (or npubs) by reading from the `identities` table.
+   - In the client:
+     - show full profile data if present (name, picture, etc.).
+     - fall back to truncated `npub` derived from `pubkey` when metadata is missing.
+
+9. Iterate and clean up:
+   - Remove log-only branches once the pipeline is stable.
+   - Trim these implementation notes from the doc, keeping only the conceptual parts (identity model, data flow, and constraints).

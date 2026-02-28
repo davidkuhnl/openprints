@@ -35,6 +35,7 @@ class ReducerWorker:
         pubkey = event.get("pubkey")
         if not isinstance(event_id, str) or not isinstance(pubkey, str):
             raise RuntimeError("Reducer invariant violated: id and pubkey must be strings")
+        await self._store.ensure_identity_pending(pubkey, envelope.received_at)
 
         if event_id in self._seen_event_ids:
             self.stats.duplicates += 1

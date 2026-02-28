@@ -134,6 +134,13 @@ class SQLiteIndexStore:
         )
         await conn.commit()
 
+    async def ensure_identity_pending(self, pubkey: str, first_seen_at: int) -> None:
+        # Step 3 is log-only seeding for now; DB upsert arrives in step 4.
+        logger.info(
+            "ensure_identity_pending_todo",
+            extra={"pubkey": pubkey, "first_seen_at": first_seen_at},
+        )
+
     async def list_designs(
         self,
         *,
