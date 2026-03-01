@@ -11,7 +11,7 @@ class IndexerApp:
         self,
         *,
         design_indexer: DesignIndexer,
-        identity_indexer: IdentityIndexer | None = None,
+        identity_indexer: IdentityIndexer,
     ) -> None:
         self.design_indexer = design_indexer
         self.identity_indexer = identity_indexer
@@ -53,8 +53,7 @@ class IndexerApp:
             self.design_indexer.run(self.stop_event),
             name="design-indexer",
         )
-        if self.identity_indexer is not None:
-            self._identity_task = asyncio.create_task(
-                self.identity_indexer.run(self.stop_event),
-                name="identity-indexer",
-            )
+        self._identity_task = asyncio.create_task(
+            self.identity_indexer.run(self.stop_event),
+            name="identity-indexer",
+        )

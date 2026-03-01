@@ -36,7 +36,7 @@ class _FakeIndexerApp:
     ran_for_duration: float | None = None
     ran_until_cancelled: bool = False
 
-    def __init__(self, *, design_indexer: _FakeDesignIndexer, identity_indexer=None) -> None:
+    def __init__(self, *, design_indexer: _FakeDesignIndexer, identity_indexer: object) -> None:
         self.design_indexer = design_indexer
         self.identity_indexer = identity_indexer
 

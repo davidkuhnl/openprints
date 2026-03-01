@@ -71,11 +71,7 @@ def run_index(args: Namespace) -> int:
                 max_retries=settings.max_retries,
                 store=store,
             )
-            identity_indexer = (
-                IdentityIndexer(store=store, relays=relay_urls)
-                if isinstance(store, SQLiteIndexStore)
-                else None
-            )
+            identity_indexer = IdentityIndexer(store=store, relays=relay_urls)
             app = IndexerApp(design_indexer=design_indexer, identity_indexer=identity_indexer)
             logger.info(
                 "indexer_command_start",
