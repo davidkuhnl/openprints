@@ -79,7 +79,7 @@ High-level implementation plan for spinning up the identity pipeline:
      - `await self._store.ensure_identity_pending(pubkey, envelope.received_at)`
    - With `LogOnlyIndexStore`, this should just log the call so you can confirm pubkeys are being “seen” correctly.
 
-4. Add the **`identities` table** and real DB support:
+4. Add the **`identities` table** and real DB support: ✅
    - Extend `SQLiteIndexStore` to:
      - create an `identities` table with:
        - `pubkey` (PK, TEXT)
@@ -90,19 +90,20 @@ High-level implementation plan for spinning up the identity pipeline:
      - implement `ensure_identity_pending` to upsert:
        - new row → `status='pending'`, timestamps set
        - existing row → update `last_seen_at`.
-   - Switch the CLI to use `SQLiteIndexStore` by default in dev so identities actually persist.
+  - Switch the CLI to use `SQLiteIndexStore` by default in dev so identities actually persist (default `openprints.toml` / `openprints.toml.example` now uses `database_path = "openprints.db"`).
 
-5. Implement the **IdentityIndexer** pipeline (log-only first):
+5. Implement the **IdentityIndexer** pipeline (log-only first): ✅
    - Create an `IdentityIndexer` class with:
      - `__init__(store, relays, batch_size, stale_after_s, ...)`
      - `run(stop_event)` loop that:
        - periodically asks the store for pubkeys needing refresh (e.g. `status='pending'` or stale `profile_fetched_at`)
-       - for now, just logs which pubkeys it *would* fetch metadata for, without talking to relays yet.
-   - Integrate `IdentityIndexer` into `IndexerApp` so the CLI runs both:
+      - initial version logged which pubkeys it *would* fetch metadata for, without talking to relays.
+  - Integrate `IdentityIndexer` into `IndexerApp` so the CLI runs both:
      - `DesignIndexer.run(stop_event)`
-     - `IdentityIndexer.run(stop_event)` (only when using a real DB store).
+    - `IdentityIndexer.run(stop_event)` (only when using a real DB store).
+  - The pipeline now exists in `IndexerApp` and runs only with a real DB store.
 
-6. Wire up **real kind-0 fetching** in IdentityIndexer:
+6. Wire up **real kind-0 fetching** in IdentityIndexer: ✅
    - Implement a `fetch_kind0_for_pubkeys(pubkeys, relays)` helper that:
      - opens short-lived WebSocket connections to the configured relays
      - sends a `REQ` with `kinds:[0]` and `authors:[pubkey1, pubkey2, ...]`
@@ -113,12 +114,13 @@ High-level implementation plan for spinning up the identity pipeline:
      - call `store.update_identity_profile(pubkey, metadata)` for all returned profiles
      - update `status`, `profile_fetched_at`, `last_attempt_at`, and `retry_count` as appropriate.
 
-7. Add **staleness + backoff** logic:
-   - In the store, expose a way to select:
+7. Add **staleness + backoff** logic: ✅
+  - In the store, expose a way to select:
      - `status='pending'` identities, and
-     - `status='fetched'` identities whose `profile_fetched_at` is older than a configured threshold.
-   - In `IdentityIndexer`, respect:
-     - `last_attempt_at` + `retry_count` to avoid hammering relays for pubkeys that never return a kind-0.
+    - `status='fetched'` identities whose `profile_fetched_at` is older than a configured threshold.
+    - retryable `status='failed'` identities.
+  - In `IdentityIndexer`, respect:
+    - `last_attempt_at` + `retry_count` backoff to avoid hammering relays for pubkeys that never return a kind-0.
    - This gives you both:
      - initial metadata resolution, and
      - periodic refresh of existing profiles.

@@ -11,6 +11,7 @@ from openprints.common.utils.logging import configure_logging
 from openprints.common.utils.output import print_json
 from openprints.indexer.app import IndexerApp
 from openprints.indexer.design_indexer import DesignIndexer
+from openprints.indexer.identity_indexer import IdentityIndexer
 from openprints.indexer.store import LogOnlyIndexStore
 from openprints.indexer.store_sqlite import SQLiteIndexStore
 
@@ -70,7 +71,12 @@ def run_index(args: Namespace) -> int:
                 max_retries=settings.max_retries,
                 store=store,
             )
-            app = IndexerApp(design_indexer=design_indexer)
+            identity_indexer = (
+                IdentityIndexer(store=store, relays=relay_urls)
+                if isinstance(store, SQLiteIndexStore)
+                else None
+            )
+            app = IndexerApp(design_indexer=design_indexer, identity_indexer=identity_indexer)
             logger.info(
                 "indexer_command_start",
                 extra={

@@ -2,8 +2,8 @@
 # Then run: make cli-index
 
 [database]
-# Optional SQLite database path (omit or set to "log" for log-only, no persistence):
-# database_path = "openprints.db"
+# Dev default: use SQLite so designs + identities persist locally.
+database_path = "openprints.db"
 
 [indexer]
 # Required relay list (one or more ws:// or wss:// URLs):

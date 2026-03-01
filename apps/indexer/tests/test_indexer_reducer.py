@@ -10,12 +10,16 @@ class _CapturingStore(LogOnlyIndexStore):
     def __init__(self) -> None:
         self.versions: list[DesignVersionRow] = []
         self.current_rows: list[DesignCurrentRow] = []
+        self.identity_pending: list[tuple[str, int]] = []
 
     async def upsert_design_version(self, row: DesignVersionRow) -> None:
         self.versions.append(row)
 
     async def upsert_design_current(self, row: DesignCurrentRow) -> None:
         self.current_rows.append(row)
+
+    async def ensure_identity_pending(self, pubkey: str, first_seen_at: int) -> None:
+        self.identity_pending.append((pubkey, first_seen_at))
 
 
 def _envelope_for(
@@ -40,6 +44,7 @@ def test_reducer_creates_current_row_for_first_event() -> None:
     assert current.latest_event_id == event["id"]
     assert current.first_published_at == event["created_at"]
     assert current.latest_published_at == event["created_at"]
+    assert store.identity_pending == [(event["pubkey"], 100)]
 
 
 def test_reducer_increments_version_count_and_updates_latest() -> None:
