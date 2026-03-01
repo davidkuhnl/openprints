@@ -227,6 +227,11 @@ class IdentityIndexer:
                             "relay_count": len(self._relays),
                         },
                     )
+                else:
+                    logger.info(
+                        "identity_indexer_poll",
+                        extra={"pubkey_count": 0},
+                    )
                 await stop_aware_sleep(stop_event, self._poll_interval_s)
         except asyncio.CancelledError:
             raise

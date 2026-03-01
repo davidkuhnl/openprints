@@ -44,10 +44,27 @@ async def _run_db_stats(path: Path, limit: int) -> int:
             (designs_count,) = await cur.fetchone()
         async with conn.execute("SELECT COUNT(*) FROM design_versions") as cur:
             (versions_count,) = await cur.fetchone()
+        async with conn.execute("SELECT COUNT(*) FROM identities") as cur:
+            (identities_count,) = await cur.fetchone()
+        async with conn.execute(
+            """
+            SELECT status, COUNT(*) AS n
+            FROM identities
+            GROUP BY status
+            """
+        ) as cur:
+            identity_by_status = {row[0]: row[1] for row in await cur.fetchall()}
+    pending = identity_by_status.get("pending", 0)
+    fetched = identity_by_status.get("fetched", 0)
+    failed = identity_by_status.get("failed", 0)
 
     print(f"Database: {path}")
     print(f"  designs:         {designs_count}")
     print(f"  design_versions: {versions_count}")
+    print(
+        f"  identities:      {identities_count} "
+        f"(pending: {pending}, fetched: {fetched}, failed: {failed})"
+    )
 
     if limit > 0 and designs_count > 0:
         async with aiosqlite.connect(str(path)) as conn:
