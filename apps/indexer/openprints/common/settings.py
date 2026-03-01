@@ -42,6 +42,10 @@ class RuntimeSettings:
     timeout: float
     max_retries: int
     duration: float
+    identity_batch_size: int
+    identity_stale_after_s: int
+    identity_poll_interval_s: float
+    identity_fetch_timeout_s: float
 
 
 @dataclass
@@ -127,6 +131,11 @@ def build_runtime_settings(
     if d_err:
         return None, [d_err], None
 
+    identity_batch_size = config.indexer.identity_batch_size
+    identity_stale_after_s = config.indexer.identity_stale_after_s
+    identity_poll_interval_s = float(config.indexer.identity_poll_interval_s)
+    identity_fetch_timeout_s = float(config.indexer.identity_fetch_timeout_s)
+
     settings = RuntimeSettings(
         database_path=database_path,
         relay_urls=tuple(relay_urls),
@@ -138,6 +147,10 @@ def build_runtime_settings(
         timeout=timeout,
         max_retries=max_retries,
         duration=duration,
+        identity_batch_size=identity_batch_size,
+        identity_stale_after_s=identity_stale_after_s,
+        identity_poll_interval_s=identity_poll_interval_s,
+        identity_fetch_timeout_s=identity_fetch_timeout_s,
     )
     return settings, [], path_used
 

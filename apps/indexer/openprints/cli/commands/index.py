@@ -71,7 +71,14 @@ def run_index(args: Namespace) -> int:
                 max_retries=settings.max_retries,
                 store=store,
             )
-            identity_indexer = IdentityIndexer(store=store, relays=relay_urls)
+            identity_indexer = IdentityIndexer(
+                store=store,
+                relays=relay_urls,
+                batch_size=settings.identity_batch_size,
+                stale_after_s=settings.identity_stale_after_s,
+                poll_interval_s=settings.identity_poll_interval_s,
+                fetch_timeout_s=settings.identity_fetch_timeout_s,
+            )
             app = IndexerApp(design_indexer=design_indexer, identity_indexer=identity_indexer)
             logger.info(
                 "indexer_command_start",
@@ -85,6 +92,10 @@ def run_index(args: Namespace) -> int:
                     "config_source": config_source or "none",
                     "log_level": settings.log_level,
                     "database": database_path or "log",
+                    "identity_batch_size": settings.identity_batch_size,
+                    "identity_stale_after_s": settings.identity_stale_after_s,
+                    "identity_poll_interval_s": settings.identity_poll_interval_s,
+                    "identity_fetch_timeout_s": settings.identity_fetch_timeout_s,
                 },
             )
             try:
