@@ -9,7 +9,8 @@ from openprints.common.errors import invalid_value
 from openprints.common.settings import CliOverrides, build_runtime_settings
 from openprints.common.utils.logging import configure_logging
 from openprints.common.utils.output import print_json
-from openprints.indexer.coordinator import IndexerCoordinator
+from openprints.indexer.app import IndexerApp
+from openprints.indexer.design_indexer import DesignIndexer
 from openprints.indexer.store import LogOnlyIndexStore
 from openprints.indexer.store_sqlite import SQLiteIndexStore
 
@@ -61,7 +62,7 @@ def run_index(args: Namespace) -> int:
         if isinstance(store, SQLiteIndexStore):
             await store.open()
         try:
-            coordinator = IndexerCoordinator(
+            design_indexer = DesignIndexer(
                 relays=relay_urls,
                 kind=settings.kind,
                 timeout_s=settings.timeout,
@@ -69,6 +70,7 @@ def run_index(args: Namespace) -> int:
                 max_retries=settings.max_retries,
                 store=store,
             )
+            app = IndexerApp(design_indexer=design_indexer)
             logger.info(
                 "indexer_command_start",
                 extra={
@@ -85,15 +87,15 @@ def run_index(args: Namespace) -> int:
             )
             try:
                 if settings.duration > 0:
-                    await coordinator.run_for(settings.duration)
+                    await app.run_for(settings.duration)
                 else:
-                    await coordinator.run_until_cancelled()
+                    await app.run_until_cancelled()
             except KeyboardInterrupt:
-                pass
+                await app.stop()
             return (
-                coordinator.reducer.stats.processed,
-                coordinator.reducer.stats.reduced,
-                coordinator.reducer.stats.duplicates,
+                design_indexer.reducer.stats.processed,
+                design_indexer.reducer.stats.reduced,
+                design_indexer.reducer.stats.duplicates,
             )
         finally:
             if isinstance(store, SQLiteIndexStore):
