@@ -10,6 +10,7 @@ from typing import Protocol
 import websockets
 
 from openprints.common.relay_protocol import consume_messages, new_sub_id, serialize_message
+from openprints.common.utils.async_helpers import stop_aware_sleep
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +227,7 @@ class IdentityIndexer:
                             "relay_count": len(self._relays),
                         },
                     )
-                await asyncio.sleep(self._poll_interval_s)
+                await stop_aware_sleep(stop_event, self._poll_interval_s)
         except asyncio.CancelledError:
             raise
         finally:

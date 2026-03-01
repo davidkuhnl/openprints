@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 
+from openprints.common.utils.async_helpers import stop_aware_sleep
+
 from .design_indexer import DesignIndexer
 from .identity_indexer import IdentityIndexer
 
@@ -30,7 +32,7 @@ class IndexerApp:
         await self._start()
         try:
             while not self.stop_event.is_set():
-                await asyncio.sleep(1.0)
+                await stop_aware_sleep(self.stop_event, 1.0)
         except asyncio.CancelledError:
             await self.stop()
             raise
