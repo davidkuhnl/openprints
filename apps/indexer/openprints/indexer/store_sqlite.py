@@ -11,6 +11,26 @@ from .store import DesignCurrentRow, DesignVersionRow
 
 logger = logging.getLogger(__name__)
 
+_IDENTITY_COLUMNS = (
+    "pubkey",
+    "status",
+    "pubkey_first_seen_at",
+    "pubkey_last_seen_at",
+    "name",
+    "display_name",
+    "about",
+    "picture",
+    "banner",
+    "website",
+    "nip05",
+    "lud06",
+    "lud16",
+    "profile_raw_json",
+    "profile_fetched_at",
+    "fetch_last_attempt_at",
+    "retry_count",
+)
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS design_versions (
     event_id TEXT PRIMARY KEY,
@@ -253,6 +273,23 @@ class SQLiteIndexStore:
             (attempted_at, pubkey),
         )
         await conn.commit()
+
+    async def get_identities_by_pubkeys(
+        self, pubkeys: list[str]
+    ) -> dict[str, dict[str, object | None]]:
+        """Return identities keyed by pubkey for the provided pubkeys."""
+        if not pubkeys:
+            return {}
+        conn = self._conn_required()
+        unique_pubkeys = list(dict.fromkeys(pubkeys))
+        placeholders = ", ".join(["?"] * len(unique_pubkeys))
+        columns = ", ".join(_IDENTITY_COLUMNS)
+        async with conn.execute(
+            f"SELECT {columns} FROM identities WHERE pubkey IN ({placeholders})",
+            unique_pubkeys,
+        ) as cur:
+            rows = await cur.fetchall()
+        return {str(row["pubkey"]): {col: row[col] for col in _IDENTITY_COLUMNS} for row in rows}
 
     async def list_designs(
         self,
