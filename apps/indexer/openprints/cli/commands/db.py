@@ -44,10 +44,26 @@ async def _run_db_stats(path: Path, limit: int) -> int:
             (designs_count,) = await cur.fetchone()
         async with conn.execute("SELECT COUNT(*) FROM design_versions") as cur:
             (versions_count,) = await cur.fetchone()
+        async with conn.execute("SELECT COUNT(*) FROM identities") as cur:
+            (identities_count,) = await cur.fetchone()
+        async with conn.execute(
+            """
+            SELECT status, COUNT(*) AS n
+            FROM identities
+            GROUP BY status
+            """
+        ) as cur:
+            identity_by_status = {row[0]: row[1] for row in await cur.fetchall()}
+    pending = identity_by_status.get("pending", 0)
+    fetched = identity_by_status.get("fetched", 0)
+    failed = identity_by_status.get("failed", 0)
 
     print(f"Database: {path}")
-    print(f"  designs:         {designs_count}")
-    print(f"  design_versions: {versions_count}")
+    print(f"  designs:         {designs_count} (versions: {versions_count})")
+    print(
+        f"  identities:      {identities_count} "
+        f"(pending: {pending}, fetched: {fetched}, failed: {failed})"
+    )
 
     if limit > 0 and designs_count > 0:
         async with aiosqlite.connect(str(path)) as conn:
@@ -85,7 +101,7 @@ async def _run_db_stats(path: Path, limit: int) -> int:
 
 
 def run_db_wipe(args) -> int:
-    """Wipe the indexer SQLite database. Requires --force."""
+    """Wipe indexer data from SQLite tables. Requires --force."""
     settings, errors, _ = build_runtime_settings(config_path=getattr(args, "config", None))
     if errors:
         print_json({"ok": False, "errors": errors})
@@ -107,8 +123,45 @@ def run_db_wipe(args) -> int:
     if not path.is_absolute():
         path = Path.cwd() / path
 
-    if path.exists():
-        path.unlink()
+    return asyncio.run(_run_db_wipe(path))
 
-    print_json({"ok": True, "wiped": str(path)})
+
+async def _run_db_wipe(path: Path) -> int:
+    """Delete all rows from known indexer tables without removing the DB file."""
+    tables = ("designs", "design_versions", "identities")
+    delete_order = ("designs", "design_versions", "identities")
+    deleted_rows = {table: 0 for table in tables}
+    existing_tables: set[str] = set()
+
+    async with aiosqlite.connect(str(path)) as conn:
+        await conn.execute("PRAGMA foreign_keys = ON")
+        async with conn.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table' AND name IN ('designs', 'design_versions', 'identities')
+            """
+        ) as cur:
+            rows = await cur.fetchall()
+            existing_tables = {str(row[0]) for row in rows}
+
+        for table in delete_order:
+            if table not in existing_tables:
+                continue
+            async with conn.execute(f"SELECT COUNT(*) FROM {table}") as cur:
+                (count,) = await cur.fetchone()
+            deleted_rows[table] = int(count or 0)
+            await conn.execute(f"DELETE FROM {table}")
+
+        await conn.commit()
+        await conn.execute("VACUUM")
+
+    print_json(
+        {
+            "ok": True,
+            "wiped": str(path),
+            "tables_cleared": sorted(existing_tables),
+            "rows_deleted": deleted_rows,
+        }
+    )
     return 0

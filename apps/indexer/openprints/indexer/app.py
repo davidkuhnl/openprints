@@ -2,14 +2,24 @@ from __future__ import annotations
 
 import asyncio
 
+from openprints.common.utils.async_helpers import stop_aware_sleep
+
 from .design_indexer import DesignIndexer
+from .identity_indexer import IdentityIndexer
 
 
 class IndexerApp:
-    def __init__(self, *, design_indexer: DesignIndexer) -> None:
+    def __init__(
+        self,
+        *,
+        design_indexer: DesignIndexer,
+        identity_indexer: IdentityIndexer,
+    ) -> None:
         self.design_indexer = design_indexer
+        self.identity_indexer = identity_indexer
         self.stop_event = asyncio.Event()
         self._design_task: asyncio.Task[None] | None = None
+        self._identity_task: asyncio.Task[None] | None = None
 
     async def run_for(self, duration_s: float) -> None:
         await self._start()
@@ -22,7 +32,7 @@ class IndexerApp:
         await self._start()
         try:
             while not self.stop_event.is_set():
-                await asyncio.sleep(1.0)
+                await stop_aware_sleep(self.stop_event, 1.0)
         except asyncio.CancelledError:
             await self.stop()
             raise
@@ -31,6 +41,9 @@ class IndexerApp:
 
     async def stop(self) -> None:
         self.stop_event.set()
+        if self._identity_task is not None:
+            await self._identity_task
+            self._identity_task = None
         if self._design_task is not None:
             await self._design_task
             self._design_task = None
@@ -41,4 +54,8 @@ class IndexerApp:
         self._design_task = asyncio.create_task(
             self.design_indexer.run(self.stop_event),
             name="design-indexer",
+        )
+        self._identity_task = asyncio.create_task(
+            self.identity_indexer.run(self.stop_event),
+            name="identity-indexer",
         )

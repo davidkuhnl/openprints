@@ -1,3 +1,4 @@
+import json
 import re
 import sys
 import time
@@ -31,7 +32,7 @@ def _normalize_sha256(args: Namespace) -> tuple[str | None, list[dict[str, str]]
     return None, [invalid_value("sha256", "either --file or --sha256 is required")]
 
 
-def _build_draft_payload(args: Namespace) -> tuple[dict | None, bool, list[dict[str, str]]]:
+def _build_design_draft_payload(args: Namespace) -> tuple[dict | None, bool, list[dict[str, str]]]:
     sha256_value, hash_errors = _normalize_sha256(args)
     if hash_errors:
         return None, False, hash_errors
@@ -46,6 +47,7 @@ def _build_draft_payload(args: Namespace) -> tuple[dict | None, bool, list[dict[
             "meta": {
                 "state": "draft",
                 "source": "openprints-cli",
+                "event_type": "design",
             },
             "event": {
                 "kind": 33301,
@@ -65,8 +67,24 @@ def _build_draft_payload(args: Namespace) -> tuple[dict | None, bool, list[dict[
     )
 
 
-def run_build(args: Namespace) -> int:
-    payload, design_id_generated, build_errors = _build_draft_payload(args)
+def _emit_payload(serialized: str, output: str, *, generated_note: str | None = None) -> int:
+    if output == "-":
+        print(serialized)
+        if generated_note:
+            print(generated_note, file=sys.stderr)
+        print("build: wrote payload JSON to stdout.", file=sys.stderr)
+        return 0
+
+    output_path = Path(output)
+    output_path.write_text(serialized + "\n", encoding="utf-8")
+    if generated_note:
+        print(generated_note)
+    print(f"build: wrote payload JSON to {output_path}.")
+    return 0
+
+
+def run_build_design(args: Namespace) -> int:
+    payload, design_id_generated, build_errors = _build_design_draft_payload(args)
     if build_errors:
         print_json({"ok": False, "errors": build_errors}, stream=sys.stderr)
         return 1
@@ -78,16 +96,71 @@ def run_build(args: Namespace) -> int:
 
     serialized = serialize_json(payload)
 
-    if args.output == "-":
-        print(serialized)
-        if design_id_generated:
-            print("build: generated design id for d tag.", file=sys.stderr)
-        print("build: wrote payload JSON to stdout.", file=sys.stderr)
-        return 0
+    note = "build: generated design id for d tag." if design_id_generated else None
+    return _emit_payload(serialized, args.output, generated_note=note)
 
-    output_path = Path(args.output)
-    output_path.write_text(serialized + "\n", encoding="utf-8")
-    if design_id_generated:
-        print("build: generated design id for d tag.")
-    print(f"build: wrote payload JSON to {output_path}.")
-    return 0
+
+def run_build_identity(args: Namespace) -> int:
+    profile_file = Path(args.profile_file)
+    try:
+        raw_profile = profile_file.read_text(encoding="utf-8")
+    except OSError as exc:
+        print_json(
+            {
+                "ok": False,
+                "errors": [invalid_value("profile_file", f"unable to read profile file: {exc}")],
+            },
+            stream=sys.stderr,
+        )
+        return 1
+
+    try:
+        profile = json.loads(raw_profile)
+    except json.JSONDecodeError as exc:
+        print_json(
+            {
+                "ok": False,
+                "errors": [
+                    invalid_value("profile_file", f"profile file is not valid JSON ({exc})")
+                ],
+            },
+            stream=sys.stderr,
+        )
+        return 1
+
+    if not isinstance(profile, dict):
+        print_json(
+            {
+                "ok": False,
+                "errors": [invalid_value("profile_file", "profile file JSON must be an object")],
+            },
+            stream=sys.stderr,
+        )
+        return 1
+
+    payload = {
+        "artifact_version": ARTIFACT_VERSION,
+        "meta": {
+            "state": "draft",
+            "source": "openprints-cli",
+            "event_type": "identity",
+        },
+        "event": {
+            "kind": 0,
+            "created_at": int(time.time()),
+            "tags": [],
+            "content": serialize_json(profile),
+        },
+    }
+
+    errors = validate_payload(payload)
+    if errors:
+        print_json({"ok": False, "errors": errors}, stream=sys.stderr)
+        return 1
+
+    serialized = serialize_json(payload)
+    return _emit_payload(serialized, args.output)
+
+
+def run_build(args: Namespace) -> int:
+    return run_build_design(args)

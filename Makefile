@@ -1,4 +1,4 @@
-.PHONY: help setup setup-fast format lint lint-fix test check relay-up relay-down relay-down-wipe relay-logs relay-test-up relay-test-ws relay-check test-drive cli cli-build cli-sign cli-publish cli-subscribe cli-index cli-serve cli-db-stats cli-db-wipe cli-hash cli-hash-stdin cli-keygen api client-deploy
+.PHONY: help setup setup-fast format lint lint-fix test check relay-up relay-down relay-down-wipe relay-logs relay-test-up relay-test-ws relay-check test-drive cli cli-build-design cli-build-identity cli-sign cli-publish-design cli-publish-identity cli-subscribe cli-index cli-serve cli-db-stats cli-db-wipe cli-hash cli-hash-stdin cli-keygen api client-deploy
 
 INDEXER_DIR := apps/indexer
 CLIENT_DIR := apps/client
@@ -10,8 +10,9 @@ SHA256 ?=
 NAME ?= Stub Design
 FORMAT ?= stl
 URL ?= https://example.invalid/stub.stl
-CONTENT ?= Built via make cli-build
+CONTENT ?= Built via make cli-build-design
 DESIGN_ID ?=
+PROFILE_FILE ?= tests/fixtures/stub_profile.json
 RELAY ?= ws://localhost:7447
 PUBLISH_TIMEOUT ?= 8.0
 PUBLISH_RETRIES ?= 0
@@ -23,11 +24,11 @@ RELAYS ?=
 INDEX_RELAY ?=
 INDEX_CONFIG ?=
 API_PORT ?=
-INDEX_KIND ?=
-INDEX_QUEUE_MAXSIZE ?=
-INDEX_TIMEOUT ?=
-INDEX_MAX_RETRIES ?=
-INDEX_DURATION ?=
+DESIGN_KIND ?=
+DESIGN_QUEUE_MAXSIZE ?=
+DESIGN_TIMEOUT_S ?=
+DESIGN_MAX_RETRIES ?=
+DESIGN_DURATION_S ?=
 
 help:
 	@echo "Available targets:"
@@ -47,11 +48,13 @@ help:
 	@echo "  make relay-check    - run relay HTTP + websocket checks"
 	@echo "  make test-drive     - end-to-end test: key, relay, indexer, publish 2 designs + update, tear down"
 	@echo "  make cli            - run openprints-cli scaffold"
-	@echo "  make cli-build      - run openprints-cli build using NAME/FORMAT/URL and FILE or SHA256 vars"
+	@echo "  make cli-build-design - run openprints-cli build design using NAME/FORMAT/URL and FILE or SHA256 vars"
+	@echo "  make cli-build-identity - run openprints-cli build identity using PROFILE_FILE"
 	@echo "  make cli-sign       - run openprints-cli sign (stdin, requires OPENPRINTS_DEV_NSEC)"
-	@echo "  make cli-publish    - run openprints-cli publish to RELAY=\$$RELAY with timeout/retry vars"
+	@echo "  make cli-publish-design - run openprints-cli publish design to RELAY=\$$RELAY with timeout/retry vars"
+	@echo "  make cli-publish-identity - run openprints-cli publish identity to RELAY=\$$RELAY with timeout/retry vars"
 	@echo "  make cli-subscribe  - run openprints-cli subscribe on RELAY=\$$RELAY"
-	@echo "  make cli-index      - run openprints-cli index pipeline stub (INDEX_CONFIG/INDEX_RELAY/RELAYS)"
+	@echo "  make cli-index      - run openprints-cli index (INDEX_CONFIG, INDEX_RELAY/RELAYS, DESIGN_*)"
 	@echo "  make cli-serve      - run OpenPrints HTTP API (INDEX_CONFIG, OPENPRINTS_API_PORT default 8080)"
 	@echo "  make api            - same as cli-serve (alias)"
 	@echo "  make cli-db-stats   - print indexer DB stats and latest designs (INDEX_CONFIG)"
@@ -109,20 +112,26 @@ test-drive:
 cli:
 	@cd $(INDEXER_DIR) && uv run openprints-cli
 
-cli-build:
-	@cd $(INDEXER_DIR) && EXTRA_DESIGN_ID="" ; HASH_ARG="--file \"$(FILE)\"" ; if [ -n "$(DESIGN_ID)" ]; then EXTRA_DESIGN_ID="--design-id \"$(DESIGN_ID)\""; fi ; if [ -n "$(SHA256)" ]; then HASH_ARG="--sha256 \"$(SHA256)\""; fi ; eval "uv run openprints-cli build --name \"$(NAME)\" --format \"$(FORMAT)\" --url \"$(URL)\" --content \"$(CONTENT)\" $$HASH_ARG $$EXTRA_DESIGN_ID"
+cli-build-design:
+	@cd $(INDEXER_DIR) && EXTRA_DESIGN_ID="" ; HASH_ARG="--file \"$(FILE)\"" ; if [ -n "$(DESIGN_ID)" ]; then EXTRA_DESIGN_ID="--design-id \"$(DESIGN_ID)\""; fi ; if [ -n "$(SHA256)" ]; then HASH_ARG="--sha256 \"$(SHA256)\""; fi ; eval "uv run openprints-cli build design --name \"$(NAME)\" --format \"$(FORMAT)\" --url \"$(URL)\" --content \"$(CONTENT)\" $$HASH_ARG $$EXTRA_DESIGN_ID"
+
+cli-build-identity:
+	@cd $(INDEXER_DIR) && uv run openprints-cli build identity --profile-file "$(PROFILE_FILE)"
 
 cli-sign:
 	@cd $(INDEXER_DIR) && uv run openprints-cli sign
 
-cli-publish:
-	@cd $(INDEXER_DIR) && uv run openprints-cli publish --relay "$(RELAY)" --timeout "$(PUBLISH_TIMEOUT)" --retries "$(PUBLISH_RETRIES)" --retry-backoff-ms "$(PUBLISH_RETRY_BACKOFF_MS)"
+cli-publish-design:
+	@cd $(INDEXER_DIR) && uv run openprints-cli publish design --relay "$(RELAY)" --timeout "$(PUBLISH_TIMEOUT)" --retries "$(PUBLISH_RETRIES)" --retry-backoff-ms "$(PUBLISH_RETRY_BACKOFF_MS)"
+
+cli-publish-identity:
+	@cd $(INDEXER_DIR) && uv run openprints-cli publish identity --relay "$(RELAY)" --timeout "$(PUBLISH_TIMEOUT)" --retries "$(PUBLISH_RETRIES)" --retry-backoff-ms "$(PUBLISH_RETRY_BACKOFF_MS)"
 
 cli-subscribe:
 	@cd $(INDEXER_DIR) && uv run openprints-cli subscribe --relay "$(RELAY)" --kind "$(SUBSCRIBE_KIND)" --limit "$(SUBSCRIBE_LIMIT)" --timeout "$(SUBSCRIBE_TIMEOUT)"
 
 cli-index:
-	@cd $(INDEXER_DIR) && CMD="uv run openprints-cli index" ; if [ -n "$(INDEX_CONFIG)" ]; then CMD="$$CMD --config \"$(INDEX_CONFIG)\""; fi ; if [ -n "$(RELAYS)" ]; then IFS=','; for relay in $(RELAYS); do CMD="$$CMD --relay $$relay"; done; elif [ -n "$(INDEX_RELAY)" ]; then CMD="$$CMD --relay \"$(INDEX_RELAY)\""; fi ; if [ -n "$(INDEX_KIND)" ]; then CMD="$$CMD --kind \"$(INDEX_KIND)\""; fi ; if [ -n "$(INDEX_QUEUE_MAXSIZE)" ]; then CMD="$$CMD --queue-maxsize \"$(INDEX_QUEUE_MAXSIZE)\""; fi ; if [ -n "$(INDEX_TIMEOUT)" ]; then CMD="$$CMD --timeout \"$(INDEX_TIMEOUT)\""; fi ; if [ -n "$(INDEX_MAX_RETRIES)" ]; then CMD="$$CMD --max-retries \"$(INDEX_MAX_RETRIES)\""; fi ; if [ -n "$(INDEX_DURATION)" ]; then CMD="$$CMD --duration \"$(INDEX_DURATION)\""; fi ; eval "$$CMD"
+	@cd $(INDEXER_DIR) && CMD="uv run openprints-cli index" ; if [ -n "$(INDEX_CONFIG)" ]; then CMD="$$CMD --config \"$(INDEX_CONFIG)\""; fi ; if [ -n "$(RELAYS)" ]; then IFS=','; for relay in $(RELAYS); do CMD="$$CMD --relay $$relay"; done; elif [ -n "$(INDEX_RELAY)" ]; then CMD="$$CMD --relay \"$(INDEX_RELAY)\""; fi ; if [ -n "$(DESIGN_KIND)" ]; then CMD="$$CMD --design-kind \"$(DESIGN_KIND)\""; fi ; if [ -n "$(DESIGN_QUEUE_MAXSIZE)" ]; then CMD="$$CMD --design-queue-maxsize \"$(DESIGN_QUEUE_MAXSIZE)\""; fi ; if [ -n "$(DESIGN_TIMEOUT_S)" ]; then CMD="$$CMD --design-timeout-s \"$(DESIGN_TIMEOUT_S)\""; fi ; if [ -n "$(DESIGN_MAX_RETRIES)" ]; then CMD="$$CMD --design-max-retries \"$(DESIGN_MAX_RETRIES)\""; fi ; if [ -n "$(DESIGN_DURATION_S)" ]; then CMD="$$CMD --design-duration-s \"$(DESIGN_DURATION_S)\""; fi ; eval "$$CMD"
 
 cli-serve:
 	@cd $(INDEXER_DIR) && CMD="uv run openprints-cli serve" ; if [ -n "$(INDEX_CONFIG)" ]; then CMD="$$CMD --config \"$(INDEX_CONFIG)\""; fi ; if [ -n "$(API_PORT)" ]; then CMD="$$CMD --port \"$(API_PORT)\""; fi ; eval "$$CMD"

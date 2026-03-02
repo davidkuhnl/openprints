@@ -101,6 +101,9 @@ async def _run_persists_to_file() -> None:
             async with conn.execute("SELECT COUNT(*) FROM designs") as cur:
                 (n,) = await cur.fetchone()
             assert n == 1
+            async with conn.execute("SELECT COUNT(*) FROM identities") as cur:
+                (n,) = await cur.fetchone()
+            assert n == 0
 
 
 def test_sqlite_store_persists_to_file() -> None:
@@ -135,5 +138,143 @@ def test_reducer_writes_to_sqlite_store() -> None:
                 async with conn.execute("SELECT COUNT(*) FROM designs") as cur:
                     (n,) = await cur.fetchone()
                 assert n == 1
+                async with conn.execute("SELECT COUNT(*) FROM identities") as cur:
+                    (n,) = await cur.fetchone()
+                assert n == 1
 
         asyncio.run(_check())
+
+
+async def _run_ensure_identity_pending_upsert() -> None:
+    store = SQLiteIndexStore(":memory:")
+    await store.open()
+    pubkey = "d" * 64
+
+    await store.ensure_identity_pending(pubkey, 100)
+    await store.ensure_identity_pending(pubkey, 120)
+
+    conn = store._conn
+    assert conn is not None
+    async with conn.execute(
+        """
+        SELECT pubkey, status, pubkey_first_seen_at, pubkey_last_seen_at, retry_count
+        FROM identities
+        WHERE pubkey = ?
+        """,
+        (pubkey,),
+    ) as cur:
+        row = await cur.fetchone()
+
+    assert row is not None
+    assert row["pubkey"] == pubkey
+    assert row["status"] == "pending"
+    assert row["pubkey_first_seen_at"] == 100
+    assert row["pubkey_last_seen_at"] == 120
+    assert row["retry_count"] == 0
+    await store.close()
+
+
+def test_ensure_identity_pending_upsert() -> None:
+    asyncio.run(_run_ensure_identity_pending_upsert())
+
+
+async def _run_list_identity_pubkeys_for_refresh() -> None:
+    store = SQLiteIndexStore(":memory:")
+    await store.open()
+    conn = store._conn
+    assert conn is not None
+
+    await store.ensure_identity_pending("p" * 64, 100)
+    await conn.execute(
+        """
+        INSERT INTO identities (
+            pubkey, status, pubkey_first_seen_at, pubkey_last_seen_at,
+            profile_fetched_at, fetch_last_attempt_at, retry_count
+        ) VALUES (?, 'fetched', 80, 90, 200, 150, 0)
+        """,
+        ("f" * 64,),
+    )
+    await conn.execute(
+        """
+        INSERT INTO identities (
+            pubkey, status, pubkey_first_seen_at, pubkey_last_seen_at,
+            profile_fetched_at, fetch_last_attempt_at, retry_count
+        ) VALUES (?, 'fetched', 80, 90, 290, 250, 0)
+        """,
+        ("s" * 64,),
+    )
+    await conn.execute(
+        """
+        INSERT INTO identities (
+            pubkey, status, pubkey_first_seen_at, pubkey_last_seen_at,
+            fetch_last_attempt_at, retry_count
+        ) VALUES (?, 'failed', 80, 90, 299, 1)
+        """,
+        ("x" * 64,),
+    )
+    await conn.commit()
+
+    # stale_after_s=50 at now=300 makes fetched@200 stale and fetched@290 fresh.
+    pubkeys = await store.list_identity_pubkeys_for_refresh(limit=10, stale_after_s=50, now_ts=300)
+    assert "p" * 64 in pubkeys
+    assert "f" * 64 in pubkeys
+    assert "s" * 64 not in pubkeys
+    # failed entry with retry_count=1 gets 60s backoff (not yet due).
+    assert "x" * 64 not in pubkeys
+    await store.close()
+
+
+def test_list_identity_pubkeys_for_refresh() -> None:
+    asyncio.run(_run_list_identity_pubkeys_for_refresh())
+
+
+async def _run_update_identity_profile_and_miss() -> None:
+    store = SQLiteIndexStore(":memory:")
+    await store.open()
+    pubkey = "e" * 64
+    await store.ensure_identity_pending(pubkey, 100)
+
+    await store.mark_identity_fetch_miss(pubkey, attempted_at=200)
+    await store.update_identity_profile(
+        pubkey,
+        {
+            "name": "alice",
+            "display_name": "Alice",
+            "about": "hello",
+            "picture": "https://example.invalid/p.png",
+            "banner": None,
+            "website": "https://example.invalid",
+            "nip05": "alice@example.invalid",
+            "lud06": None,
+            "lud16": "alice@zbd.gg",
+            "profile_raw_json": '{"name":"alice"}',
+        },
+        fetched_at=210,
+    )
+
+    conn = store._conn
+    assert conn is not None
+    async with conn.execute(
+        """
+        SELECT status, retry_count, name, display_name, website, nip05,
+               profile_fetched_at, fetch_last_attempt_at
+        FROM identities
+        WHERE pubkey = ?
+        """,
+        (pubkey,),
+    ) as cur:
+        row = await cur.fetchone()
+    assert row is not None
+    assert row["status"] == "fetched"
+    assert row["retry_count"] == 0
+    assert row["name"] == "alice"
+    assert row["display_name"] == "Alice"
+    assert row["website"] == "https://example.invalid"
+    assert row["nip05"] == "alice@example.invalid"
+    assert row["profile_fetched_at"] == 210
+    assert row["fetch_last_attempt_at"] == 210
+    await store.close()
+
+
+def test_update_identity_profile_and_miss() -> None:
+    asyncio.run(_run_update_identity_profile_and_miss())

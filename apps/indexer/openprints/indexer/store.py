@@ -82,3 +82,26 @@ class LogOnlyIndexStore:
             "ensure_identity_pending",
             extra={"pubkey": pubkey, "first_seen_at": first_seen_at},
         )
+
+    async def list_identity_pubkeys_for_refresh(
+        self, *, limit: int, stale_after_s: int, now_ts: int
+    ) -> list[str]:
+        logger.info(
+            "list_identity_pubkeys_for_refresh",
+            extra={"limit": limit, "stale_after_s": stale_after_s, "now_ts": now_ts},
+        )
+        return []
+
+    async def update_identity_profile(
+        self, pubkey: str, metadata: dict[str, str | None], *, fetched_at: int
+    ) -> None:
+        logger.info(
+            "update_identity_profile",
+            extra={"pubkey": pubkey, "fetched_at": fetched_at},
+        )
+
+    async def mark_identity_fetch_miss(self, pubkey: str, *, attempted_at: int) -> None:
+        logger.info(
+            "mark_identity_fetch_miss",
+            extra={"pubkey": pubkey, "attempted_at": attempted_at},
+        )

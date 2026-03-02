@@ -2,19 +2,27 @@
 # Then run: make cli-index
 
 [database]
-# Optional SQLite database path (omit or set to "log" for log-only, no persistence):
-# database_path = "openprints.db"
+# Dev default: use SQLite so designs + identities persist locally.
+database_path = "openprints.db"
 
 [indexer]
 # Required relay list (one or more ws:// or wss:// URLs):
 relays = ["ws://localhost:7447"]
 
-kind = 33301
-queue_maxsize = 1000
-timeout = 8.0
-max_retries = 12
-duration = 0.0
+# Design indexer (kind 33301). Omit to use defaults.
+design_kind = 33301
+design_queue_maxsize = 1000
+design_timeout_s = 8.0
+design_max_retries = 12
+design_duration_s = 0.0
 log_level = "WARNING"
+
+# Identity indexer (kind-0 profile fetch). Omit to use defaults.
+# identity_batch_size = 100
+# 24 * 60 * 60 = one day
+# identity_stale_after_s = 86400
+# identity_poll_interval_s = 5.0
+# identity_fetch_timeout_s = 6.0
 
 [api]
 # Optional API port for `openprints serve` (default 8080). Env: OPENPRINTS_API_PORT

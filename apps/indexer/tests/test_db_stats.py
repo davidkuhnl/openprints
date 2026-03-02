@@ -78,7 +78,8 @@ def test_db_stats_success_empty_db(tmp_path: Path, capsys: pytest.CaptureFixture
     out = capsys.readouterr().out
     assert "Database:" in out
     assert "designs:" in out
-    assert "design_versions:" in out
+    assert "(versions:" in out
+    assert "identities:" in out
     assert "0" in out
 
 
@@ -130,8 +131,9 @@ def test_db_stats_success_with_designs(tmp_path: Path, capsys: pytest.CaptureFix
     code = run_db_stats(args)
     assert code == 0
     out = capsys.readouterr().out
-    assert "designs:        1" in out or "1" in out
-    assert "design_versions: 1" in out or "1" in out
+    assert "designs:" in out
+    assert "(versions: 1)" in out or "versions: 1" in out
+    assert "identities:" in out
     assert "Latest" in out
     assert "My Design" in out or "openprints:" in out
 
@@ -154,4 +156,5 @@ def test_db_stats_limit_zero_no_latest_section(
     assert code == 0
     out = capsys.readouterr().out
     assert "Database:" in out
+    assert "identities:" in out
     assert "Latest" not in out

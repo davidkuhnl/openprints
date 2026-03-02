@@ -13,7 +13,7 @@ From the repo root:
 make setup
 docker compose up # Starts the dev relay
 make test-drive   # Walks you through the cli functionality and publishes design to the local relay and indexes it via the local indexer
-make cli-server # Runs the OpenPrints API on 
+make cli-serve # Runs the OpenPrints API on 
 cd apps/client & npm run dev # Runs the web client on http://localhost:4321/ that should show the local indexer results
 ```
 

@@ -20,7 +20,7 @@ def test_load_app_config_none_when_no_file(monkeypatch, tmp_path) -> None:
     config, errors, path = load_app_config(None)
     assert config is not None
     assert isinstance(config, AppConfig)
-    assert config.indexer.kind == 33301
+    assert config.indexer.design_kind == 33301
     assert errors == []
     assert path is None
 
@@ -28,36 +28,36 @@ def test_load_app_config_none_when_no_file(monkeypatch, tmp_path) -> None:
 def test_load_app_config_loads_indexer_section(tmp_path) -> None:
     config_file = tmp_path / "custom.toml"
     config_file.write_text(
-        '[indexer]\nrelays = ["ws://localhost:7447"]\nkind = 33301\n',
+        '[indexer]\nrelays = ["ws://localhost:7447"]\ndesign_kind = 33301\n',
         encoding="utf-8",
     )
     config, errors, path = load_app_config(str(config_file))
     assert errors == []
     assert config is not None
     assert config.indexer.relays == ["ws://localhost:7447"]
-    assert config.indexer.kind == 33301
+    assert config.indexer.design_kind == 33301
     assert path == str(config_file)
 
 
 def test_load_app_config_relative_path(monkeypatch, tmp_path) -> None:
     config_file = tmp_path / DEFAULT_CONFIG_FILENAME
-    config_file.write_text("[indexer]\nkind = 999\n", encoding="utf-8")
+    config_file.write_text("[indexer]\ndesign_kind = 999\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     config, errors, path = load_app_config(DEFAULT_CONFIG_FILENAME)
     assert errors == []
     assert config is not None
-    assert config.indexer.kind == 999
+    assert config.indexer.design_kind == 999
     assert path is not None
 
 
 def test_load_app_config_env_override(monkeypatch, tmp_path) -> None:
     config_file = tmp_path / "env_config.toml"
-    config_file.write_text("[indexer]\nkind = 111\n", encoding="utf-8")
+    config_file.write_text("[indexer]\ndesign_kind = 111\n", encoding="utf-8")
     monkeypatch.setenv(ENV_CONFIG_PATH, str(config_file))
     config, errors, _ = load_app_config(None)
     assert errors == []
     assert config is not None
-    assert config.indexer.kind == 111
+    assert config.indexer.design_kind == 111
 
 
 def test_load_app_config_file_not_found() -> None:
@@ -103,7 +103,7 @@ def test_load_app_config_database_and_api_sections(tmp_path) -> None:
     config_file = tmp_path / "full.toml"
     config_file.write_text(
         '[database]\ndatabase_path = "openprints.db"\n'
-        '[indexer]\nrelays = ["ws://r:7447"]\nkind = 33301\n'
+        '[indexer]\nrelays = ["ws://r:7447"]\ndesign_kind = 33301\n'
         "[api]\napi_port = 9000\n",
         encoding="utf-8",
     )

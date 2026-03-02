@@ -11,6 +11,7 @@ from openprints.common.utils.logging import configure_logging
 from openprints.common.utils.output import print_json
 from openprints.indexer.app import IndexerApp
 from openprints.indexer.design_indexer import DesignIndexer
+from openprints.indexer.identity_indexer import IdentityIndexer
 from openprints.indexer.store import LogOnlyIndexStore
 from openprints.indexer.store_sqlite import SQLiteIndexStore
 
@@ -21,11 +22,11 @@ def run_index(args: Namespace) -> int:
     cli = CliOverrides(
         config_path=getattr(args, "config", None),
         relay=getattr(args, "relay", None),
-        kind=getattr(args, "kind", None),
-        queue_maxsize=getattr(args, "queue_maxsize", None),
-        timeout=getattr(args, "timeout", None),
-        max_retries=getattr(args, "max_retries", None),
-        duration=getattr(args, "duration", None),
+        design_kind=getattr(args, "design_kind", None),
+        design_queue_maxsize=getattr(args, "design_queue_maxsize", None),
+        design_timeout_s=getattr(args, "design_timeout_s", None),
+        design_max_retries=getattr(args, "design_max_retries", None),
+        design_duration_s=getattr(args, "design_duration_s", None),
         log_level=getattr(args, "log_level", None),
     )
     settings, errors, config_source = build_runtime_settings(
@@ -38,13 +39,21 @@ def run_index(args: Namespace) -> int:
         print_json({"ok": False, "errors": [{"message": "failed to build runtime settings"}]})
         return 1
 
-    if settings.max_retries < 0:
+    if settings.design_max_retries < 0:
         print_json(
-            {"ok": False, "errors": [invalid_value("max_retries", "max_retries must be >= 0")]}
+            {
+                "ok": False,
+                "errors": [invalid_value("design_max_retries", "design_max_retries must be >= 0")],
+            }
         )
         return 1
-    if settings.duration < 0:
-        print_json({"ok": False, "errors": [invalid_value("duration", "duration must be >= 0")]})
+    if settings.design_duration_s < 0:
+        print_json(
+            {
+                "ok": False,
+                "errors": [invalid_value("design_duration_s", "design_duration_s must be >= 0")],
+            }
+        )
         return 1
 
     os.environ["OPENPRINTS_LOG_LEVEL"] = settings.log_level
@@ -64,30 +73,42 @@ def run_index(args: Namespace) -> int:
         try:
             design_indexer = DesignIndexer(
                 relays=relay_urls,
-                kind=settings.kind,
-                timeout_s=settings.timeout,
-                queue_maxsize=settings.queue_maxsize,
-                max_retries=settings.max_retries,
+                kind=settings.design_kind,
+                timeout_s=settings.design_timeout_s,
+                queue_maxsize=settings.design_queue_maxsize,
+                max_retries=settings.design_max_retries,
                 store=store,
             )
-            app = IndexerApp(design_indexer=design_indexer)
+            identity_indexer = IdentityIndexer(
+                store=store,
+                relays=relay_urls,
+                batch_size=settings.identity_batch_size,
+                stale_after_s=settings.identity_stale_after_s,
+                poll_interval_s=settings.identity_poll_interval_s,
+                fetch_timeout_s=settings.identity_fetch_timeout_s,
+            )
+            app = IndexerApp(design_indexer=design_indexer, identity_indexer=identity_indexer)
             logger.info(
                 "indexer_command_start",
                 extra={
                     "relay_count": len(relay_urls),
-                    "kind": settings.kind,
-                    "queue_maxsize": settings.queue_maxsize,
-                    "max_retries": settings.max_retries,
-                    "timeout_s": settings.timeout,
-                    "duration_s": settings.duration,
+                    "design_kind": settings.design_kind,
+                    "design_queue_maxsize": settings.design_queue_maxsize,
+                    "design_max_retries": settings.design_max_retries,
+                    "design_timeout_s": settings.design_timeout_s,
+                    "design_duration_s": settings.design_duration_s,
                     "config_source": config_source or "none",
                     "log_level": settings.log_level,
                     "database": database_path or "log",
+                    "identity_batch_size": settings.identity_batch_size,
+                    "identity_stale_after_s": settings.identity_stale_after_s,
+                    "identity_poll_interval_s": settings.identity_poll_interval_s,
+                    "identity_fetch_timeout_s": settings.identity_fetch_timeout_s,
                 },
             )
             try:
-                if settings.duration > 0:
-                    await app.run_for(settings.duration)
+                if settings.design_duration_s > 0:
+                    await app.run_for(settings.design_duration_s)
                 else:
                     await app.run_until_cancelled()
             except KeyboardInterrupt:

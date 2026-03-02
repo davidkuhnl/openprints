@@ -17,13 +17,14 @@ The indexing app is composed of **parallel pipelines** that share the same datab
   - Subscribes to `kind 33301` design events.
   - Validates and reduces versions into:
     - an append-only `design_versions` history, and
-    - a `design_current` table with the latest view per design.
+    - a `designs` table with the latest view per design (one row per `(pubkey, design_id)`).
   - Treats each event’s `pubkey` as an identity, seeding entries in the `identities` table.
 
 - **Identity indexer (new pipeline):**
   - Periodically scans the `identities` table for pubkeys with missing or stale metadata.
-  - Batches those pubkeys into short-lived `REQ` subscriptions for `kind 0` metadata events.
+  - Batches those pubkeys into short-lived `REQ` subscriptions for `kind 0` metadata events across configured relays.
   - Parses profile fields (`name`, `display_name`, `about`, `picture`, `banner`, `website`, `nip05`, `lud06`, `lud16`, …) and updates the `identities` table.
+  - Applies retry/backoff on failed lookups and refreshes stale fetched profiles over time.
   - The client always reads from `identities` and falls back to truncated `npub` when metadata is absent.
 
 - **Endorsements pipeline (planned):**

@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import logging
 
+from openprints.common.utils.async_helpers import stop_aware_sleep
+
 from .reducer import ReducerWorker
 from .relay_worker import RelayWorker
 from .store import IndexStore
@@ -37,7 +39,7 @@ class DesignIndexer:
         await self._start()
         try:
             while not stop_event.is_set():
-                await asyncio.sleep(1.0)
+                await stop_aware_sleep(stop_event, 1.0)
         except asyncio.CancelledError:
             await self.stop()
             raise

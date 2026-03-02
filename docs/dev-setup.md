@@ -111,11 +111,7 @@ If you want faster iteration on backend code, run the indexer directly on your m
 
 ```bash
 cd apps/indexer
-python -m venv .venv
-source .venv/bin/activate
-# Windows (PowerShell): .venv\Scripts\Activate.ps1
-
-pip install -r requirements.txt
+uv sync --group dev
 ```
 
 Run the OpenPrints HTTP API (FastAPI):
@@ -159,10 +155,12 @@ make cli
 Current CLI commands:
 
 ```bash
-make cli-build
+make cli-build-design
+make cli-build-identity
 make cli-keygen
 make cli-sign
-make cli-publish
+make cli-publish-design
+make cli-publish-identity
 make cli-subscribe
 make cli-index
 make cli-serve   # run HTTP API (designs, health, ready)
@@ -194,15 +192,17 @@ Run `make cli-sign` in the same terminal session where `OPENPRINTS_DEV_NSEC` is 
 Chained workflow (target state, once sign/publish implementations are fully pipeline-safe):
 
 ```bash
-make cli-build | make cli-sign | make cli-publish
+make cli-build-design | make cli-sign | make cli-publish-design
 ```
 
 Current note: the one-relay roundtrip is implemented (`build -> sign -> publish -> subscribe`). For scriptability and debugging, file handoff is still a good default.
 
 Publish relay selection (single relay for now):
 
-- `make cli-publish RELAY=ws://localhost:7447`
-- Example with retries: `make cli-publish RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`
+- `make cli-publish-design RELAY=ws://localhost:7447`
+- Example with retries: `make cli-publish-design RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`
+- `make cli-publish-identity RELAY=ws://localhost:7447`
+- Example with retries: `make cli-publish-identity RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`
 - If `RELAY` is not provided, CLI falls back to `OPENPRINTS_RELAY_URLS` (comma-separated list), then default `ws://localhost:7447`.
 - `publish` output is machine-readable JSON with `ok`, `errors`, and `relay_results`.
 - Planned enhancement: publish fan-out to multiple relays in one command (instead of current single-relay behavior).
@@ -227,11 +227,7 @@ Indexer pipeline (multi-relay, SQLite optional):
 - Multiple relays: `make cli-index RELAYS=ws://localhost:7447,wss://relay.example`
 - Runtime knobs:
   - `INDEX_CONFIG` (optional config path; defaults to `apps/indexer/openprints.toml`)
-  - `INDEX_KIND` (default `33301`)
-  - `INDEX_QUEUE_MAXSIZE` (default `1000`)
-  - `INDEX_TIMEOUT` (default `8.0`)
-  - `INDEX_MAX_RETRIES` (default `12`, use `0` for infinite retry loop)
-  - `INDEX_DURATION` in seconds (default `0`, run until interrupted)
+  - Design indexer: `DESIGN_KIND` (default `33301`), `DESIGN_QUEUE_MAXSIZE` (default `1000`), `DESIGN_TIMEOUT_S` (seconds, default `8.0`), `DESIGN_MAX_RETRIES` (default `12`, use `0` for infinite retry loop), `DESIGN_DURATION_S` in seconds (default `0`, run until interrupted). Env equivalents: `OPENPRINTS_DESIGN_KIND`, `OPENPRINTS_DESIGN_QUEUE_MAXSIZE`, `OPENPRINTS_DESIGN_TIMEOUT_S`, `OPENPRINTS_DESIGN_MAX_RETRIES`, `OPENPRINTS_DESIGN_DURATION_S`.
   - `log_level` in config (`CRITICAL|ERROR|WARNING|INFO|DEBUG`)
 - Precedence for each setting: CLI flag/Make variable -> env var -> config file -> built-in default.
 - Logging level precedence: `OPENPRINTS_LOG_LEVEL` env var overrides config `log_level`.
@@ -345,8 +341,7 @@ OPENPRINTS_BLOSSOM_URL=
 OPENPRINTS_INDEXER_NOSTR_SECRET_KEY=<dev-only-placeholder>
 
 # apps/client/.env (example)
-PUBLIC_INDEXER_API_BASE_URL=http://localhost:8000
-PUBLIC_DEFAULT_RELAY_URL=ws://localhost:<relay-port>
+PUBLIC_OPENPRINTS_API_URL=http://localhost:8080
 ```
 
 Never commit real secrets to git. Keep sensitive local values in untracked `.env` files.
@@ -423,7 +418,7 @@ To get the Astro client live on [Cloudflare Pages](https://pages.cloudflare.com/
 3. **Deploy to Pages**:
 
    ```bash
-   npx wrangler pages deploy dist --project-name=openprints-client-client
+   npx wrangler pages deploy dist --project-name=openprints-client
    ```
 
    The first run creates a new Cloudflare Pages project named `openprints-client`. You get a URL like `https://openprints-client.pages.dev` for that deployment.

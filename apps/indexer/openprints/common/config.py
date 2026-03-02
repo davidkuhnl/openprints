@@ -41,15 +41,21 @@ class DatabaseConfig(BaseModel):
 
 
 class IndexerConfig(BaseModel):
-    """Indexer-specific settings: relays, kind, queue, timeouts, log level."""
+    """Indexer-specific settings: relays, design-indexing, log level, identity."""
 
     relays: list[str] = Field(default_factory=list)
-    kind: StrictInt = 33301
-    queue_maxsize: StrictInt = 1000
-    timeout: StrictFloat = 8.0
-    max_retries: StrictInt = 12
-    duration: StrictFloat = 0.0
+    # Design indexer: kind, queue, timeouts, run duration
+    design_kind: StrictInt = 33301
+    design_queue_maxsize: StrictInt = 1000
+    design_timeout_s: StrictFloat = 8.0
+    design_max_retries: StrictInt = 12
+    design_duration_s: StrictFloat = 0.0
     log_level: _LOG_LEVEL = "WARNING"
+    # Identity indexer: kind-0 profile fetch batch and refresh cadence
+    identity_batch_size: StrictInt = 100
+    identity_stale_after_s: StrictInt = 24 * 60 * 60
+    identity_poll_interval_s: StrictFloat = 5.0
+    identity_fetch_timeout_s: StrictFloat = 6.0
 
     @field_validator("log_level", mode="before")
     @classmethod

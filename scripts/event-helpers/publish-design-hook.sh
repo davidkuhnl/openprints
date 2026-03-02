@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
-REPO_ROOT="${REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+REPO_ROOT="${REPO_ROOT:-$(cd "$SCRIPT_DIR/../.." && pwd)}"
 cd "$REPO_ROOT"
 
 INDEXER_DIR="$REPO_ROOT/apps/indexer"
@@ -25,7 +25,7 @@ SHA256=$(jq -r '.sha256' "$DESIGN_JSON")
 URL=$(jq -r '.url' "$DESIGN_JSON")
 
 # 3) Build, inject preview tags, sign, and publish the design
-#    We keep cli-build/cli-sign/cli-publish as-is and use jq to
+#    We keep cli-build-design/cli-sign/cli-publish-design as-is and use jq to
 #    add ["preview", "<url>"] tags based on the design.json preview array.
 
 # Read preview array once as JSON (or [] if missing)
@@ -36,9 +36,15 @@ FORMAT="$FORMAT" \
 URL="$URL" \
 CONTENT="$DESCRIPTION" \
 SHA256="$SHA256" \
-  make cli-build \
+  make cli-build-design \
   | jq --arg previews "$PREVIEWS_JSON" \
        '.event.tags += (( $previews | fromjson ) | map(["preview", .]))' \
    | make cli-sign \
-   | make cli-publish
+   | make cli-publish-design
+
+read -r -p "Attach kind0 identity event for this identity? [y/N] " attach_identity
+echo
+if [[ "$attach_identity" =~ ^[yY] ]]; then
+  "$REPO_ROOT/scripts/event-helpers/publish-identity-kind0.sh"
+fi
 

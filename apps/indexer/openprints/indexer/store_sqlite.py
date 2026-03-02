@@ -1,4 +1,4 @@
-"""SQLite-backed index store. Tables: design_versions (history), designs (current)."""
+"""SQLite-backed index store. Tables: design_versions, designs, identities."""
 
 from __future__ import annotations
 
@@ -45,11 +45,31 @@ CREATE TABLE IF NOT EXISTS designs (
     PRIMARY KEY (pubkey, design_id),
     FOREIGN KEY (latest_event_id) REFERENCES design_versions(event_id)
 );
+
+CREATE TABLE IF NOT EXISTS identities (
+    pubkey TEXT PRIMARY KEY,
+    status TEXT NOT NULL CHECK (status IN ('pending', 'fetched', 'failed')),
+    pubkey_first_seen_at INTEGER NOT NULL,
+    pubkey_last_seen_at INTEGER NOT NULL,
+    name TEXT,
+    display_name TEXT,
+    about TEXT,
+    picture TEXT,
+    banner TEXT,
+    website TEXT,
+    nip05 TEXT,
+    lud06 TEXT,
+    lud16 TEXT,
+    profile_raw_json TEXT,
+    profile_fetched_at INTEGER,
+    fetch_last_attempt_at INTEGER,
+    retry_count INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
 class SQLiteIndexStore:
-    """Index store that persists to SQLite. Tables: design_versions, designs."""
+    """Index store that persists to SQLite. Tables: design_versions, designs, identities."""
 
     def __init__(self, db_path: str | Path) -> None:
         self._path = Path(db_path)
@@ -135,11 +155,104 @@ class SQLiteIndexStore:
         await conn.commit()
 
     async def ensure_identity_pending(self, pubkey: str, first_seen_at: int) -> None:
-        # Step 3 is log-only seeding for now; DB upsert arrives in step 4.
-        logger.info(
-            "ensure_identity_pending_todo",
-            extra={"pubkey": pubkey, "first_seen_at": first_seen_at},
+        conn = self._conn_required()
+        await conn.execute(
+            """
+            INSERT INTO identities (
+                pubkey, status, pubkey_first_seen_at, pubkey_last_seen_at, retry_count
+            ) VALUES (?, 'pending', ?, ?, 0)
+            ON CONFLICT(pubkey) DO UPDATE SET
+                pubkey_last_seen_at = excluded.pubkey_last_seen_at
+            """,
+            (pubkey, first_seen_at, first_seen_at),
         )
+        await conn.commit()
+
+    async def list_identity_pubkeys_for_refresh(
+        self, *, limit: int, stale_after_s: int, now_ts: int
+    ) -> list[str]:
+        conn = self._conn_required()
+        stale_cutoff = now_ts - stale_after_s
+        async with conn.execute(
+            """
+            SELECT pubkey, status, fetch_last_attempt_at, retry_count, profile_fetched_at
+            FROM identities
+            WHERE status IN ('pending', 'failed')
+               OR (status = 'fetched' AND (profile_fetched_at IS NULL OR profile_fetched_at <= ?))
+            ORDER BY
+                CASE status WHEN 'pending' THEN 0 WHEN 'failed' THEN 1 ELSE 2 END,
+                COALESCE(fetch_last_attempt_at, 0) ASC,
+                pubkey_last_seen_at DESC
+            LIMIT ?
+            """,
+            (stale_cutoff, limit * 5),
+        ) as cur:
+            rows = await cur.fetchall()
+        selected: list[str] = []
+        for row in rows:
+            pubkey = str(row["pubkey"])
+            last_attempt = row["fetch_last_attempt_at"]
+            retry_count = int(row["retry_count"] or 0)
+            if _can_attempt_identity(now_ts, last_attempt, retry_count):
+                selected.append(pubkey)
+            if len(selected) >= limit:
+                break
+        return selected
+
+    async def update_identity_profile(
+        self, pubkey: str, metadata: dict[str, str | None], *, fetched_at: int
+    ) -> None:
+        conn = self._conn_required()
+        await conn.execute(
+            """
+            UPDATE identities
+            SET status = 'fetched',
+                name = ?,
+                display_name = ?,
+                about = ?,
+                picture = ?,
+                banner = ?,
+                website = ?,
+                nip05 = ?,
+                lud06 = ?,
+                lud16 = ?,
+                profile_raw_json = ?,
+                profile_fetched_at = ?,
+                fetch_last_attempt_at = ?,
+                retry_count = 0
+            WHERE pubkey = ?
+            """,
+            (
+                metadata.get("name"),
+                metadata.get("display_name"),
+                metadata.get("about"),
+                metadata.get("picture"),
+                metadata.get("banner"),
+                metadata.get("website"),
+                metadata.get("nip05"),
+                metadata.get("lud06"),
+                metadata.get("lud16"),
+                metadata.get("profile_raw_json"),
+                fetched_at,
+                fetched_at,
+                pubkey,
+            ),
+        )
+        await conn.commit()
+
+    async def mark_identity_fetch_miss(self, pubkey: str, *, attempted_at: int) -> None:
+        conn = self._conn_required()
+        await conn.execute(
+            """
+            UPDATE identities
+            SET status = 'failed',
+                fetch_last_attempt_at = ?,
+                retry_count = retry_count + 1
+            WHERE pubkey = ?
+            """,
+            (attempted_at, pubkey),
+        )
+        await conn.commit()
 
     async def list_designs(
         self,
@@ -245,3 +358,13 @@ class SQLiteIndexStore:
         async with conn.execute("SELECT COUNT(*) FROM design_versions") as cur:
             (versions_count,) = await cur.fetchone()
         return designs_count, versions_count
+
+
+def _can_attempt_identity(now_ts: int, last_attempt_at: int | None, retry_count: int) -> bool:
+    if last_attempt_at is None:
+        return True
+    if retry_count <= 0:
+        return True
+    retry_exp = min(retry_count, 20)
+    delay_s = min(30 * (2**retry_exp), 6 * 60 * 60)
+    return now_ts >= (int(last_attempt_at) + delay_s)

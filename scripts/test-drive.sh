@@ -12,6 +12,7 @@ INDEXER_DIR="$REPO_ROOT/apps/indexer"
 DB_PATH="$INDEXER_DIR/openprints.db"
 DESIGN_ID_1="openprints:11111111-1111-4000-8000-000000000001"
 DESIGN_ID_2="openprints:22222222-2222-4000-8000-000000000002"
+DESIGN_ID_3="openprints:33333333-3333-4000-8000-000000000003"
 
 # Colors (only when stdout is a terminal)
 if [[ -t 1 ]]; then
@@ -122,39 +123,75 @@ _wait_enter "the indexer is running"
 _sep
 _step 6 "In yet another terminal run:"
 _cmd "make cli-db-stats"
-echo "You should see 0 designs and 0 versions if we are starting with a fresh relay and DB wiped."
+echo "You should see designs: 0 (versions: 0) and identities: 0 (pending: 0, fetched: 0, failed: 0)."
 _wait_enter "done"
 
 # --- 7) Publish first design + check stats ---
 _sep
 _step 7 "Publish first design, then run make cli-db-stats in the other terminal."
 _cmd "make cli-db-stats"
-echo "You should see 1 design, 1 version."
-DESIGN_ID="$DESIGN_ID_1" make cli-build | make cli-sign | make cli-publish
+echo "You should see designs: 1 (versions: 1). For identities, a fast check may show 1 pending first; it should converge to identities: 1 (pending: 0, fetched: 0, failed: 1)."
+DESIGN_ID="$DESIGN_ID_1" make cli-build-design | make cli-sign | make cli-publish-design
 _ok "First design published."
 _wait_enter "you have checked the stats"
 
-# --- 8) Publish second design + check stats ---
+# --- 8) Publish a stub identity (kind 0) + check stats ---
 _sep
-_step 8 "Publish second design, then run make cli-db-stats in the other terminal."
+_step 8 "Publish a stub identity (kind 0), then run make cli-db-stats in the other terminal."
 _cmd "make cli-db-stats"
-echo "You should see 2 designs and 2 versions."
-DESIGN_ID="$DESIGN_ID_2" NAME="Second Design" make cli-build | make cli-sign | make cli-publish
+echo "You should see designs: 1 (versions: 1) and identities: 1 (pending: 0, fetched: 1, failed: 0)."
+echo "Note: fetched may take a bit depending on backoff timing from the prior failed identity refresh."
+PROFILE_FILE="$REPO_ROOT/apps/client/public/temp-identity-storage/profile-1.json" make cli-build-identity | make cli-sign | make cli-publish-identity
+echo "Waiting 2s so the identity poll cycle can pick up the kind 0 update..."
+sleep 2
+_ok "Stub identity published."
+_wait_enter "you have checked the stats"
+
+# --- 9) Publish second design + check stats ---
+_sep
+_step 9 "Publish second design, then run make cli-db-stats in the other terminal."
+_cmd "make cli-db-stats"
+echo "You should see designs: 2 (versions: 2) and identities: 1 (pending: 0, fetched: 1, failed: 0)."
+DESIGN_ID="$DESIGN_ID_2" NAME="Second Design" make cli-build-design | make cli-sign | make cli-publish-design
 _ok "Second design published."
 _wait_enter "you have checked the stats"
 
-# --- 9) Publish update to first design + check stats ---
+# --- 10) Publish update to first design + check stats ---
 _sep
-_step 9 "Publish an update to the first design (replaceable event), then run make cli-db-stats."
+_step 10 "Publish an update to the first design (replaceable event), then run make cli-db-stats."
 _cmd "make cli-db-stats"
-echo "You should see 2 designs and 3 versions."
-DESIGN_ID="$DESIGN_ID_1" NAME="First Design - updated" CONTENT="Updated description." make cli-build | make cli-sign | make cli-publish
+echo "You should see designs: 2 (versions: 3) and identities: 1 (pending: 0, fetched: 1, failed: 0)."
+DESIGN_ID="$DESIGN_ID_1" NAME="First Design - updated" CONTENT="Updated description." make cli-build-design | make cli-sign | make cli-publish-design
 _ok "Update published."
 _wait_enter "you have checked the stats"
 
-# --- 10) Tear down ---
+# --- 11) Rotate to a new dev key (new identity) ---
 _sep
-_step 10 "Tear down."
+_step 11 "Generate/export a second dev key so the next design comes from a new identity."
+export "$(cd "$INDEXER_DIR" && uv run openprints-cli keygen --env)"
+prefix=$(echo "$OPENPRINTS_DEV_NSEC" | cut -c1-5)
+if [[ "$prefix" != "nsec1" ]]; then
+  echo "Unexpected key prefix: $prefix (expected nsec1)"
+  exit 1
+fi
+_ok "Second key exported (new identity pubkey)."
+_pause
+
+# --- 12) Publish third design from new identity + check stats ---
+_sep
+_step 12 "Publish third design from the new identity, then run make cli-db-stats."
+_cmd "make cli-db-stats"
+echo "You should see designs: 3 (versions: 4) and identities: 2 total."
+echo "For identities, a fast check may show pending: 1 first; it should converge to identities: 2 (pending: 0, fetched: 1, failed: 1)."
+DESIGN_ID="$DESIGN_ID_3" NAME="Third Design (new identity)" CONTENT="Published from a second dev key." make cli-build-design | make cli-sign | make cli-publish-design
+echo "Waiting 2s so the identity poll cycle can attempt the new identity..."
+sleep 2
+_ok "Third design published from new identity."
+_wait_enter "you have checked the stats"
+
+# --- 13) Tear down ---
+_sep
+_step 13 "Tear down."
 read -p "Wipe relay volume and indexer DB? [y/N] " -r
 echo
 if [[ "$REPLY" =~ ^[yY] ]]; then
@@ -168,6 +205,6 @@ fi
 echo ""
 echo -e "${D}The indexer should have shut down on relay disconnect.${R}"
 echo -e "${D}If you had it running, its final output should show stats like:${R}"
-echo -e "${D}  \"stats\": { \"processed\": 3, \"reduced\": 3, \"duplicates\": 0 }${R}"
+echo -e "${D}  \"stats\": { \"processed\": 4, \"reduced\": 4, \"duplicates\": 0 }${R}"
 echo ""
 echo -e "\n${B}=== Test drive complete ===${R}"

@@ -2,7 +2,7 @@ import argparse
 
 from openprints.common.signers.factory import SUPPORTED_SIGNERS
 
-from .commands.build import run_build
+from .commands.build import run_build_design, run_build_identity
 from .commands.db import run_db_stats, run_db_wipe
 from .commands.hash import run_hash
 from .commands.index import run_index
@@ -17,25 +17,31 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="openprints-cli")
     subparsers = parser.add_subparsers(dest="command")
 
-    build_parser = subparsers.add_parser("build", help="Build a design event payload")
-    build_parser.add_argument("--name", required=True, help="Human-readable design name.")
-    build_parser.add_argument(
+    build_parser = subparsers.add_parser("build", help="Build a draft event payload")
+    build_subparsers = build_parser.add_subparsers(dest="build_command", required=True)
+
+    build_design_parser = build_subparsers.add_parser(
+        "design",
+        help="Build a draft design event payload (kind 33301)",
+    )
+    build_design_parser.add_argument("--name", required=True, help="Human-readable design name.")
+    build_design_parser.add_argument(
         "--design-id",
         default=None,
         help="Optional design id (uuid or openprints:uuid). If omitted, a uuid-v4 is generated.",
     )
-    build_parser.add_argument(
+    build_design_parser.add_argument(
         "--format", required=True, help="Design file format (for example stl)."
     )
-    build_parser.add_argument(
+    build_design_parser.add_argument(
         "--url", required=True, help="Public URL where the design file is hosted."
     )
-    build_parser.add_argument(
+    build_design_parser.add_argument(
         "--content",
         default="",
         help="Optional Markdown description to include in event.content.",
     )
-    build_hash_input = build_parser.add_mutually_exclusive_group(required=True)
+    build_hash_input = build_design_parser.add_mutually_exclusive_group(required=True)
     build_hash_input.add_argument(
         "--file",
         default=None,
@@ -46,43 +52,98 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Precomputed SHA-256 digest for event.tags[sha256].",
     )
-    build_parser.add_argument(
+    build_design_parser.add_argument(
         "--output",
         default="-",
         help="Output path for payload JSON, or '-' for stdout (default).",
     )
-    build_parser.set_defaults(func=run_build)
+    build_design_parser.set_defaults(func=run_build_design)
 
-    publish_parser = subparsers.add_parser("publish", help="Publish an event to relay(s)")
-    publish_parser.add_argument(
+    build_identity_parser = build_subparsers.add_parser(
+        "identity",
+        help="Build a draft identity metadata payload (kind 0)",
+    )
+    build_identity_parser.add_argument(
+        "--profile-file",
+        required=True,
+        help="Path to identity profile JSON object for event.content.",
+    )
+    build_identity_parser.add_argument(
+        "--output",
+        default="-",
+        help="Output path for payload JSON, or '-' for stdout (default).",
+    )
+    build_identity_parser.set_defaults(func=run_build_identity)
+
+    publish_parser = subparsers.add_parser("publish", help="Publish a signed event to relay(s)")
+    publish_subparsers = publish_parser.add_subparsers(dest="publish_command", required=True)
+    publish_design_parser = publish_subparsers.add_parser(
+        "design",
+        help="Publish a signed design payload",
+    )
+    publish_design_parser.add_argument(
         "--input",
         default="-",
         help="Input path for payload JSON, or '-' for stdin (default).",
     )
-    publish_parser.add_argument(
+    publish_design_parser.add_argument(
         "--relay",
         default=None,
         help="Relay websocket URL (ws:// or wss://). Falls back to env if omitted.",
     )
-    publish_parser.add_argument(
+    publish_design_parser.add_argument(
         "--timeout",
         type=float,
         default=8.0,
         help="Relay connect/ack timeout in seconds (default: 8.0).",
     )
-    publish_parser.add_argument(
+    publish_design_parser.add_argument(
         "--retries",
         type=int,
         default=0,
         help="Number of retry attempts for transport/timeouts (default: 0).",
     )
-    publish_parser.add_argument(
+    publish_design_parser.add_argument(
         "--retry-backoff-ms",
         type=int,
         default=400,
         help="Delay between retry attempts in milliseconds (default: 400).",
     )
-    publish_parser.set_defaults(func=run_publish)
+    publish_design_parser.set_defaults(func=run_publish, publish_event_type="design")
+
+    publish_identity_parser = publish_subparsers.add_parser(
+        "identity",
+        help="Publish a signed identity payload",
+    )
+    publish_identity_parser.add_argument(
+        "--input",
+        default="-",
+        help="Input path for payload JSON, or '-' for stdin (default).",
+    )
+    publish_identity_parser.add_argument(
+        "--relay",
+        default=None,
+        help="Relay websocket URL (ws:// or wss://). Falls back to env if omitted.",
+    )
+    publish_identity_parser.add_argument(
+        "--timeout",
+        type=float,
+        default=8.0,
+        help="Relay connect/ack timeout in seconds (default: 8.0).",
+    )
+    publish_identity_parser.add_argument(
+        "--retries",
+        type=int,
+        default=0,
+        help="Number of retry attempts for transport/timeouts (default: 0).",
+    )
+    publish_identity_parser.add_argument(
+        "--retry-backoff-ms",
+        type=int,
+        default=400,
+        help="Delay between retry attempts in milliseconds (default: 400).",
+    )
+    publish_identity_parser.set_defaults(func=run_publish, publish_event_type="identity")
 
     sign_parser = subparsers.add_parser("sign", help="Sign a draft payload")
     sign_parser.add_argument(
@@ -155,36 +216,41 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     index_parser.add_argument(
-        "--kind",
+        "--design-kind",
         type=int,
         default=None,
-        help="Event kind to ingest (falls back to env/config/default: 33301).",
+        dest="design_kind",
+        help="Design event kind to ingest (falls back to env/config/default: 33301).",
     )
     index_parser.add_argument(
-        "--queue-maxsize",
+        "--design-queue-maxsize",
         type=int,
         default=None,
-        help="Shared ingest queue max size (falls back to env/config/default: 1000).",
+        dest="design_queue_maxsize",
+        help="Design ingest queue max size (falls back to env/config/default: 1000).",
     )
     index_parser.add_argument(
-        "--timeout",
+        "--design-timeout-s",
         type=float,
         default=None,
-        help="Relay receive/connect timeout in seconds (falls back to env/config/default: 8.0).",
+        dest="design_timeout_s",
+        help="Design relay timeout in seconds (env/config/default: 8.0).",
     )
     index_parser.add_argument(
-        "--max-retries",
+        "--design-max-retries",
         type=int,
         default=None,
+        dest="design_max_retries",
         help=(
             "Consecutive relay worker failures before giving up "
             "(falls back to env/config/default: 12, 0=infinite)."
         ),
     )
     index_parser.add_argument(
-        "--duration",
+        "--design-duration-s",
         type=float,
         default=None,
+        dest="design_duration_s",
         help="Run seconds before clean stop (falls back to env/config/default: 0=until interrupt).",
     )
     index_parser.set_defaults(func=run_index)

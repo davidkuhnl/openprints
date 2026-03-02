@@ -15,6 +15,7 @@ from openprints.common.relay_protocol import (
     new_sub_id,
     serialize_message,
 )
+from openprints.common.utils.async_helpers import stop_aware_sleep
 
 from .types import IngestEnvelope
 
@@ -90,7 +91,7 @@ class RelayWorker:
                     )
                     self.stop_event.set()
                     return
-                await asyncio.sleep(backoff_s)
+                await stop_aware_sleep(self.stop_event, backoff_s)
                 backoff_s = min(backoff_s * 2.0, 10.0)
 
     async def _on_event(self, relay: str, sub_id: str, event: dict, events_seen: int) -> bool:
