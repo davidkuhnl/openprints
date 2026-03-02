@@ -50,7 +50,7 @@ Candidate columns:
 - `content` TEXT
 - `tags_json` TEXT NOT NULL DEFAULT '{}' (materialized optional/current tags)
 - PRIMARY KEY `(pubkey, design_id)`
-- FOREIGN KEY `latest_event_id` -> `design_events(event_id)`
+- FOREIGN KEY `latest_event_id` -> `design_versions(event_id)`
 
 Suggested indexes:
 
@@ -58,7 +58,7 @@ Suggested indexes:
 - `idx_designs_first_published_at` on `(first_published_at DESC)`
 - `idx_designs_name` on `(name)`
 
-## `design_events` (append-only)
+## `design_versions` (append-only)
 
 Purpose: store every accepted design listing event revision.
 
@@ -88,11 +88,11 @@ This section defines the compatibility contract we are preserving now while focu
 
 ### Canonical mapping guarantee
 
-`design_events` is the canonical mapping from:
+`design_versions` is the canonical mapping from:
 
 - `event_id` -> `(pubkey, design_id)`
 
-This is guaranteed by storing:
+This is guaranteed by storing, in `design_versions`:
 
 - `event_id` as PRIMARY KEY
 - `pubkey` as NOT NULL
@@ -112,7 +112,7 @@ Planned resolver behavior:
 
 1. Parse raw references from incoming interaction event.
 2. Try immediate resolution:
-   - `e` via `design_events.event_id`
+   - `e` via `design_versions.event_id`
    - `a` via parsed `(pubkey, design_id)`
 3. Store both:
    - raw references as received
@@ -121,7 +121,7 @@ Planned resolver behavior:
 
 ### Non-negotiable rule for schema evolution
 
-Do not remove `pubkey` or `design_id` from `design_events`, and do not make `event_id`
+Do not remove `pubkey` or `design_id` from `design_versions`, and do not make `event_id`
 non-unique. Those fields are the long-term bridge that links interactions (endorsements/zaps)
 back to the canonical design identity.
 
@@ -155,10 +155,10 @@ For each incoming valid kind `33301` event:
      - set `latest_published_at = created_at`
      - set `version_count = 1`
    - If current row exists:
-     - increment `version_count` only when a new unique `event_id` is inserted
-     - if incoming `created_at` is newer: replace current pointer/data and update `latest_published_at`
-     - if incoming `created_at` is older: keep existing current pointer/data
-     - tie-breaker (same `created_at`): deterministic policy required (see Open Questions)
+   - increment `version_count` only when a new unique `event_id` is inserted
+   - if incoming `created_at` is newer: replace current pointer/data and update `latest_published_at`
+   - if incoming `created_at` is older: keep existing current pointer/data
+   - tie-breaker (same `created_at`): deterministic policy required (see Open Questions)
    - Never mutate `first_published_at` after initial insert.
 
 ## Open Questions
@@ -170,7 +170,7 @@ For each incoming valid kind `33301` event:
 - Should `design_id` be stored with prefix (`openprints:`) or canonicalized without prefix?
 - Do we store only validated events, or store invalid events in a quarantine table for diagnostics?
 - How should we represent designs that are deleted or marked as corrupt (e.g. tombstone events, soft-delete flags, or a separate state table)?
-- Do we want a uniqueness constraint on `(pubkey, design_id, created_at)` in `design_events`, or only on `event_id`?
+- Do we want a uniqueness constraint on `(pubkey, design_id, created_at)` in `design_versions`, or only on `event_id`?
 
 ## Migration Strategy
 
@@ -188,7 +188,7 @@ This section defines the ingestion pipeline design for Phase 2 so we can build i
 1. One subscriber task per relay websocket URL.
 2. Subscribers produce validated raw event envelopes into a shared ingestion queue.
 3. One reducer worker consumes queue items in order of arrival and performs DB writes.
-4. Reducer applies replaceable semantics and updates `design_events` + `designs` transactionally.
+4. Reducer applies replaceable semantics and updates `design_versions` + `designs` transactionally.
 
 Design goal: keep concurrency simple at first, with correctness and observability prioritized over throughput.
 
@@ -291,6 +291,18 @@ If sustained pressure appears later:
 - `event_id` PK handles duplicate replays
 - replaceable winner selection uses `(pubkey, design_id, created_at, tie-breaker)`
 
+Current implementation note (2026-03-02):
+
+- The in-process reducer (`ReducerWorker`) keeps an in-memory `seen_event_ids` set and
+  `(pubkey, design_id) -> DesignCurrentRow` map and uses those for duplicate detection and
+  `version_count` / winner selection.
+- This is sufficient for a single long-lived process, but it is **not restart- or replay-safe**:
+  re-ingesting historical events after a restart can currently reapply versions and distort
+  counts unless additional guards are added.
+- A future iteration should push these invariants down into the SQLite layer (driving
+  `design_versions` + `designs` purely from stored rows) so that a cold start over the same
+  `design_versions` history always recomputes the identical materialized state.
+
 ## Logging and metrics (minimum)
 
 Track at least:
@@ -325,7 +337,7 @@ No partial writes across `design_events` and `designs`.
 ## Next Iteration Checklist
 
 - Finalize tie-breaker policy.
-- Write initial migration for `design_events` and `designs`.
+- Write initial migration for `design_versions` and `designs`.
 - Add reducer tests for replaceable semantics:
   - newer wins
   - older ignored

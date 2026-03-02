@@ -111,11 +111,7 @@ If you want faster iteration on backend code, run the indexer directly on your m
 
 ```bash
 cd apps/indexer
-python -m venv .venv
-source .venv/bin/activate
-# Windows (PowerShell): .venv\Scripts\Activate.ps1
-
-pip install -r requirements.txt
+uv sync --group dev
 ```
 
 Run the OpenPrints HTTP API (FastAPI):
@@ -349,8 +345,7 @@ OPENPRINTS_BLOSSOM_URL=
 OPENPRINTS_INDEXER_NOSTR_SECRET_KEY=<dev-only-placeholder>
 
 # apps/client/.env (example)
-PUBLIC_INDEXER_API_BASE_URL=http://localhost:8000
-PUBLIC_DEFAULT_RELAY_URL=ws://localhost:<relay-port>
+PUBLIC_OPENPRINTS_API_URL=http://localhost:8080
 ```
 
 Never commit real secrets to git. Keep sensitive local values in untracked `.env` files.
@@ -427,7 +422,7 @@ To get the Astro client live on [Cloudflare Pages](https://pages.cloudflare.com/
 3. **Deploy to Pages**:
 
    ```bash
-   npx wrangler pages deploy dist --project-name=openprints-client-client
+   npx wrangler pages deploy dist --project-name=openprints-client
    ```
 
    The first run creates a new Cloudflare Pages project named `openprints-client`. You get a URL like `https://openprints-client.pages.dev` for that deployment.

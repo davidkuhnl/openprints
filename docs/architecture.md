@@ -17,7 +17,7 @@ The indexing app is composed of **parallel pipelines** that share the same datab
   - Subscribes to `kind 33301` design events.
   - Validates and reduces versions into:
     - an append-only `design_versions` history, and
-    - a `design_current` table with the latest view per design.
+    - a `designs` table with the latest view per design (one row per `(pubkey, design_id)`).
   - Treats each event’s `pubkey` as an identity, seeding entries in the `identities` table.
 
 - **Identity indexer (new pipeline):**
