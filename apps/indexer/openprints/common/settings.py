@@ -13,11 +13,11 @@ ENV_DATABASE_PATH = "OPENPRINTS_INDEX_DATABASE_PATH"
 ENV_RELAY_URLS = "OPENPRINTS_RELAY_URLS"
 ENV_API_PORT = "OPENPRINTS_API_PORT"
 ENV_LOG_LEVEL = "OPENPRINTS_LOG_LEVEL"
-ENV_INDEX_KIND = "OPENPRINTS_INDEX_KIND"
-ENV_INDEX_QUEUE_MAXSIZE = "OPENPRINTS_INDEX_QUEUE_MAXSIZE"
-ENV_INDEX_TIMEOUT = "OPENPRINTS_INDEX_TIMEOUT"
-ENV_INDEX_MAX_RETRIES = "OPENPRINTS_INDEX_MAX_RETRIES"
-ENV_INDEX_DURATION = "OPENPRINTS_INDEX_DURATION"
+ENV_DESIGN_KIND = "OPENPRINTS_DESIGN_KIND"
+ENV_DESIGN_QUEUE_MAXSIZE = "OPENPRINTS_DESIGN_QUEUE_MAXSIZE"
+ENV_DESIGN_TIMEOUT = "OPENPRINTS_DESIGN_TIMEOUT"
+ENV_DESIGN_MAX_RETRIES = "OPENPRINTS_DESIGN_MAX_RETRIES"
+ENV_DESIGN_DURATION = "OPENPRINTS_DESIGN_DURATION"
 
 DEFAULT_RELAY_URLS = ["ws://localhost:7447"]
 
@@ -37,11 +37,11 @@ class RuntimeSettings:
     api_port: int
     api_host: str
     log_level: str
-    kind: int
-    queue_maxsize: int
-    timeout: float
-    max_retries: int
-    duration: float
+    design_kind: int
+    design_queue_maxsize: int
+    design_timeout: float
+    design_max_retries: int
+    design_duration: float
     identity_batch_size: int
     identity_stale_after_s: int
     identity_poll_interval_s: float
@@ -57,11 +57,11 @@ class CliOverrides:
     host: str | None = None
     log_level: str | None = None
     relay: list[str] | None = None
-    kind: int | None = None
-    queue_maxsize: int | None = None
-    timeout: float | None = None
-    max_retries: int | None = None
-    duration: float | None = None
+    design_kind: int | None = None
+    design_queue_maxsize: int | None = None
+    design_timeout: float | None = None
+    design_max_retries: int | None = None
+    design_duration: float | None = None
 
 
 def build_runtime_settings(
@@ -93,40 +93,52 @@ def build_runtime_settings(
     api_host = _resolve_api_host(cli)
     log_level = _resolve_log_level(cli, env, config)
 
-    kind, kind_err = _resolve_int(cli.kind, ENV_INDEX_KIND, config.indexer.kind, 33301, env, "kind")
+    design_kind, kind_err = _resolve_int(
+        cli.design_kind, ENV_DESIGN_KIND, config.indexer.design_kind, 33301, env, "design_kind"
+    )
     if kind_err:
         return None, [kind_err], None
 
-    queue_maxsize, q_err = _resolve_int(
-        cli.queue_maxsize,
-        ENV_INDEX_QUEUE_MAXSIZE,
-        config.indexer.queue_maxsize,
+    design_queue_maxsize, q_err = _resolve_int(
+        cli.design_queue_maxsize,
+        ENV_DESIGN_QUEUE_MAXSIZE,
+        config.indexer.design_queue_maxsize,
         1000,
         env,
-        "queue_maxsize",
+        "design_queue_maxsize",
     )
     if q_err:
         return None, [q_err], None
 
-    timeout, t_err = _resolve_float(
-        cli.timeout, ENV_INDEX_TIMEOUT, config.indexer.timeout, 8.0, env, "timeout"
+    design_timeout, t_err = _resolve_float(
+        cli.design_timeout,
+        ENV_DESIGN_TIMEOUT,
+        config.indexer.design_timeout,
+        8.0,
+        env,
+        "design_timeout",
     )
     if t_err:
         return None, [t_err], None
 
-    max_retries, r_err = _resolve_int(
-        cli.max_retries,
-        ENV_INDEX_MAX_RETRIES,
-        config.indexer.max_retries,
+    design_max_retries, r_err = _resolve_int(
+        cli.design_max_retries,
+        ENV_DESIGN_MAX_RETRIES,
+        config.indexer.design_max_retries,
         12,
         env,
-        "max_retries",
+        "design_max_retries",
     )
     if r_err:
         return None, [r_err], None
 
-    duration, d_err = _resolve_float(
-        cli.duration, ENV_INDEX_DURATION, config.indexer.duration, 0.0, env, "duration"
+    design_duration, d_err = _resolve_float(
+        cli.design_duration,
+        ENV_DESIGN_DURATION,
+        config.indexer.design_duration,
+        0.0,
+        env,
+        "design_duration",
     )
     if d_err:
         return None, [d_err], None
@@ -142,11 +154,11 @@ def build_runtime_settings(
         api_port=api_port,
         api_host=api_host,
         log_level=log_level,
-        kind=kind,
-        queue_maxsize=queue_maxsize,
-        timeout=timeout,
-        max_retries=max_retries,
-        duration=duration,
+        design_kind=design_kind,
+        design_queue_maxsize=design_queue_maxsize,
+        design_timeout=design_timeout,
+        design_max_retries=design_max_retries,
+        design_duration=design_duration,
         identity_batch_size=identity_batch_size,
         identity_stale_after_s=identity_stale_after_s,
         identity_poll_interval_s=identity_poll_interval_s,

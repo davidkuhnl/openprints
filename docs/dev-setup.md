@@ -227,11 +227,7 @@ Indexer pipeline (multi-relay, SQLite optional):
 - Multiple relays: `make cli-index RELAYS=ws://localhost:7447,wss://relay.example`
 - Runtime knobs:
   - `INDEX_CONFIG` (optional config path; defaults to `apps/indexer/openprints.toml`)
-  - `INDEX_KIND` (default `33301`)
-  - `INDEX_QUEUE_MAXSIZE` (default `1000`)
-  - `INDEX_TIMEOUT` (default `8.0`)
-  - `INDEX_MAX_RETRIES` (default `12`, use `0` for infinite retry loop)
-  - `INDEX_DURATION` in seconds (default `0`, run until interrupted)
+  - Design indexer: `DESIGN_KIND` (default `33301`), `DESIGN_QUEUE_MAXSIZE` (default `1000`), `DESIGN_TIMEOUT` (default `8.0`), `DESIGN_MAX_RETRIES` (default `12`, use `0` for infinite retry loop), `DESIGN_DURATION` in seconds (default `0`, run until interrupted). Env equivalents: `OPENPRINTS_DESIGN_KIND`, `OPENPRINTS_DESIGN_QUEUE_MAXSIZE`, `OPENPRINTS_DESIGN_TIMEOUT`, `OPENPRINTS_DESIGN_MAX_RETRIES`, `OPENPRINTS_DESIGN_DURATION`.
   - `log_level` in config (`CRITICAL|ERROR|WARNING|INFO|DEBUG`)
 - Precedence for each setting: CLI flag/Make variable -> env var -> config file -> built-in default.
 - Logging level precedence: `OPENPRINTS_LOG_LEVEL` env var overrides config `log_level`.

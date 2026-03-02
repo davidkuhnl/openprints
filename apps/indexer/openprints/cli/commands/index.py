@@ -22,11 +22,11 @@ def run_index(args: Namespace) -> int:
     cli = CliOverrides(
         config_path=getattr(args, "config", None),
         relay=getattr(args, "relay", None),
-        kind=getattr(args, "kind", None),
-        queue_maxsize=getattr(args, "queue_maxsize", None),
-        timeout=getattr(args, "timeout", None),
-        max_retries=getattr(args, "max_retries", None),
-        duration=getattr(args, "duration", None),
+        design_kind=getattr(args, "design_kind", None),
+        design_queue_maxsize=getattr(args, "design_queue_maxsize", None),
+        design_timeout=getattr(args, "design_timeout", None),
+        design_max_retries=getattr(args, "design_max_retries", None),
+        design_duration=getattr(args, "design_duration", None),
         log_level=getattr(args, "log_level", None),
     )
     settings, errors, config_source = build_runtime_settings(
@@ -39,13 +39,21 @@ def run_index(args: Namespace) -> int:
         print_json({"ok": False, "errors": [{"message": "failed to build runtime settings"}]})
         return 1
 
-    if settings.max_retries < 0:
+    if settings.design_max_retries < 0:
         print_json(
-            {"ok": False, "errors": [invalid_value("max_retries", "max_retries must be >= 0")]}
+            {
+                "ok": False,
+                "errors": [invalid_value("design_max_retries", "design_max_retries must be >= 0")],
+            }
         )
         return 1
-    if settings.duration < 0:
-        print_json({"ok": False, "errors": [invalid_value("duration", "duration must be >= 0")]})
+    if settings.design_duration < 0:
+        print_json(
+            {
+                "ok": False,
+                "errors": [invalid_value("design_duration", "design_duration must be >= 0")],
+            }
+        )
         return 1
 
     os.environ["OPENPRINTS_LOG_LEVEL"] = settings.log_level
@@ -65,10 +73,10 @@ def run_index(args: Namespace) -> int:
         try:
             design_indexer = DesignIndexer(
                 relays=relay_urls,
-                kind=settings.kind,
-                timeout_s=settings.timeout,
-                queue_maxsize=settings.queue_maxsize,
-                max_retries=settings.max_retries,
+                kind=settings.design_kind,
+                timeout_s=settings.design_timeout,
+                queue_maxsize=settings.design_queue_maxsize,
+                max_retries=settings.design_max_retries,
                 store=store,
             )
             identity_indexer = IdentityIndexer(
@@ -84,11 +92,11 @@ def run_index(args: Namespace) -> int:
                 "indexer_command_start",
                 extra={
                     "relay_count": len(relay_urls),
-                    "kind": settings.kind,
-                    "queue_maxsize": settings.queue_maxsize,
-                    "max_retries": settings.max_retries,
-                    "timeout_s": settings.timeout,
-                    "duration_s": settings.duration,
+                    "design_kind": settings.design_kind,
+                    "design_queue_maxsize": settings.design_queue_maxsize,
+                    "design_max_retries": settings.design_max_retries,
+                    "design_timeout_s": settings.design_timeout,
+                    "design_duration_s": settings.design_duration,
                     "config_source": config_source or "none",
                     "log_level": settings.log_level,
                     "database": database_path or "log",
@@ -99,8 +107,8 @@ def run_index(args: Namespace) -> int:
                 },
             )
             try:
-                if settings.duration > 0:
-                    await app.run_for(settings.duration)
+                if settings.design_duration > 0:
+                    await app.run_for(settings.design_duration)
                 else:
                     await app.run_until_cancelled()
             except KeyboardInterrupt:

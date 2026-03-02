@@ -216,36 +216,41 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     index_parser.add_argument(
-        "--kind",
+        "--design-kind",
         type=int,
         default=None,
-        help="Event kind to ingest (falls back to env/config/default: 33301).",
+        dest="design_kind",
+        help="Design event kind to ingest (falls back to env/config/default: 33301).",
     )
     index_parser.add_argument(
-        "--queue-maxsize",
+        "--design-queue-maxsize",
         type=int,
         default=None,
-        help="Shared ingest queue max size (falls back to env/config/default: 1000).",
+        dest="design_queue_maxsize",
+        help="Design ingest queue max size (falls back to env/config/default: 1000).",
     )
     index_parser.add_argument(
-        "--timeout",
+        "--design-timeout",
         type=float,
         default=None,
-        help="Relay receive/connect timeout in seconds (falls back to env/config/default: 8.0).",
+        dest="design_timeout",
+        help="Design relay timeout in seconds (env/config/default: 8.0).",
     )
     index_parser.add_argument(
-        "--max-retries",
+        "--design-max-retries",
         type=int,
         default=None,
+        dest="design_max_retries",
         help=(
             "Consecutive relay worker failures before giving up "
             "(falls back to env/config/default: 12, 0=infinite)."
         ),
     )
     index_parser.add_argument(
-        "--duration",
+        "--design-duration",
         type=float,
         default=None,
+        dest="design_duration",
         help="Run seconds before clean stop (falls back to env/config/default: 0=until interrupt).",
     )
     index_parser.set_defaults(func=run_index)
