@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from openprints.common.error_codes import (
@@ -18,7 +19,11 @@ from openprints.common.errors import (
 
 ARTIFACT_VERSION = 1
 SUPPORTED_ARTIFACT_VERSIONS = {ARTIFACT_VERSION}
-SUPPORTED_EVENT_KIND = 33301
+SUPPORTED_EVENT_TYPES = {"design", "identity"}
+SUPPORTED_KIND_BY_EVENT_TYPE = {
+    "design": 33301,
+    "identity": 0,
+}
 
 
 def _is_tag_list(value: Any) -> bool:
@@ -89,6 +94,20 @@ def validate_payload(payload: Any) -> list[dict[str, str]]:
     elif not isinstance(source, str) or not source.strip():
         errors.append(invalid_value("meta.source", "meta.source must be a non-empty string"))
 
+    event_type = meta.get("event_type")
+    if event_type is None:
+        errors.append(missing_required_field("meta.event_type"))
+    elif not isinstance(event_type, str):
+        errors.append(invalid_type("meta.event_type", "a string"))
+        event_type = None
+    elif event_type not in SUPPORTED_EVENT_TYPES:
+        errors.append(
+            invalid_value(
+                "meta.event_type",
+                f"meta.event_type must be one of: {', '.join(sorted(SUPPORTED_EVENT_TYPES))}",
+            )
+        )
+
     for field in ("kind", "created_at", "tags", "content"):
         if field not in event:
             errors.append(missing_required_field(f"event.{field}"))
@@ -97,12 +116,17 @@ def validate_payload(payload: Any) -> list[dict[str, str]]:
     if kind is not None:
         if not isinstance(kind, int):
             errors.append(invalid_type("event.kind", "an integer"))
-        elif kind != SUPPORTED_EVENT_KIND:
+        elif (
+            isinstance(event_type, str)
+            and event_type in SUPPORTED_KIND_BY_EVENT_TYPE
+            and kind != SUPPORTED_KIND_BY_EVENT_TYPE[event_type]
+        ):
             errors.append(
                 make_error(
                     UNSUPPORTED_EVENT_KIND,
                     "event.kind",
-                    f"event.kind must be {SUPPORTED_EVENT_KIND}",
+                    "event.kind must be "
+                    f"{SUPPORTED_KIND_BY_EVENT_TYPE[event_type]} for event_type '{event_type}'",
                 )
             )
 
@@ -119,21 +143,36 @@ def validate_payload(payload: Any) -> list[dict[str, str]]:
         errors.append(invalid_type("event.content", "a string"))
 
     if isinstance(tags, list) and _is_tag_list(tags):
-        required_tags = ("d", "name", "format", "sha256", "url")
-        for tag_name in required_tags:
-            if not any(len(tag) >= 2 and tag[0] == tag_name for tag in tags):
-                errors.append(missing_required_tag(tag_name))
+        if event_type == "design":
+            required_tags = ("d", "name", "format", "sha256", "url")
+            for tag_name in required_tags:
+                if not any(len(tag) >= 2 and tag[0] == tag_name for tag in tags):
+                    errors.append(missing_required_tag(tag_name))
 
-        name_values = _collect_tag_values(tags, "name")
-        if name_values:
-            normalized_name = " ".join(name_values[0].strip().split())
-            if not (1 <= len(normalized_name) <= 120):
-                errors.append(
-                    invalid_value(
-                        "event.tags[name]",
-                        "name must be 1..120 characters after trimming/whitespace normalization",
+            name_values = _collect_tag_values(tags, "name")
+            if name_values:
+                normalized_name = " ".join(name_values[0].strip().split())
+                if not (1 <= len(normalized_name) <= 120):
+                    errors.append(
+                        invalid_value(
+                            "event.tags[name]",
+                            "name must be 1..120 characters after trimming/whitespace "
+                            "normalization",
+                        )
                     )
-                )
+        elif event_type == "identity":
+            if isinstance(content, str):
+                try:
+                    parsed_content = json.loads(content)
+                except json.JSONDecodeError:
+                    parsed_content = None
+                if not isinstance(parsed_content, dict):
+                    errors.append(
+                        invalid_value(
+                            "event.content",
+                            "identity event.content must be a JSON object string",
+                        )
+                    )
 
     if state == "draft":
         forbidden_in_draft = ("id", "sig")

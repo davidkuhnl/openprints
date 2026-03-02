@@ -30,6 +30,7 @@ def test_main_dispatches_build(monkeypatch, capsys) -> None:
         [
             "openprints-cli",
             "build",
+            "design",
             "--name",
             "Stub Design",
             "--format",

@@ -1,6 +1,12 @@
 # OpenPrints CLI Payload Contract
 
-This document defines the handoff contract across `openprints-cli build`, `openprints-cli sign`, and `openprints-cli publish`.
+This document defines the handoff contract across:
+
+- `openprints-cli build design`
+- `openprints-cli build identity`
+- `openprints-cli sign`
+- `openprints-cli publish design`
+- `openprints-cli publish identity`
 
 The contract is intentionally separate from Nostr protocol fields so the CLI artifact can evolve safely over time.
 
@@ -87,7 +93,8 @@ Retry behavior (current):
   "artifact_version": 1,
   "meta": {
     "state": "draft",
-    "source": "openprints-cli"
+    "source": "openprints-cli",
+    "event_type": "design"
   },
   "event": {
     "kind": 33301,
@@ -110,27 +117,35 @@ Required fields:
 
 - `state`: `draft` or `signed`
 - `source`: non-empty string (currently `openprints-cli`)
+- `event_type`: `design` or `identity`
 
 ## `event` Field
 
 For both `draft` and `signed`, required:
 
-- `kind` (currently only `33301` supported)
+- `kind` (depends on `meta.event_type`)
 - `created_at` (unix timestamp integer)
 - `tags` (list of tag arrays; each tag array must contain strings)
-- `content` (string; may be Markdown)
+- `content` (string)
 
-Required tags for `kind=33301`:
+### Event type: `design`
 
-- `d`
-- `name`
-- `format`
-- `sha256`
-- `url`
+- `event.kind` must be `33301`.
+- `event.content` may be Markdown text.
+- Required tags:
+  - `d`
+  - `name`
+  - `format`
+  - `sha256`
+  - `url`
+- Additional validation:
+  - `name` must be 1..120 chars after trimming/whitespace normalization.
 
-Additional validation currently enforced:
+### Event type: `identity`
 
-- `name` must be 1..120 chars after trimming/whitespace normalization.
+- `event.kind` must be `0`.
+- `event.content` must be a JSON object encoded as a JSON string.
+- `event.tags` can be empty.
 
 ### Draft vs Signed
 

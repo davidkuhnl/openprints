@@ -85,6 +85,24 @@ def run_publish(args: Namespace) -> int:
         )
         return 1
 
+    expected_event_type = getattr(args, "publish_event_type", None)
+    payload_event_type = payload.get("meta", {}).get("event_type")
+    if expected_event_type and payload_event_type != expected_event_type:
+        print_json(
+            {
+                "ok": False,
+                "errors": [
+                    invalid_value(
+                        "meta.event_type",
+                        "publish "
+                        f"{expected_event_type} expects payload meta.event_type="
+                        f"'{expected_event_type}'",
+                    )
+                ],
+            }
+        )
+        return 1
+
     event = cast(SignedEvent, payload["event"])
     sig_error = verify_event_signature(event)
     if sig_error is not None:

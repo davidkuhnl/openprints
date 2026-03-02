@@ -9,11 +9,22 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import openprints.cli.commands.publish as publish_cmd
 from openprints.cli.commands.publish import _publish_event_to_relay, run_publish
 from openprints.common.error_codes import INVALID_JSON, INVALID_VALUE, MISSING_REQUIRED_FIELD
-from tests.test_helpers import valid_draft_payload, valid_signed_payload
+from tests.test_helpers import (
+    valid_draft_payload,
+    valid_identity_signed_payload,
+    valid_signed_payload,
+)
 
 
 def _args(**overrides: object) -> Namespace:
-    base = {"input": "-", "relay": None, "timeout": 8.0, "retries": 0, "retry_backoff_ms": 0}
+    base = {
+        "input": "-",
+        "relay": None,
+        "timeout": 8.0,
+        "retries": 0,
+        "retry_backoff_ms": 0,
+        "publish_event_type": "design",
+    }
     base.update(overrides)
     return Namespace(**base)
 
@@ -321,3 +332,39 @@ def test_publish_event_to_relay_unexpected_response() -> None:
         result = asyncio.run(_publish_event_to_relay("ws://localhost:7447", event, timeout_s=1.0))
     assert result["accepted"] is False
     assert "unexpected" in result["message"].lower()
+
+
+def test_publish_identity_reads_payload_from_stdin(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        StringIO(json.dumps(valid_identity_signed_payload())),
+    )
+    monkeypatch.setattr(publish_cmd, "_publish_event_to_relay", _publish_success)
+
+    result = run_publish(
+        _args(input="-", relay="ws://localhost:7447", publish_event_type="identity")
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    output = json.loads(captured.out)
+    assert output["ok"] is True
+    assert output["relay_results"][0]["event_id"] == valid_identity_signed_payload()["event"]["id"]
+
+
+def test_publish_rejects_event_type_mismatch(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(
+        sys,
+        "stdin",
+        StringIO(json.dumps(valid_identity_signed_payload())),
+    )
+
+    result = run_publish(_args(input="-", relay="ws://localhost:7447", publish_event_type="design"))
+    captured = capsys.readouterr()
+
+    assert result != 0
+    output = json.loads(captured.out)
+    assert output["ok"] is False
+    assert output["errors"][0]["code"] == INVALID_VALUE
+    assert output["errors"][0]["path"] == "meta.event_type"

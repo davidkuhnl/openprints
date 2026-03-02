@@ -8,7 +8,7 @@ from bech32 import bech32_encode, convertbits
 
 from openprints.cli.commands.sign import run_sign
 from openprints.common.error_codes import INVALID_JSON, INVALID_VALUE
-from tests.test_helpers import valid_draft_payload
+from tests.test_helpers import valid_draft_payload, valid_identity_draft_payload
 
 
 def _nsec_from_secret_hex(secret_hex: str) -> str:
@@ -152,3 +152,20 @@ def test_sign_is_deterministic_for_same_input(monkeypatch, capsys) -> None:
     output_second = json.loads(captured_second.out)
     assert output_first["event"]["id"] == output_second["event"]["id"]
     assert output_first["event"]["sig"] == output_second["event"]["sig"]
+
+
+def test_sign_identity_draft_payload(monkeypatch, capsys) -> None:
+    monkeypatch.setenv(
+        "OPENPRINTS_DEV_NSEC",
+        _nsec_from_secret_hex("13" * 32),
+    )
+    monkeypatch.setattr(sys, "stdin", StringIO(json.dumps(valid_identity_draft_payload())))
+
+    result = run_sign(_args(input="-"))
+    captured = capsys.readouterr()
+
+    assert result == 0
+    output = json.loads(captured.out)
+    assert output["meta"]["state"] == "signed"
+    assert output["meta"]["event_type"] == "identity"
+    assert output["event"]["kind"] == 0

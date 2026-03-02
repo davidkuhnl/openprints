@@ -1,4 +1,4 @@
-.PHONY: help setup setup-fast format lint lint-fix test check relay-up relay-down relay-down-wipe relay-logs relay-test-up relay-test-ws relay-check test-drive cli cli-build cli-sign cli-publish cli-subscribe cli-index cli-serve cli-db-stats cli-db-wipe cli-hash cli-hash-stdin cli-keygen api client-deploy
+.PHONY: help setup setup-fast format lint lint-fix test check relay-up relay-down relay-down-wipe relay-logs relay-test-up relay-test-ws relay-check test-drive cli cli-build-design cli-build-identity cli-sign cli-publish-design cli-publish-identity cli-subscribe cli-index cli-serve cli-db-stats cli-db-wipe cli-hash cli-hash-stdin cli-keygen api client-deploy
 
 INDEXER_DIR := apps/indexer
 CLIENT_DIR := apps/client
@@ -10,8 +10,9 @@ SHA256 ?=
 NAME ?= Stub Design
 FORMAT ?= stl
 URL ?= https://example.invalid/stub.stl
-CONTENT ?= Built via make cli-build
+CONTENT ?= Built via make cli-build-design
 DESIGN_ID ?=
+PROFILE_FILE ?= tests/fixtures/stub_profile.json
 RELAY ?= ws://localhost:7447
 PUBLISH_TIMEOUT ?= 8.0
 PUBLISH_RETRIES ?= 0
@@ -47,9 +48,11 @@ help:
 	@echo "  make relay-check    - run relay HTTP + websocket checks"
 	@echo "  make test-drive     - end-to-end test: key, relay, indexer, publish 2 designs + update, tear down"
 	@echo "  make cli            - run openprints-cli scaffold"
-	@echo "  make cli-build      - run openprints-cli build using NAME/FORMAT/URL and FILE or SHA256 vars"
+	@echo "  make cli-build-design - run openprints-cli build design using NAME/FORMAT/URL and FILE or SHA256 vars"
+	@echo "  make cli-build-identity - run openprints-cli build identity using PROFILE_FILE"
 	@echo "  make cli-sign       - run openprints-cli sign (stdin, requires OPENPRINTS_DEV_NSEC)"
-	@echo "  make cli-publish    - run openprints-cli publish to RELAY=\$$RELAY with timeout/retry vars"
+	@echo "  make cli-publish-design - run openprints-cli publish design to RELAY=\$$RELAY with timeout/retry vars"
+	@echo "  make cli-publish-identity - run openprints-cli publish identity to RELAY=\$$RELAY with timeout/retry vars"
 	@echo "  make cli-subscribe  - run openprints-cli subscribe on RELAY=\$$RELAY"
 	@echo "  make cli-index      - run openprints-cli index pipeline stub (INDEX_CONFIG/INDEX_RELAY/RELAYS)"
 	@echo "  make cli-serve      - run OpenPrints HTTP API (INDEX_CONFIG, OPENPRINTS_API_PORT default 8080)"
@@ -109,14 +112,20 @@ test-drive:
 cli:
 	@cd $(INDEXER_DIR) && uv run openprints-cli
 
-cli-build:
-	@cd $(INDEXER_DIR) && EXTRA_DESIGN_ID="" ; HASH_ARG="--file \"$(FILE)\"" ; if [ -n "$(DESIGN_ID)" ]; then EXTRA_DESIGN_ID="--design-id \"$(DESIGN_ID)\""; fi ; if [ -n "$(SHA256)" ]; then HASH_ARG="--sha256 \"$(SHA256)\""; fi ; eval "uv run openprints-cli build --name \"$(NAME)\" --format \"$(FORMAT)\" --url \"$(URL)\" --content \"$(CONTENT)\" $$HASH_ARG $$EXTRA_DESIGN_ID"
+cli-build-design:
+	@cd $(INDEXER_DIR) && EXTRA_DESIGN_ID="" ; HASH_ARG="--file \"$(FILE)\"" ; if [ -n "$(DESIGN_ID)" ]; then EXTRA_DESIGN_ID="--design-id \"$(DESIGN_ID)\""; fi ; if [ -n "$(SHA256)" ]; then HASH_ARG="--sha256 \"$(SHA256)\""; fi ; eval "uv run openprints-cli build design --name \"$(NAME)\" --format \"$(FORMAT)\" --url \"$(URL)\" --content \"$(CONTENT)\" $$HASH_ARG $$EXTRA_DESIGN_ID"
+
+cli-build-identity:
+	@cd $(INDEXER_DIR) && uv run openprints-cli build identity --profile-file "$(PROFILE_FILE)"
 
 cli-sign:
 	@cd $(INDEXER_DIR) && uv run openprints-cli sign
 
-cli-publish:
-	@cd $(INDEXER_DIR) && uv run openprints-cli publish --relay "$(RELAY)" --timeout "$(PUBLISH_TIMEOUT)" --retries "$(PUBLISH_RETRIES)" --retry-backoff-ms "$(PUBLISH_RETRY_BACKOFF_MS)"
+cli-publish-design:
+	@cd $(INDEXER_DIR) && uv run openprints-cli publish design --relay "$(RELAY)" --timeout "$(PUBLISH_TIMEOUT)" --retries "$(PUBLISH_RETRIES)" --retry-backoff-ms "$(PUBLISH_RETRY_BACKOFF_MS)"
+
+cli-publish-identity:
+	@cd $(INDEXER_DIR) && uv run openprints-cli publish identity --relay "$(RELAY)" --timeout "$(PUBLISH_TIMEOUT)" --retries "$(PUBLISH_RETRIES)" --retry-backoff-ms "$(PUBLISH_RETRY_BACKOFF_MS)"
 
 cli-subscribe:
 	@cd $(INDEXER_DIR) && uv run openprints-cli subscribe --relay "$(RELAY)" --kind "$(SUBSCRIBE_KIND)" --limit "$(SUBSCRIBE_LIMIT)" --timeout "$(SUBSCRIBE_TIMEOUT)"

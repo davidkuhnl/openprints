@@ -16,7 +16,7 @@ from openprints.common.payload_contract import ARTIFACT_VERSION, validate_payloa
 def _base_draft_payload() -> dict:
     return {
         "artifact_version": ARTIFACT_VERSION,
-        "meta": {"state": "draft", "source": "openprints-cli"},
+        "meta": {"state": "draft", "source": "openprints-cli", "event_type": "design"},
         "event": {
             "kind": 33301,
             "created_at": 1730000000,
@@ -28,6 +28,19 @@ def _base_draft_payload() -> dict:
                 ["url", "https://example.invalid/file.stl"],
             ],
             "content": "hello",
+        },
+    }
+
+
+def _base_identity_draft_payload() -> dict:
+    return {
+        "artifact_version": ARTIFACT_VERSION,
+        "meta": {"state": "draft", "source": "openprints-cli", "event_type": "identity"},
+        "event": {
+            "kind": 0,
+            "created_at": 1730000000,
+            "tags": [],
+            "content": '{"name":"Alice","about":"hello"}',
         },
     }
 
@@ -45,6 +58,11 @@ def test_validate_payload_accepts_valid_signed() -> None:
     payload["event"]["pubkey"] = "c" * 64
 
     errors = validate_payload(payload)
+    assert errors == []
+
+
+def test_validate_payload_accepts_valid_identity_draft() -> None:
+    errors = validate_payload(_base_identity_draft_payload())
     assert errors == []
 
 
@@ -67,6 +85,14 @@ def test_validate_payload_rejects_missing_meta() -> None:
 
     errors = validate_payload(payload)
     assert any(err["path"] == "meta" for err in errors)
+
+
+def test_validate_payload_rejects_missing_event_type() -> None:
+    payload = _base_draft_payload()
+    del payload["meta"]["event_type"]
+
+    errors = validate_payload(payload)
+    assert any(err["path"] == "meta.event_type" for err in errors)
 
 
 def test_validate_payload_rejects_invalid_state() -> None:
@@ -129,6 +155,22 @@ def test_validate_payload_rejects_non_33301_kind() -> None:
 
     errors = validate_payload(payload)
     assert any(err["code"] == UNSUPPORTED_EVENT_KIND for err in errors)
+
+
+def test_validate_payload_rejects_kind_mismatch_for_identity() -> None:
+    payload = _base_identity_draft_payload()
+    payload["event"]["kind"] = 33301
+
+    errors = validate_payload(payload)
+    assert any(err["code"] == UNSUPPORTED_EVENT_KIND for err in errors)
+
+
+def test_validate_payload_rejects_identity_non_json_content() -> None:
+    payload = _base_identity_draft_payload()
+    payload["event"]["content"] = "not-json"
+
+    errors = validate_payload(payload)
+    assert any(err["path"] == "event.content" for err in errors)
 
 
 def test_validate_payload_rejects_missing_event_required_fields() -> None:

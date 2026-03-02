@@ -1,0 +1,11 @@
+{
+  "name": "OpenPrints Dev",
+  "display_name": "OpenPrints Dev",
+  "about": "Development identity for testing kind 0 events in OpenPrints.",
+  "picture": "https://openprints.dev/temp-identity-storage/profile-1.svg",
+  "banner": null,
+  "website": "https://openprints.dev",
+  "nip05": null,
+  "lud06": null,
+  "lud16": null
+}

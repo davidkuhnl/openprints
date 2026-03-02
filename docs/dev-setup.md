@@ -159,10 +159,12 @@ make cli
 Current CLI commands:
 
 ```bash
-make cli-build
+make cli-build-design
+make cli-build-identity
 make cli-keygen
 make cli-sign
-make cli-publish
+make cli-publish-design
+make cli-publish-identity
 make cli-subscribe
 make cli-index
 make cli-serve   # run HTTP API (designs, health, ready)
@@ -194,15 +196,17 @@ Run `make cli-sign` in the same terminal session where `OPENPRINTS_DEV_NSEC` is 
 Chained workflow (target state, once sign/publish implementations are fully pipeline-safe):
 
 ```bash
-make cli-build | make cli-sign | make cli-publish
+make cli-build-design | make cli-sign | make cli-publish-design
 ```
 
 Current note: the one-relay roundtrip is implemented (`build -> sign -> publish -> subscribe`). For scriptability and debugging, file handoff is still a good default.
 
 Publish relay selection (single relay for now):
 
-- `make cli-publish RELAY=ws://localhost:7447`
-- Example with retries: `make cli-publish RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`
+- `make cli-publish-design RELAY=ws://localhost:7447`
+- Example with retries: `make cli-publish-design RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`
+- `make cli-publish-identity RELAY=ws://localhost:7447`
+- Example with retries: `make cli-publish-identity RELAY=ws://localhost:7447 PUBLISH_TIMEOUT=5 PUBLISH_RETRIES=2 PUBLISH_RETRY_BACKOFF_MS=300`
 - If `RELAY` is not provided, CLI falls back to `OPENPRINTS_RELAY_URLS` (comma-separated list), then default `ws://localhost:7447`.
 - `publish` output is machine-readable JSON with `ok`, `errors`, and `relay_results`.
 - Planned enhancement: publish fan-out to multiple relays in one command (instead of current single-relay behavior).
