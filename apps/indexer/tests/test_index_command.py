@@ -56,9 +56,9 @@ def _args(**overrides: object) -> Namespace:
         "relay": None,
         "design_kind": None,
         "design_queue_maxsize": None,
-        "design_timeout": None,
+        "design_timeout_s": None,
         "design_max_retries": None,
-        "design_duration": None,
+        "design_duration_s": None,
     }
     base.update(overrides)
     return Namespace(**base)
@@ -77,9 +77,9 @@ def test_index_uses_config_file_defaults(tmp_path, monkeypatch) -> None:
                 'relays = ["ws://relay-from-config:7447"]',
                 "design_kind = 33309",
                 "design_queue_maxsize = 77",
-                "design_timeout = 2.5",
+                "design_timeout_s = 2.5",
                 "design_max_retries = 4",
-                "design_duration = 1.25",
+                "design_duration_s = 1.25",
             ]
         ),
         encoding="utf-8",
@@ -108,9 +108,9 @@ def test_index_cli_overrides_config(tmp_path, monkeypatch) -> None:
                 'relays = ["ws://relay-from-config:7447"]',
                 "design_kind = 12345",
                 "design_queue_maxsize = 77",
-                "design_timeout = 2.5",
+                "design_timeout_s = 2.5",
                 "design_max_retries = 4",
-                "design_duration = 0.5",
+                "design_duration_s = 0.5",
             ]
         ),
         encoding="utf-8",
@@ -123,9 +123,9 @@ def test_index_cli_overrides_config(tmp_path, monkeypatch) -> None:
             relay=["ws://relay-from-cli:7447"],
             design_kind=33301,
             design_queue_maxsize=1000,
-            design_timeout=8.0,
+            design_timeout_s=8.0,
             design_max_retries=12,
-            design_duration=0.0,
+            design_duration_s=0.0,
         )
     )
 
@@ -152,7 +152,7 @@ def test_index_config_log_level_applies_when_env_missing(tmp_path, monkeypatch) 
     monkeypatch.delenv("OPENPRINTS_LOG_LEVEL", raising=False)
     _patch_runtime(monkeypatch)
 
-    result = index_cmd.run_index(_args(config=str(config_path), design_duration=0.01))
+    result = index_cmd.run_index(_args(config=str(config_path), design_duration_s=0.01))
 
     assert result == 0
     assert _FakeIndexerApp.ran_for_duration == 0.01
@@ -219,10 +219,10 @@ def test_index_returns_1_when_design_max_retries_negative(tmp_path, monkeypatch)
     assert result == 1
 
 
-def test_index_returns_1_when_design_duration_negative(tmp_path, monkeypatch) -> None:
+def test_index_returns_1_when_design_duration_s_negative(tmp_path, monkeypatch) -> None:
     config_path = tmp_path / "openprints.toml"
     config_path.write_text(
-        '[indexer]\nrelays = ["ws://r:7447"]\ndesign_duration = -1.0\n',
+        '[indexer]\nrelays = ["ws://r:7447"]\ndesign_duration_s = -1.0\n',
         encoding="utf-8",
     )
     _patch_runtime(monkeypatch)
@@ -233,7 +233,7 @@ def test_index_returns_1_when_design_duration_negative(tmp_path, monkeypatch) ->
 def test_index_prints_stats_on_success(tmp_path, monkeypatch, capsys) -> None:
     config_path = tmp_path / "openprints.toml"
     config_path.write_text(
-        '[indexer]\nrelays = ["ws://r:7447"]\ndesign_duration = 0.001\n',
+        '[indexer]\nrelays = ["ws://r:7447"]\ndesign_duration_s = 0.001\n',
         encoding="utf-8",
     )
     _patch_runtime(monkeypatch)

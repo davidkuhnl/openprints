@@ -12,9 +12,9 @@ relays = ["ws://localhost:7447"]
 # Design indexer (kind 33301). Omit to use defaults.
 design_kind = 33301
 design_queue_maxsize = 1000
-design_timeout = 8.0
+design_timeout_s = 8.0
 design_max_retries = 12
-design_duration = 0.0
+design_duration_s = 0.0
 log_level = "WARNING"
 
 # Identity indexer (kind-0 profile fetch). Omit to use defaults.

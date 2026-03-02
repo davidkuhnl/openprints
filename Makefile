@@ -26,9 +26,9 @@ INDEX_CONFIG ?=
 API_PORT ?=
 DESIGN_KIND ?=
 DESIGN_QUEUE_MAXSIZE ?=
-DESIGN_TIMEOUT ?=
+DESIGN_TIMEOUT_S ?=
 DESIGN_MAX_RETRIES ?=
-DESIGN_DURATION ?=
+DESIGN_DURATION_S ?=
 
 help:
 	@echo "Available targets:"
@@ -131,7 +131,7 @@ cli-subscribe:
 	@cd $(INDEXER_DIR) && uv run openprints-cli subscribe --relay "$(RELAY)" --kind "$(SUBSCRIBE_KIND)" --limit "$(SUBSCRIBE_LIMIT)" --timeout "$(SUBSCRIBE_TIMEOUT)"
 
 cli-index:
-	@cd $(INDEXER_DIR) && CMD="uv run openprints-cli index" ; if [ -n "$(INDEX_CONFIG)" ]; then CMD="$$CMD --config \"$(INDEX_CONFIG)\""; fi ; if [ -n "$(RELAYS)" ]; then IFS=','; for relay in $(RELAYS); do CMD="$$CMD --relay $$relay"; done; elif [ -n "$(INDEX_RELAY)" ]; then CMD="$$CMD --relay \"$(INDEX_RELAY)\""; fi ; if [ -n "$(DESIGN_KIND)" ]; then CMD="$$CMD --design-kind \"$(DESIGN_KIND)\""; fi ; if [ -n "$(DESIGN_QUEUE_MAXSIZE)" ]; then CMD="$$CMD --design-queue-maxsize \"$(DESIGN_QUEUE_MAXSIZE)\""; fi ; if [ -n "$(DESIGN_TIMEOUT)" ]; then CMD="$$CMD --design-timeout \"$(DESIGN_TIMEOUT)\""; fi ; if [ -n "$(DESIGN_MAX_RETRIES)" ]; then CMD="$$CMD --design-max-retries \"$(DESIGN_MAX_RETRIES)\""; fi ; if [ -n "$(DESIGN_DURATION)" ]; then CMD="$$CMD --design-duration \"$(DESIGN_DURATION)\""; fi ; eval "$$CMD"
+	@cd $(INDEXER_DIR) && CMD="uv run openprints-cli index" ; if [ -n "$(INDEX_CONFIG)" ]; then CMD="$$CMD --config \"$(INDEX_CONFIG)\""; fi ; if [ -n "$(RELAYS)" ]; then IFS=','; for relay in $(RELAYS); do CMD="$$CMD --relay $$relay"; done; elif [ -n "$(INDEX_RELAY)" ]; then CMD="$$CMD --relay \"$(INDEX_RELAY)\""; fi ; if [ -n "$(DESIGN_KIND)" ]; then CMD="$$CMD --design-kind \"$(DESIGN_KIND)\""; fi ; if [ -n "$(DESIGN_QUEUE_MAXSIZE)" ]; then CMD="$$CMD --design-queue-maxsize \"$(DESIGN_QUEUE_MAXSIZE)\""; fi ; if [ -n "$(DESIGN_TIMEOUT_S)" ]; then CMD="$$CMD --design-timeout-s \"$(DESIGN_TIMEOUT_S)\""; fi ; if [ -n "$(DESIGN_MAX_RETRIES)" ]; then CMD="$$CMD --design-max-retries \"$(DESIGN_MAX_RETRIES)\""; fi ; if [ -n "$(DESIGN_DURATION_S)" ]; then CMD="$$CMD --design-duration-s \"$(DESIGN_DURATION_S)\""; fi ; eval "$$CMD"
 
 cli-serve:
 	@cd $(INDEXER_DIR) && CMD="uv run openprints-cli serve" ; if [ -n "$(INDEX_CONFIG)" ]; then CMD="$$CMD --config \"$(INDEX_CONFIG)\""; fi ; if [ -n "$(API_PORT)" ]; then CMD="$$CMD --port \"$(API_PORT)\""; fi ; eval "$$CMD"

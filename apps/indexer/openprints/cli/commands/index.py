@@ -24,9 +24,9 @@ def run_index(args: Namespace) -> int:
         relay=getattr(args, "relay", None),
         design_kind=getattr(args, "design_kind", None),
         design_queue_maxsize=getattr(args, "design_queue_maxsize", None),
-        design_timeout=getattr(args, "design_timeout", None),
+        design_timeout_s=getattr(args, "design_timeout_s", None),
         design_max_retries=getattr(args, "design_max_retries", None),
-        design_duration=getattr(args, "design_duration", None),
+        design_duration_s=getattr(args, "design_duration_s", None),
         log_level=getattr(args, "log_level", None),
     )
     settings, errors, config_source = build_runtime_settings(
@@ -47,11 +47,11 @@ def run_index(args: Namespace) -> int:
             }
         )
         return 1
-    if settings.design_duration < 0:
+    if settings.design_duration_s < 0:
         print_json(
             {
                 "ok": False,
-                "errors": [invalid_value("design_duration", "design_duration must be >= 0")],
+                "errors": [invalid_value("design_duration_s", "design_duration_s must be >= 0")],
             }
         )
         return 1
@@ -74,7 +74,7 @@ def run_index(args: Namespace) -> int:
             design_indexer = DesignIndexer(
                 relays=relay_urls,
                 kind=settings.design_kind,
-                timeout_s=settings.design_timeout,
+                timeout_s=settings.design_timeout_s,
                 queue_maxsize=settings.design_queue_maxsize,
                 max_retries=settings.design_max_retries,
                 store=store,
@@ -95,8 +95,8 @@ def run_index(args: Namespace) -> int:
                     "design_kind": settings.design_kind,
                     "design_queue_maxsize": settings.design_queue_maxsize,
                     "design_max_retries": settings.design_max_retries,
-                    "design_timeout_s": settings.design_timeout,
-                    "design_duration_s": settings.design_duration,
+                    "design_timeout_s": settings.design_timeout_s,
+                    "design_duration_s": settings.design_duration_s,
                     "config_source": config_source or "none",
                     "log_level": settings.log_level,
                     "database": database_path or "log",
@@ -107,8 +107,8 @@ def run_index(args: Namespace) -> int:
                 },
             )
             try:
-                if settings.design_duration > 0:
-                    await app.run_for(settings.design_duration)
+                if settings.design_duration_s > 0:
+                    await app.run_for(settings.design_duration_s)
                 else:
                     await app.run_until_cancelled()
             except KeyboardInterrupt:

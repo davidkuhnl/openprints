@@ -15,9 +15,9 @@ ENV_API_PORT = "OPENPRINTS_API_PORT"
 ENV_LOG_LEVEL = "OPENPRINTS_LOG_LEVEL"
 ENV_DESIGN_KIND = "OPENPRINTS_DESIGN_KIND"
 ENV_DESIGN_QUEUE_MAXSIZE = "OPENPRINTS_DESIGN_QUEUE_MAXSIZE"
-ENV_DESIGN_TIMEOUT = "OPENPRINTS_DESIGN_TIMEOUT"
+ENV_DESIGN_TIMEOUT_S = "OPENPRINTS_DESIGN_TIMEOUT_S"
 ENV_DESIGN_MAX_RETRIES = "OPENPRINTS_DESIGN_MAX_RETRIES"
-ENV_DESIGN_DURATION = "OPENPRINTS_DESIGN_DURATION"
+ENV_DESIGN_DURATION_S = "OPENPRINTS_DESIGN_DURATION_S"
 
 DEFAULT_RELAY_URLS = ["ws://localhost:7447"]
 
@@ -39,9 +39,9 @@ class RuntimeSettings:
     log_level: str
     design_kind: int
     design_queue_maxsize: int
-    design_timeout: float
+    design_timeout_s: float
     design_max_retries: int
-    design_duration: float
+    design_duration_s: float
     identity_batch_size: int
     identity_stale_after_s: int
     identity_poll_interval_s: float
@@ -59,9 +59,9 @@ class CliOverrides:
     relay: list[str] | None = None
     design_kind: int | None = None
     design_queue_maxsize: int | None = None
-    design_timeout: float | None = None
+    design_timeout_s: float | None = None
     design_max_retries: int | None = None
-    design_duration: float | None = None
+    design_duration_s: float | None = None
 
 
 def build_runtime_settings(
@@ -110,13 +110,13 @@ def build_runtime_settings(
     if q_err:
         return None, [q_err], None
 
-    design_timeout, t_err = _resolve_float(
-        cli.design_timeout,
-        ENV_DESIGN_TIMEOUT,
-        config.indexer.design_timeout,
+    design_timeout_s, t_err = _resolve_float(
+        cli.design_timeout_s,
+        ENV_DESIGN_TIMEOUT_S,
+        config.indexer.design_timeout_s,
         8.0,
         env,
-        "design_timeout",
+        "design_timeout_s",
     )
     if t_err:
         return None, [t_err], None
@@ -132,13 +132,13 @@ def build_runtime_settings(
     if r_err:
         return None, [r_err], None
 
-    design_duration, d_err = _resolve_float(
-        cli.design_duration,
-        ENV_DESIGN_DURATION,
-        config.indexer.design_duration,
+    design_duration_s, d_err = _resolve_float(
+        cli.design_duration_s,
+        ENV_DESIGN_DURATION_S,
+        config.indexer.design_duration_s,
         0.0,
         env,
-        "design_duration",
+        "design_duration_s",
     )
     if d_err:
         return None, [d_err], None
@@ -156,9 +156,9 @@ def build_runtime_settings(
         log_level=log_level,
         design_kind=design_kind,
         design_queue_maxsize=design_queue_maxsize,
-        design_timeout=design_timeout,
+        design_timeout_s=design_timeout_s,
         design_max_retries=design_max_retries,
-        design_duration=design_duration,
+        design_duration_s=design_duration_s,
         identity_batch_size=identity_batch_size,
         identity_stale_after_s=identity_stale_after_s,
         identity_poll_interval_s=identity_poll_interval_s,

@@ -230,10 +230,10 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Design ingest queue max size (falls back to env/config/default: 1000).",
     )
     index_parser.add_argument(
-        "--design-timeout",
+        "--design-timeout-s",
         type=float,
         default=None,
-        dest="design_timeout",
+        dest="design_timeout_s",
         help="Design relay timeout in seconds (env/config/default: 8.0).",
     )
     index_parser.add_argument(
@@ -247,10 +247,10 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     index_parser.add_argument(
-        "--design-duration",
+        "--design-duration-s",
         type=float,
         default=None,
-        dest="design_duration",
+        dest="design_duration_s",
         help="Run seconds before clean stop (falls back to env/config/default: 0=until interrupt).",
     )
     index_parser.set_defaults(func=run_index)
