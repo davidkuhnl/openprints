@@ -3,6 +3,7 @@ import CopyValue from "~/components/copy-value.astro";
 import IdentityAvatar from "~/components/identity-avatar.astro";
 
 interface CreatorIdentity {
+  id?: string | null;
   status: string | null;
   pubkey: string;
   display_name_resolved: string;
@@ -23,6 +24,9 @@ const displayNameResolved =
   (identity?.display_name_resolved && String(identity.display_name_resolved).trim()) ||
   "Unknown creator";
 const npub = identity?.npub ?? "";
+const identityHref = identity?.id
+  ? `/app/identity/${encodeURIComponent(identity.id)}`
+  : null;
 ---
 
 <div class="inline-flex items-center gap-2">
@@ -35,7 +39,16 @@ const npub = identity?.npub ?? "";
 
   <div class="inline-flex items-center gap-1 text-[10px] text-offset">
     <span class="font-medium truncate max-w-[120px]">
-      {displayNameResolved}
+      {identityHref ? (
+        <a
+          href={identityHref}
+          class="underline-offset-2 hover:underline focus:outline-none focus-visible:outline-none"
+        >
+          {displayNameResolved}
+        </a>
+      ) : (
+        displayNameResolved
+      )}
     </span>
 
     {npub && (

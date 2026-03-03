@@ -6,7 +6,12 @@ from fastapi import APIRouter, HTTPException, Query
 
 from openprints.api.deps import get_store
 from openprints.common.design_id import api_id_decode, api_id_encode
-from openprints.common.identity_utils import non_empty_string, to_npub, truncate_middle
+from openprints.common.identity_utils import (
+    identity_api_id_from_pubkey,
+    non_empty_string,
+    to_npub,
+    truncate_middle,
+)
 
 router = APIRouter(prefix="/designs", tags=["designs"])
 
@@ -22,6 +27,7 @@ def _build_creator_identity(
     if display_name_resolved is None and npub is not None:
         display_name_resolved = truncate_middle(npub)
     return {
+        "id": identity_api_id_from_pubkey(pubkey),
         "pubkey": pubkey,
         "status": identity.get("status") if identity else None,
         "pubkey_first_seen_at": identity.get("pubkey_first_seen_at") if identity else None,

@@ -6,8 +6,9 @@ from fastapi.testclient import TestClient
 
 from openprints.api import app
 from openprints.api.routes import designs as designs_route
+from openprints.api.routes import identity as identity_route
 from openprints.common.design_id import api_id_encode
-from openprints.common.identity_utils import truncate_middle
+from openprints.common.identity_utils import identity_api_id_from_pubkey, truncate_middle
 from openprints.indexer.store import DesignCurrentRow
 
 client = TestClient(app)
@@ -121,6 +122,7 @@ def test_designs_includes_creator_identity_with_resolved_name(monkeypatch) -> No
     item = r.json()["items"][0]
     identity = item["creator_identity"]
     assert identity["pubkey"] == row.pubkey
+    assert identity["id"] == identity_api_id_from_pubkey(row.pubkey)
     assert identity["npub"].startswith("npub1")
     assert identity["display_name_resolved"] == "Alice"
     assert identity["name"] == "alice"
@@ -168,3 +170,70 @@ def test_design_by_id_includes_creator_identity_fallback_to_truncated_npub(monke
     npub = identity["npub"]
     assert isinstance(npub, str) and npub.startswith("npub1")
     assert identity["display_name_resolved"] == truncate_middle(npub)
+    assert identity["id"] == identity_api_id_from_pubkey(row.pubkey)
+
+
+def test_identity_by_id_invalid_returns_400() -> None:
+    r = client.get("/identity/not-valid-identity-id")
+    assert r.status_code == 400
+    assert "invalid" in (r.json().get("detail") or "").lower()
+
+
+def test_identity_by_id_not_found_returns_404(monkeypatch) -> None:
+    pubkey = "e" * 64
+    identity_id = identity_api_id_from_pubkey(pubkey)
+    assert identity_id is not None
+
+    class _FakeStore:
+        async def get_identities_by_pubkeys(self, pubkeys):
+            assert pubkeys == [pubkey]
+            return {}
+
+    monkeypatch.setattr(identity_route, "get_store", lambda: _FakeStore())
+    r = client.get(f"/identity/{identity_id}")
+    assert r.status_code == 404
+    assert "not found" in (r.json().get("detail") or "").lower()
+
+
+def test_identity_by_id_returns_full_identity(monkeypatch) -> None:
+    pubkey = "f" * 64
+    identity_id = identity_api_id_from_pubkey(pubkey)
+    assert identity_id is not None
+
+    class _FakeStore:
+        async def get_identities_by_pubkeys(self, pubkeys):
+            assert pubkeys == [pubkey]
+            return {
+                pubkey: {
+                    "pubkey": pubkey,
+                    "status": "fetched",
+                    "pubkey_first_seen_at": 100,
+                    "pubkey_last_seen_at": 200,
+                    "name": "alice",
+                    "display_name": "Alice",
+                    "about": "maker",
+                    "picture": "https://example.invalid/pic.png",
+                    "banner": "https://example.invalid/banner.png",
+                    "website": "https://example.invalid",
+                    "nip05": "alice@example.com",
+                    "lud06": "lnurl1example",
+                    "lud16": "alice@getalby.com",
+                    "profile_raw_json": '{"name":"alice"}',
+                    "profile_fetched_at": 300,
+                    "fetch_last_attempt_at": 300,
+                    "retry_count": 0,
+                }
+            }
+
+    monkeypatch.setattr(identity_route, "get_store", lambda: _FakeStore())
+    r = client.get(f"/identity/{identity_id}")
+    assert r.status_code == 200
+    payload = r.json()
+    assert payload["id"] == identity_id
+    assert payload["pubkey"] == pubkey
+    assert payload["npub"].startswith("npub1")
+    assert payload["display_name_resolved"] == "Alice"
+    assert payload["name"] == "alice"
+    assert payload["display_name"] == "Alice"
+    assert payload["about"] == "maker"
+    assert payload["nip05"] == "alice@example.com"

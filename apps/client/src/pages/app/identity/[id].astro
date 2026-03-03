@@ -1,0 +1,212 @@
+---
+import AppLayout from "~/layouts/app-layout.astro";
+import TruncateCopy from "~/components/truncate-copy.astro";
+import TimestampDisplay from "~/components/timestamp-display.astro";
+import IdentityAvatar from "~/components/identity-avatar.astro";
+import IconPill from "~/components/icon-pill.astro";
+
+export const prerender = false;
+
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
+const { id } = Astro.params;
+
+let identity: any = null;
+let errorTitle: string | null = null;
+let errorMessage: string | null = null;
+
+if (!base) {
+  errorTitle = "Identity not available";
+  errorMessage =
+    "API base URL is not configured. Check PUBLIC_OPENPRINTS_API_URL.";
+} else if (!id) {
+  errorTitle = "Identity not found";
+  errorMessage = "Missing identity id in the URL.";
+} else {
+  const url = `${base}/identity/${encodeURIComponent(id)}`;
+
+  try {
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      errorTitle = "Identity not found";
+      errorMessage = `API responded with ${res.status} ${res.statusText} for this identity.`;
+    } else {
+      identity = await res.json();
+    }
+  } catch {
+    errorTitle = "Identity not found";
+    errorMessage =
+      "We couldn't load this identity due to a network or server error.";
+  }
+}
+
+const displayName =
+  identity && identity.display_name_resolved
+    ? identity.display_name_resolved
+    : "Unknown identity";
+
+const profileRawJson =
+  identity && typeof identity.profile_raw_json === "string"
+    ? identity.profile_raw_json
+    : "";
+---
+
+<AppLayout title="OpenPrints – Identity detail">
+  <TruncateCopy value="" />
+
+    <article class="mx-auto flex max-w-5xl flex-col gap-2.5 rounded-xl border border-default bg-offset/30 p-4 sm:p-5">
+      {errorMessage && (
+        <>
+          <h1 class="text-lg font-semibold tracking-tight">
+            {errorTitle ?? "Identity not found"}
+          </h1>
+          <p class="mt-1.5 text-xs text-offset">{errorMessage}</p>
+        </>
+      )}
+
+      {!errorMessage && !identity && (
+        <>
+          <h1 class="text-lg font-semibold tracking-tight">Loading identity…</h1>
+          <p class="text-xs text-offset">Fetching identity details.</p>
+        </>
+      )}
+
+      {!errorMessage && identity && (
+        <div>
+          <header class="border-b border-default pb-4">
+            <div class="relative -mx-4 -mt-4 sm:-mx-5 sm:-mt-5">
+              {/* Banner */}
+              <div class="h-36 rounded-t-xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900" />
+            </div>
+
+            {/* Hero row: avatar + text */}
+            <div class="flex items-start gap-[18px] px-4 sm:px-5 -mt-8">
+              {/* Avatar */}
+              <div class="shrink-0">
+                <IdentityAvatar
+                  picture={identity.picture ?? null}
+                  pubkey={identity.pubkey}
+                  size={110}
+                  alt={displayName}
+                />
+              </div>
+
+              {/* Name + chips */}
+              <div class="flex flex-col gap-3 pt-9">
+                <h1 class="text-3xl font-semibold tracking-tight leading-tight">
+                  {displayName}
+                </h1>
+
+                <div class="flex flex-wrap items-center gap-2 text-[10px] text-offset">
+                  {identity.npub && (
+                    <div class="inline-flex items-center gap-1 rounded-md border border-default bg-default/30 px-2 py-1">
+                      <span class="font-medium text-default">npub</span>
+                      <TruncateCopy value={identity.npub} maxChars={20} />
+                    </div>
+                  )}
+
+                  {identity.status && (
+                    <IconPill icon="mdi:badge-account-outline" title="Status">
+                      {identity.status}
+                    </IconPill>
+                  )}
+
+                  {identity.pubkey_first_seen_at && (
+                    <IconPill icon="mdi:calendar-start" title="First seen">
+                      <TimestampDisplay value={identity.pubkey_first_seen_at} agoFormat />
+                    </IconPill>
+                  )}
+
+                  {identity.pubkey_last_seen_at && (
+                    <IconPill icon="mdi:clock-outline" title="Last seen">
+                      <TimestampDisplay value={identity.pubkey_last_seen_at} agoFormat />
+                    </IconPill>
+                  )}
+
+                  {identity.profile_fetched_at && (
+                    <IconPill icon="mdi:update" title="Profile fetched">
+                      <TimestampDisplay value={identity.profile_fetched_at} agoFormat />
+                    </IconPill>
+                  )}
+
+                  {typeof identity.retry_count === "number" && identity.retry_count > 0 && (
+                    <IconPill icon="mdi:reload-alert" title="Retry count">
+                      {identity.retry_count}
+                    </IconPill>
+                  )}
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {identity.about && (
+            <section class="mt-3">
+              <h2 class="text-[11px] font-medium uppercase tracking-[0.14em] text-offset">
+                About
+              </h2>
+              <p class="mt-1 text-xs leading-relaxed text-offset">{identity.about}</p>
+            </section>
+          )}
+
+          <section class="mt-3 rounded-lg border border-default bg-default/40 p-3">
+            <h2 class="text-[11px] font-medium uppercase tracking-[0.14em] text-offset">
+              Keys
+            </h2>
+            <div class="mt-1.5 space-y-1 text-xs text-offset">
+              {identity.npub && (
+                <p>
+                  <span class="mr-1 font-medium text-default">npub:</span>
+                  <TruncateCopy value={identity.npub} maxChars={20} />
+                </p>
+              )}
+              {identity.pubkey && (
+                <p>
+                  <span class="mr-1 font-medium text-default">pubkey:</span>
+                  <TruncateCopy value={identity.pubkey} maxChars={20} />
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section class="mt-3 rounded-lg border border-default bg-default/40 p-3">
+            <h2 class="text-[11px] font-medium uppercase tracking-[0.14em] text-offset">
+              Profile fields
+            </h2>
+            <div class="mt-1.5 space-y-1 text-xs text-offset">
+              {identity.name && <p><span class="mr-1 font-medium text-default">name:</span>{identity.name}</p>}
+              {identity.display_name && (
+                <p><span class="mr-1 font-medium text-default">display_name:</span>{identity.display_name}</p>
+              )}
+              {identity.nip05 && <p><span class="mr-1 font-medium text-default">nip05:</span>{identity.nip05}</p>}
+              {identity.website && (
+                <p>
+                  <span class="mr-1 font-medium text-default">website:</span>
+                  <a href={identity.website} target="_blank" rel="noreferrer" class="underline-offset-2 hover:underline">
+                    {identity.website}
+                  </a>
+                </p>
+              )}
+              {identity.lud06 && <p><span class="mr-1 font-medium text-default">lud06:</span>{identity.lud06}</p>}
+              {identity.lud16 && <p><span class="mr-1 font-medium text-default">lud16:</span>{identity.lud16}</p>}
+              {!identity.name &&
+                !identity.display_name &&
+                !identity.nip05 &&
+                !identity.website &&
+                !identity.lud06 &&
+                !identity.lud16 && <p>No profile fields available yet.</p>}
+            </div>
+          </section>
+
+          {profileRawJson && (
+            <section class="mt-3 rounded-lg border border-default bg-default/40 p-3">
+              <h2 class="text-[11px] font-medium uppercase tracking-[0.14em] text-offset">
+                Raw profile JSON
+              </h2>
+              <pre class="mt-1.5 overflow-auto rounded-md border border-default/40 bg-default/40 p-2 text-[10px] text-offset">{profileRawJson}</pre>
+            </section>
+          )}
+        </div>
+      )}
+    </article>
+</AppLayout>
