@@ -18,3 +18,29 @@ a,
   @apply bg-clip-text text-transparent;
   @apply bg-gradient-to-br from-indigo-500 via-fuchsia-500 to-pink-500;
 }
+
+.design-result-card {
+  container-type: inline-size;
+  container-name: design-card;
+}
+
+/* Default: compact visible, full hidden */
+.identity-badge--responsive .identity-badge__full {
+  display: none;
+}
+
+.identity-badge--responsive .identity-badge__compact {
+  display: inline-flex;
+}
+
+/* When the parent card (design-result-card) is wide enough,
+   show the full badge instead of compact */
+@container design-card (min-width: 768px) {
+  .identity-badge--responsive .identity-badge__full {
+    display: inline-flex;
+  }
+
+  .identity-badge--responsive .identity-badge__compact {
+    display: none;
+  }
+}
