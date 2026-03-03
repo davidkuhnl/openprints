@@ -7,6 +7,7 @@ import IdentityAvatar from "~/components/identity-avatar.astro";
 import IdentityBanner from "~/components/identity-banner.astro";
 import IconPill from "~/components/icon-pill.astro";
 import IdentityNostrStatus from "~/components/identity-nostr-status.astro";
+import MockRecentDesigns from "~/components/mock-recent-designs.astro";
 import { Icon } from "astro-icon/components";
 
 export const prerender = false;
@@ -228,6 +229,8 @@ const totalVersionsForIdentity = identity?.version_count ?? 37;
               </div>
             )}
           </section>
+
+          <MockRecentDesigns identityPubkey={identity.pubkey} />
         </div>
       )}
     </article>
