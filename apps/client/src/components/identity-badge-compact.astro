@@ -1,0 +1,59 @@
+---
+import CopyValue from "~/components/copy-value.astro";
+import IdentityAvatar from "~/components/identity-avatar.astro";
+
+interface CreatorIdentity {
+  id?: string | null;
+  status: string | null;
+  pubkey: string;
+  display_name_resolved: string;
+  npub: string;
+  picture?: string | null;
+  nip05?: string | null;
+  lud06?: string | null;
+  lud16?: string | null;
+}
+
+interface Props {
+  identity: CreatorIdentity | null | undefined;
+}
+
+const { identity } = Astro.props;
+
+const displayNameResolved =
+  (identity?.display_name_resolved && String(identity.display_name_resolved).trim()) ||
+  "Unknown creator";
+const npub = identity?.npub ?? "";
+const identityHref = identity?.id
+  ? `/app/identity/${encodeURIComponent(identity.id)}`
+  : null;
+---
+
+<div class="inline-flex items-center gap-2">
+  <IdentityAvatar
+    picture={identity?.picture ?? null}
+    pubkey={identity?.pubkey ?? ""}
+    size={28}
+    alt={displayNameResolved}
+  />
+
+  <div class="inline-flex items-center gap-1 text-[10px] text-offset">
+    <span class="font-medium truncate max-w-[120px]">
+      {identityHref ? (
+        <a
+          href={identityHref}
+          class="underline-offset-2 hover:underline focus:outline-none focus-visible:outline-none"
+        >
+          {displayNameResolved}
+        </a>
+      ) : (
+        displayNameResolved
+      )}
+    </span>
+
+    {npub && (
+      <CopyValue value={npub} title="Copy npub" />
+    )}
+  </div>
+</div>
+

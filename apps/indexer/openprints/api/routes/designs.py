@@ -6,15 +6,56 @@ from fastapi import APIRouter, HTTPException, Query
 
 from openprints.api.deps import get_store
 from openprints.common.design_id import api_id_decode, api_id_encode
+from openprints.common.identity_utils import (
+    identity_api_id_from_pubkey,
+    non_empty_string,
+    to_npub,
+    truncate_middle,
+)
 
 router = APIRouter(prefix="/designs", tags=["designs"])
 
 
-def _row_to_item(row):
+def _build_creator_identity(
+    pubkey: str, identity: dict[str, object | None] | None
+) -> dict[str, object | None]:
+    npub = to_npub(pubkey)
+    display_name = non_empty_string(identity.get("display_name")) if identity else None
+    name = non_empty_string(identity.get("name")) if identity else None
+    nip05 = non_empty_string(identity.get("nip05")) if identity else None
+    display_name_resolved = display_name or name or nip05
+    if display_name_resolved is None and npub is not None:
+        display_name_resolved = truncate_middle(npub)
+    return {
+        "id": identity_api_id_from_pubkey(pubkey),
+        "pubkey": pubkey,
+        "status": identity.get("status") if identity else None,
+        "pubkey_first_seen_at": identity.get("pubkey_first_seen_at") if identity else None,
+        "pubkey_last_seen_at": identity.get("pubkey_last_seen_at") if identity else None,
+        "name": identity.get("name") if identity else None,
+        "display_name": identity.get("display_name") if identity else None,
+        "about": identity.get("about") if identity else None,
+        "picture": identity.get("picture") if identity else None,
+        "banner": identity.get("banner") if identity else None,
+        "website": identity.get("website") if identity else None,
+        "nip05": identity.get("nip05") if identity else None,
+        "lud06": identity.get("lud06") if identity else None,
+        "lud16": identity.get("lud16") if identity else None,
+        "profile_raw_json": identity.get("profile_raw_json") if identity else None,
+        "profile_fetched_at": identity.get("profile_fetched_at") if identity else None,
+        "fetch_last_attempt_at": identity.get("fetch_last_attempt_at") if identity else None,
+        "retry_count": identity.get("retry_count") if identity else None,
+        "npub": npub,
+        "display_name_resolved": display_name_resolved,
+    }
+
+
+def _row_to_item(row, creator_identity: dict[str, object | None]):
     """Turn DesignCurrentRow into API response dict with id."""
     return {
         "id": api_id_encode(row.pubkey, row.design_id),
         "pubkey": row.pubkey,
+        "creator_identity": creator_identity,
         "design_id": row.design_id,
         "latest_event_id": row.latest_event_id,
         "latest_published_at": row.latest_published_at,
@@ -61,8 +102,12 @@ async def list_designs(
         order=order,
         name_contains=q.strip() if q else None,
     )
+    identities_by_pubkey = await store.get_identities_by_pubkeys([row.pubkey for row in rows])
     return {
-        "items": [_row_to_item(r) for r in rows],
+        "items": [
+            _row_to_item(r, _build_creator_identity(r.pubkey, identities_by_pubkey.get(r.pubkey)))
+            for r in rows
+        ],
         "total": total,
         "limit": limit,
         "offset": offset,
@@ -98,4 +143,5 @@ async def get_design(design_api_id: str) -> dict:
     row = await store.get_design(pubkey, design_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Design not found.")
-    return _row_to_item(row)
+    identity = (await store.get_identities_by_pubkeys([row.pubkey])).get(row.pubkey)
+    return _row_to_item(row, _build_creator_identity(row.pubkey, identity))

@@ -1,0 +1,237 @@
+---
+import AppLayout from "~/layouts/app-layout.astro";
+import { getIdentityStatusFlags } from "~/identity-status";
+import TruncateCopy from "~/components/truncate-copy.astro";
+import TimestampDisplay from "~/components/timestamp-display.astro";
+import IdentityAvatar from "~/components/identity-avatar.astro";
+import IdentityBanner from "~/components/identity-banner.astro";
+import IconPill from "~/components/icon-pill.astro";
+import IdentityNostrStatus from "~/components/identity-nostr-status.astro";
+import MockRecentDesigns from "~/components/mock-recent-designs.astro";
+import { Icon } from "astro-icon/components";
+
+export const prerender = false;
+
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
+const { id } = Astro.params;
+
+let identity: any = null;
+let errorTitle: string | null = null;
+let errorMessage: string | null = null;
+
+if (!base) {
+  errorTitle = "Identity not available";
+  errorMessage =
+    "API base URL is not configured. Check PUBLIC_OPENPRINTS_API_URL.";
+} else if (!id) {
+  errorTitle = "Identity not found";
+  errorMessage = "Missing identity id in the URL.";
+} else {
+  const url = `${base}/identity/${encodeURIComponent(id)}`;
+
+  try {
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      errorTitle = "Identity not found";
+      errorMessage = `API responded with ${res.status} ${res.statusText} for this identity.`;
+    } else {
+      identity = await res.json();
+    }
+  } catch {
+    errorTitle = "Identity not found";
+    errorMessage =
+      "We couldn't load this identity due to a network or server error.";
+  }
+}
+
+const displayName =
+  identity && identity.display_name_resolved
+    ? identity.display_name_resolved
+    : "Unknown identity";
+const { hasNip05, isZappable } = getIdentityStatusFlags(identity);
+
+const hasKeys = identity && (identity.npub || identity.pubkey);
+const hasProfileFields =
+  identity &&
+  (identity.nip05 || identity.website || identity.lud16);
+
+// TODO: Replace these placeholder counts with real data from the API
+const totalDesignsForIdentity = identity?.design_count ?? 12;
+const totalVersionsForIdentity = identity?.version_count ?? 37;
+---
+
+<AppLayout title="OpenPrints – Identity detail">
+  <TruncateCopy value="" />
+
+    <article class="mx-auto flex max-w-5xl flex-col gap-2.5 rounded-xl border border-default bg-offset/30 p-4 sm:p-5">
+      {errorMessage && (
+        <>
+          <h1 class="text-lg font-semibold tracking-tight">
+            {errorTitle ?? "Identity not found"}
+          </h1>
+          <p class="mt-1.5 text-xs text-offset">{errorMessage}</p>
+        </>
+      )}
+
+      {!errorMessage && !identity && (
+        <>
+          <h1 class="text-lg font-semibold tracking-tight">Loading identity…</h1>
+          <p class="text-xs text-offset">Fetching identity details.</p>
+        </>
+      )}
+
+      {!errorMessage && identity && (
+        <div>
+          <header class="border-b border-default pb-4">
+            <IdentityBanner pubkey={identity.pubkey} />
+
+            {/* Hero row: avatar + text */}
+            <div class="flex items-start gap-[18px] px-4 sm:px-5 -mt-8">
+              {/* Avatar */}
+              <div
+                class="shrink-0 inline-flex rounded-full transition-transform duration-150 ease-out hover:scale-[1.03] hover:shadow-lg"
+              >
+                <IdentityAvatar
+                  picture={identity.picture ?? null}
+                  pubkey={identity.pubkey}
+                  size={110}
+                  alt={displayName}
+                />
+              </div>
+
+              {/* Name + npub + chips */}
+              <div class="flex flex-col gap-3 pt-9">
+                <div class="flex items-center gap-1">
+                  <h1 class="text-3xl font-semibold tracking-tight leading-tight">
+                    {displayName}
+                  </h1>
+                  {isZappable && (
+                    <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-400/10 text-emerald-400 translate-y-[3px] transition-all duration-150 hover:scale-110 hover:bg-emerald-400/15 hover:shadow-[0_0_4px_1px_rgba(16,185,129,0.25)]">
+                      <Icon name="mdi:lightning-bolt" class="w-3 h-3" title="Zappable" aria-hidden="true" />
+                    </span>
+                  )}
+                  {hasNip05 && (
+                    <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-400/10 text-emerald-400 translate-y-[3px] transition-all duration-150 hover:scale-110 hover:bg-emerald-400/15 hover:shadow-[0_0_4px_1px_rgba(16,185,129,0.25)]">
+                      <Icon name="mdi:check-decagram" class="w-3 h-3" title="NIP05 Verified" aria-hidden="true" />
+                    </span>
+                  )}
+                </div>
+
+                {identity.npub && (
+                  <div class="mt-1 text-xs text-offset">
+                    <TruncateCopy value={identity.npub} maxChars={20} />
+                  </div>
+                )}
+
+                <div class="flex flex-wrap items-center gap-2 text-[10px] text-offset">
+                  <IdentityNostrStatus identity={identity} />
+                  <span class="inline-flex items-center gap-1 rounded-md border border-default bg-default/40 px-2 py-1">
+                    <Icon
+                      name="mdi:shape-outline"
+                      class="size-3"
+                      aria-hidden="true"
+                    />
+                    <span class="text-default">
+                      {totalDesignsForIdentity}
+                    </span>
+                    designs
+                  </span>
+
+                  <span class="inline-flex items-center gap-1 rounded-md border border-default bg-default/40 px-2 py-1">
+                    <Icon
+                      name="mdi:layers-outline"
+                      class="size-3"
+                      aria-hidden="true"
+                    />
+                    <span class="text-default">
+                      {totalVersionsForIdentity}
+                    </span>
+                    versions
+                  </span>
+
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <section class="mt-4 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            {/* Left: About */}
+            <div>
+              <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-offset">
+                About
+              </h2>
+              <p class="mt-2 text-xs leading-relaxed text-offset">
+                {identity.about || "No additional information provided for this identity yet."}
+              </p>
+            </div>
+
+            {/* Right: Keys + Profile fields */}
+            {(hasKeys || hasProfileFields) && (
+              <div class="space-y-4">
+                {hasKeys && (
+                  <div>
+                    <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-offset">
+                      Keys
+                    </h2>
+                    <div class="mt-2 space-y-1 text-xs text-offset">
+                      {identity.npub && (
+                        <p>
+                          <span class="mr-1 font-medium text-default">npub:</span>
+                          <TruncateCopy value={identity.npub} maxChars={20} />
+                        </p>
+                      )}
+                      {identity.pubkey && (
+                        <p>
+                          <span class="mr-1 font-medium text-default">pubkey:</span>
+                          <TruncateCopy value={identity.pubkey} maxChars={20} />
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {hasProfileFields && (
+                  <div>
+                    <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-offset">
+                      Profile
+                    </h2>
+                    <div class="mt-2 space-y-1 text-xs text-offset">
+                      {identity.nip05 && (
+                        <p>
+                          <span class="mr-1 font-medium text-default">nip05:</span>
+                          {identity.nip05}
+                        </p>
+                      )}
+                      {identity.website && (
+                        <p>
+                          <span class="mr-1 font-medium text-default">website:</span>
+                          <a
+                            href={identity.website}
+                            target="_blank"
+                            rel="noreferrer"
+                            class="underline-offset-2 hover:underline"
+                          >
+                            {identity.website}
+                          </a>
+                        </p>
+                      )}
+                      {identity.lud16 && (
+                        <p>
+                          <span class="mr-1 font-medium text-default">lud16:</span>
+                          {identity.lud16}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          <MockRecentDesigns identityPubkey={identity.pubkey} />
+        </div>
+      )}
+    </article>
+</AppLayout>

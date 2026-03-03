@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from openprints.api.deps import close_store, open_store
-from openprints.api.routes import designs, health
+from openprints.api.routes import designs, health, identity
 
 
 @asynccontextmanager
@@ -37,3 +37,4 @@ app.add_middleware(
 )
 app.include_router(health.router)
 app.include_router(designs.router)
+app.include_router(identity.router)

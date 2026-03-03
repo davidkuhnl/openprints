@@ -3,6 +3,7 @@ import Pubkey from "~/components/pubkey.astro";
 import TimestampDisplay from "~/components/timestamp-display.astro";
 import PreviewMocks from "~/components/preview-mocks.astro";
 import { Icon } from "astro-icon/components";
+import IdentityBadge from "~/components/identity-badge.astro";
 
 interface Props {
   design: {
@@ -46,7 +47,7 @@ if (design.tags_json) {
 }
 ---
 
-<article class="flex flex-col gap-1 rounded-xl border border-default bg-offset/30 px-3.5 py-2.5 sm:px-4 sm:py-3 transition hover:bg-offset/40 hover:border-emerald-400/40">
+<article class="design-result-card flex flex-col gap-1 rounded-xl border border-default bg-offset/30 px-3.5 py-2.5 sm:px-4 sm:py-3 transition hover:bg-offset/40 hover:border-emerald-400/40">
   <!-- (1) HEADER BLOCK -->
   <header class="pb-2 mb-2 border-b border-default/60">
     <h2 class="text-sm font-medium text-default">
@@ -59,15 +60,7 @@ if (design.tags_json) {
     </h2>
 
     <div class="mt-1 mb-1.5 flex flex-wrap items-center gap-3 text-[11px] text-offset">
-      <span class="inline-flex items-center gap-1">
-        <Icon
-          name="mdi:account-outline"
-          class="size-3 text-offset"
-          aria-hidden="true"
-        />
-        <Pubkey value={design.pubkey || "Unknown creator"} maxChars={10} />
-      </span>
-
+       <IdentityBadge identity={design.creator_identity} size="responsive" />
       {design.latest_published_at != null && (
         <span class="inline-flex items-center gap-1">
           <Icon

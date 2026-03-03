@@ -1,0 +1,37 @@
+---
+import { createAvatar } from "@dicebear/core";
+import { glass } from "@dicebear/collection";
+
+interface Props {
+  pubkey: string;
+  height?: number;
+}
+
+const { pubkey, height = 144 } = Astro.props;
+
+// Generate a DiceBear "glass" style SVG seeded by the pubkey.
+// We encode it as a data URI and use it as a background image
+// to get a rich, abstract banner look.
+const bannerAvatar = createAvatar(glass, {
+  seed: pubkey || "unknown",
+  // Larger base size so the banner looks crisp when stretched.
+  size: 256,
+  // Keep clipping on so the composition stays contained.
+  clip: true,
+  backgroundType: ["gradientLinear"],
+  backgroundColor: ["60a5fa", "34d399", "f472b6", "a78bfa", "fb923c"],
+  shape1: ["g"]
+});
+
+const bannerSvg = bannerAvatar.toString();
+const bannerSrc = `data:image/svg+xml;utf8,${encodeURIComponent(bannerSvg)}`;
+---
+
+<div class="relative -mx-4 -mt-4 sm:-mx-5 sm:-mt-6 ">
+  <div class="absolute inset-0 bg-black/10 backdrop-blur-[2px] rounded-t-xl" />
+  <div
+    class="rounded-t-xl"
+    style={`height: ${height}px; background-image: url('${bannerSrc}'); background-size: cover; background-position: center;`}
+  />
+</div>
+

@@ -1,0 +1,73 @@
+---
+import RecentDesignsGrid from "~/components/recent-designs-grid.astro";
+import MockDisclaimer from "~/components/mock-disclaimer.astro";
+import MockMarker from "~/components/mock-marker.astro";
+
+interface Props {
+  identityPubkey: string;
+}
+
+const { identityPubkey }: Props = Astro.props;
+
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
+
+let items: any[] = [];
+let errorMessage: string | null = null;
+
+if (!base) {
+  errorMessage =
+    "API base URL is not configured. Check PUBLIC_OPENPRINTS_API_URL.";
+} else if (!identityPubkey) {
+  errorMessage = "Identity pubkey is missing for recent design lookup.";
+} else {
+  const params = new URLSearchParams({
+    limit: "100",
+    order: "latest_published_at_desc",
+  });
+  const url = `${base}/designs?${params.toString()}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      errorMessage = `Failed to load mock recent designs (${res.status} ${res.statusText}).`;
+    } else {
+      const data = await res.json();
+      const allItems = Array.isArray(data?.items) ? data.items : [];
+      const forIdentity = allItems.filter(
+        (design: any) => design?.creator_identity?.pubkey === identityPubkey,
+      );
+      const randomized = [...forIdentity].sort(() => Math.random() - 0.5);
+      const randomCount = Math.floor(Math.random() * 6);
+      items = randomized.slice(0, randomCount);
+    }
+  } catch {
+    errorMessage =
+      "We couldn't load mock recent designs due to a network or server error.";
+  }
+}
+---
+
+<section class="relative mt-4 border-t border-default/60 pt-4">
+  <MockMarker top={8} right={8} rotation={8} />
+
+  <div>
+    <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-offset">
+      Latest designs
+    </h2>
+    <p class="mt-1 text-[11px] text-offset">
+      Experimental preview for this identity. This currently uses mock behavior
+      while the full identity-design pipeline is still in progress.
+    </p>
+  </div>
+
+  <div class="mt-3">
+    <RecentDesignsGrid
+      items={items}
+      errorMessage={errorMessage}
+      emptyMessage="No mock recent designs selected for this identity yet."
+    />
+  </div>
+
+  <MockDisclaimer />
+</section>

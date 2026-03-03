@@ -3,34 +3,42 @@
 import DesignResultCard from "~/components/design-result-card.astro";
 
 const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
-const { limit = 6 } = Astro.props;
+const {
+  limit = 6,
+  items: providedItems = null,
+  errorMessage: providedErrorMessage = null,
+  emptyMessage = "No designs yet.",
+} = Astro.props;
 
 const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
-let items: any[] = [];
-let errorMessage: string | null = null;
+let items: any[] = Array.isArray(providedItems) ? providedItems : [];
+let errorMessage: string | null =
+  typeof providedErrorMessage === "string" ? providedErrorMessage : null;
 
-if (!base) {
-  errorMessage =
-    "API base URL is not configured. Check PUBLIC_OPENPRINTS_API_URL.";
-} else {
-  const params = new URLSearchParams({
-    limit: String(limit),
-    order: "latest_published_at_desc",
-  });
-
-  const url = `${base}/designs?${params.toString()}`;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      errorMessage = `Failed to load designs (${res.status} ${res.statusText}).`;
-    } else {
-      const data = await res.json();
-      items = Array.isArray(data?.items) ? data.items : [];
-    }
-  } catch {
+if (!Array.isArray(providedItems)) {
+  if (!base) {
     errorMessage =
-      "We couldn't load recent designs due to a network or server error.";
+      "API base URL is not configured. Check PUBLIC_OPENPRINTS_API_URL.";
+  } else {
+    const params = new URLSearchParams({
+      limit: String(limit),
+      order: "latest_published_at_desc",
+    });
+
+    const url = `${base}/designs?${params.toString()}`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        errorMessage = `Failed to load designs (${res.status} ${res.statusText}).`;
+      } else {
+        const data = await res.json();
+        items = Array.isArray(data?.items) ? data.items : [];
+      }
+    } catch {
+      errorMessage =
+        "We couldn't load recent designs due to a network or server error.";
+    }
   }
 }
 ---
@@ -44,7 +52,7 @@ if (!base) {
 
   {!errorMessage && items.length === 0 && (
     <article class="col-span-full rounded-xl border border-default bg-offset/30 p-4 text-center">
-      <p class="text-xs text-offset">No designs yet.</p>
+      <p class="text-xs text-offset">{emptyMessage}</p>
     </article>
   )}
 
