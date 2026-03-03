@@ -56,56 +56,42 @@ function getDateFromInput(input: any): Date | null {
     class="group inline-block text-[10px] text-offset"
     style={`--status-accent: ${statusAccent}; --status-bg: ${statusBg};`}
   >
-       {/* PILL (shown when collapsed) */}
+    {/* PILL (shown when collapsed) – same structure as the other pills */}
     <summary
-      class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md border border-default bg-default/40 px-2 py-1 text-[10px] leading-[1.3] text-offset transition hover:bg-default/60 group-open:hidden"
+      class="inline-flex cursor-pointer list-none items-center gap-1 rounded-md border border-default bg-default/40 px-2 py-1 group-open:hidden"
     >
-      <span class="inline-flex items-center gap-1.5">
-        <span
-          class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[var(--status-bg)] text-[var(--status-accent)]"
-        >
-          <Icon
-            name={iconName}
-            class="size-3"
-            aria-hidden="true"
-          />
-        </span>
-
-        <span class="font-medium text-default">
-          {statusLabel}
-        </span>
+      <Icon
+        name={iconName}
+        class="size-3"
+        style={`color: ${statusAccent};`}
+        aria-hidden="true"
+      />
+      <span class="text-default">
+        {statusLabel}
       </span>
-
-      {/* subtle plus toggle instead of caret */}
-      <span class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-transparent text-[10px] text-offset/70 transition group-hover:border-default/40 group-hover:bg-default/30 group-hover:text-default">
-        <Icon
-          name="mdi:plus"
-          class="size-3"
-          aria-hidden="true"
-        />
-      </span>
+      <Icon
+        name="mdi:plus"
+        class="size-2.5 shrink-0 text-offset/70 transition group-hover:text-default"
+        aria-hidden="true"
+      />
     </summary>
 
     {/* INLINE PANEL (shown when expanded, replaces pill) */}
     <div class="mt-0 hidden group-open:block">
-<div
-  class="rounded-md border border-default/60 border-l-2 border-l-[var(--status-accent)] bg-offset/90 px-2 py-1 text-[10px] leading-[1.3] text-offset shadow-sm backdrop-blur-sm -ml-px"
-  data-status-panel
->
-        {/* header row – same leading as pill */}
+      <div
+        class="rounded-md border border-default/60 border-l-2 border-l-[var(--status-accent)] bg-offset/90 px-2 py-1 text-[10px] leading-[1.3] text-offset shadow-sm backdrop-blur-sm -ml-px"
+        data-status-panel
+      >
+        {/* header row – same icon/label sizing as the collapsed pill, nudged down slightly for alignment */}
         <div class="flex items-center justify-between gap-2">
-          <span class="inline-flex items-center gap-1.5">
-            <span
-              class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[var(--status-bg)] text-[var(--status-accent)]"
-            >
-              <Icon
-                name={iconName}
-                class="size-3"
-                aria-hidden="true"
-              />
-            </span>
-
-            <span class="font-medium text-default">
+          <span class="inline-flex min-w-0 items-center gap-1 translate-y-[2.5px]">
+            <Icon
+              name={iconName}
+              class="size-3 shrink-0"
+              style={`color: ${statusAccent};`}
+              aria-hidden="true"
+            />
+            <span class="text-default truncate">
               {statusLabel}
             </span>
           </span>
@@ -113,13 +99,13 @@ function getDateFromInput(input: any): Date | null {
           {/* subtle close button */}
           <button
             type="button"
-            class="inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-offset/70 hover:bg-default/20 hover:text-default transition"
+            class="inline-flex size-3 shrink-0 items-center justify-center rounded-full text-[10px] text-offset/70 hover:bg-default/20 hover:text-default transition"
             aria-label="Close status details"
             data-close-status-panel
           >
             <Icon
               name="mdi:close"
-              class="size-3"
+              class="size-2.5"
               aria-hidden="true"
             />
           </button>

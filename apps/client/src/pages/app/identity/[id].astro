@@ -55,6 +55,10 @@ const hasKeys = identity && (identity.npub || identity.pubkey);
 const hasProfileFields =
   identity &&
   (identity.nip05 || identity.website || identity.lud16);
+
+// TODO: Replace these placeholder counts with real data from the API
+const totalDesignsForIdentity = identity?.design_count ?? 12;
+const totalVersionsForIdentity = identity?.version_count ?? 37;
 ---
 
 <AppLayout title="OpenPrints – Identity detail">
@@ -122,6 +126,30 @@ const hasProfileFields =
 
                 <div class="flex flex-wrap items-center gap-2 text-[10px] text-offset">
                   <IdentityNostrStatus identity={identity} />
+                  <span class="inline-flex items-center gap-1 rounded-md border border-default bg-default/40 px-2 py-1">
+                    <Icon
+                      name="mdi:shape-outline"
+                      class="size-3"
+                      aria-hidden="true"
+                    />
+                    <span class="text-default">
+                      {totalDesignsForIdentity}
+                    </span>
+                    designs
+                  </span>
+
+                  <span class="inline-flex items-center gap-1 rounded-md border border-default bg-default/40 px-2 py-1">
+                    <Icon
+                      name="mdi:layers-outline"
+                      class="size-3"
+                      aria-hidden="true"
+                    />
+                    <span class="text-default">
+                      {totalVersionsForIdentity}
+                    </span>
+                    versions
+                  </span>
+
                 </div>
               </div>
             </div>
