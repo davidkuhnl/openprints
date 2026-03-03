@@ -6,6 +6,7 @@ import TimestampDisplay from "~/components/timestamp-display.astro";
 import IdentityAvatar from "~/components/identity-avatar.astro";
 import IdentityBanner from "~/components/identity-banner.astro";
 import IconPill from "~/components/icon-pill.astro";
+import IdentityNostrStatus from "~/components/identity-nostr-status.astro";
 import { Icon } from "astro-icon/components";
 
 export const prerender = false;
@@ -120,35 +121,7 @@ const hasProfileFields =
                 )}
 
                 <div class="flex flex-wrap items-center gap-2 text-[10px] text-offset">
-                  {identity.status && (
-                    <IconPill icon="mdi:badge-account-outline" title="Status">
-                      {identity.status}
-                    </IconPill>
-                  )}
-
-                  {identity.pubkey_first_seen_at && (
-                    <IconPill icon="mdi:calendar-start" title="First seen">
-                      <TimestampDisplay value={identity.pubkey_first_seen_at} agoFormat />
-                    </IconPill>
-                  )}
-
-                  {identity.pubkey_last_seen_at && (
-                    <IconPill icon="mdi:clock-outline" title="Last seen">
-                      <TimestampDisplay value={identity.pubkey_last_seen_at} agoFormat />
-                    </IconPill>
-                  )}
-
-                  {identity.profile_fetched_at && (
-                    <IconPill icon="mdi:update" title="Profile fetched">
-                      <TimestampDisplay value={identity.profile_fetched_at} agoFormat />
-                    </IconPill>
-                  )}
-
-                  {typeof identity.retry_count === "number" && identity.retry_count > 0 && (
-                    <IconPill icon="mdi:reload-alert" title="Retry count">
-                      {identity.retry_count}
-                    </IconPill>
-                  )}
+                  <IdentityNostrStatus identity={identity} />
                 </div>
               </div>
             </div>

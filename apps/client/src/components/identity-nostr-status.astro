@@ -1,0 +1,215 @@
+---
+import { Icon } from "astro-icon/components";
+import TimestampDisplay from "~/components/timestamp-display.astro";
+
+interface Props {
+  identity: any;
+}
+
+const { identity } = Astro.props as Props;
+
+const rawStatus = identity?.status as string | null | undefined;
+const normalizedStatus =
+  typeof rawStatus === "string" ? rawStatus.trim().toLowerCase() : null;
+
+const statusLabel =
+  normalizedStatus === "pending"
+    ? "Waiting on relays"
+    : normalizedStatus === "fetched"
+    ? "Seen on relays"
+    : normalizedStatus === "failed"
+    ? "Not on relays"
+    : rawStatus || "Nostr status";
+
+const iconName = "mdi:radio-tower";
+
+function getDateFromInput(input: any): Date | null {
+  if (input == null) return null;
+
+  const n = typeof input === "number" ? input : Number(input);
+  if (!Number.isFinite(n)) return null;
+
+  const ms = n > 1e12 ? n : n * 1000;
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return null;
+
+  return d;
+}
+---
+
+{rawStatus && (
+  <details class="group inline-block text-[10px] text-offset">
+    {/* PILL (shown when collapsed) */}
+    <summary
+      class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md border border-default bg-default/40 px-2 py-1 text-[10px] text-offset transition hover:bg-default/60 group-open:hidden"
+    >
+      <span class="inline-flex items-center gap-1.5">
+        <span
+          class={`inline-flex h-4 w-4 items-center justify-center rounded-full ${
+            normalizedStatus === "fetched"
+              ? "bg-emerald-400/10 text-emerald-500"
+              : "bg-default/40 text-default"
+          }`}
+        >
+          <Icon
+            name={iconName}
+            class="size-3"
+            aria-hidden="true"
+          />
+        </span>
+
+        <span class="font-medium text-default">
+          {statusLabel}
+        </span>
+      </span>
+
+      {/* subtle plus toggle instead of caret */}
+      <span class="inline-flex h-4 w-4 items-center justify-center rounded-full border border-transparent text-[10px] text-offset/70 transition group-hover:border-default/40 group-hover:bg-default/30 group-hover:text-default">
+        <Icon
+          name="mdi:plus"
+          class="size-3"
+          aria-hidden="true"
+        />
+      </span>
+    </summary>
+
+    {/* INLINE PANEL (shown when expanded, replaces pill) */}
+    <div
+      class="mt-1 hidden rounded-xl border border-default/60 border-l-2 border-emerald-300/30 bg-offset/90 px-3 py-2 text-[11px] leading-relaxed text-offset shadow-sm backdrop-blur-sm group-open:block"
+      data-status-panel
+    >
+      <div class="flex items-start gap-2">
+        <div class="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-default/40 text-default">
+          <Icon
+            name={iconName}
+            class="size-3"
+            aria-hidden="true"
+          />
+        </div>
+
+        <div class="flex-1 space-y-1">
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-[10px] font-semibold text-default">
+              {statusLabel}
+            </p>
+
+            {/* subtle close button */}
+            <button
+              type="button"
+              class="inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-offset/70 hover:bg-default/20 hover:text-default transition"
+              aria-label="Close status details"
+              data-close-status-panel
+            >
+              <Icon
+                name="mdi:close"
+                class="size-3"
+                aria-hidden="true"
+              />
+            </button>
+          </div>
+
+          {/* Pending */}
+          {normalizedStatus === "pending" && (
+            <p class="text-offset/70">
+              We’ve just noticed this npub and we’re still waiting to hear about it
+              from the connected relays. Hang in there.
+            </p>
+          )}
+
+          {/* Fetched */}
+          {normalizedStatus === "fetched" && (
+            <div class="mt-1 space-y-1">
+              <p class="text-offset/80">
+                Oh, we know this npub well.
+                {identity?.pubkey_first_seen_at && (
+                  <>
+                    {" "}
+                    We first saw them in OpenPrints on{" "}
+                    <span class="font-semibold text-default">
+                      {getDateFromInput(identity.pubkey_first_seen_at)?.toLocaleDateString(
+                        undefined,
+                        { year: "numeric", month: "short", day: "2-digit" },
+                      )}
+                    </span>
+                    .
+                  </>
+                )}
+                {identity?.pubkey_last_seen_at && (
+                  <>
+                    {" "}
+                    They were last active{" "}
+                    <span class="font-semibold text-default">
+                      <TimestampDisplay
+                        value={identity.pubkey_last_seen_at}
+                        agoFormat={true}
+                      />
+                    </span>
+                    .
+                  </>
+                )}
+                {identity?.profile_fetched_at && (
+                  <>
+                    {" "}
+                    We got their fresh info from the relays{" "}
+                    <span class="font-semibold text-default">
+                      <TimestampDisplay
+                        value={identity.profile_fetched_at}
+                        agoFormat={true}
+                      />
+                    </span>
+                    .
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
+          {/* Failed */}
+          {normalizedStatus === "failed" && (
+            <div class="mt-1 space-y-1">
+              {typeof identity?.retry_count === "number" &&
+                identity.retry_count > 0 && (
+                  <p class="text-offset/70">
+                    We’ve already checked the connected relays{" "}
+                    <span class="font-semibold text-default">
+                      {identity.retry_count}
+                    </span>{" "}
+                    time{identity.retry_count === 1 ? "" : "s"}, but we haven’t seen a
+                    kind-0 event for this npub yet. Stay tuned.
+                  </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  </details>
+)}
+
+<script>
+  if (typeof window !== "undefined") {
+    window.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      // Close via explicit "x" button
+      const closeButton = target.closest("[data-close-status-panel]");
+      if (closeButton) {
+        const detailsEl = closeButton.closest("details");
+        if (detailsEl) {
+          detailsEl.open = false;
+        }
+        return;
+      }
+
+      // Close when clicking anywhere on the expanded status panel
+      const panelEl = target.closest("[data-status-panel]");
+      if (panelEl) {
+        const detailsEl = panelEl.closest("details");
+        if (detailsEl) {
+          detailsEl.open = false;
+        }
+      }
+    });
+  }
+</script>
