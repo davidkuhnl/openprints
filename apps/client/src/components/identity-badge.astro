@@ -1,0 +1,106 @@
+---
+import CopyValue from "~/components/copy-value.astro";
+import IdentityAvatar from "~/components/identity-avatar.astro";
+import { Icon } from "astro-icon/components";
+
+/** Creator identity from API (creator_identity field on design). Backend guarantees pubkey, display_name_resolved, npub. */
+interface CreatorIdentity {
+  status: string | null;
+  pubkey: string;
+  display_name_resolved: string;
+  npub: string;
+  picture?: string | null;
+  nip05?: string | null;
+  lud06?: string | null;
+  lud16?: string | null;
+}
+
+interface Props {
+  identity: CreatorIdentity | null | undefined;
+  size?: "full" | "compact";
+}
+
+const { identity, size = "full" } = Astro.props;
+const isCompact = size === "compact";
+
+const displayNameResolved =
+  (identity?.display_name_resolved && String(identity.display_name_resolved).trim()) ||
+  "Unknown creator";
+const npub = identity?.npub ?? "";
+
+// TODO: wire these up properly later; for now they’re just placeholders
+const isZappable = true;
+const hasNip05 = true;
+---
+
+{isCompact ? (
+  /* ---------------------------
+     COMPACT: avatar + label only
+     --------------------------- */
+  <div class="inline-flex items-center gap-2">
+    <IdentityAvatar
+      picture={identity?.picture ?? null}
+      pubkey={identity?.pubkey ?? ""}
+      size={28}
+      alt={displayNameResolved}
+    />
+
+    <div class="inline-flex items-center gap-1 text-[10px] text-offset">
+      <span class="font-medium truncate max-w-[120px]">
+        {displayNameResolved}
+      </span>
+
+      {npub && (
+        <CopyValue value={npub} title="Copy npub" />
+      )}
+    </div>
+  </div>
+) : (
+  /* ---------------------------
+     FULL: hero pill with badges
+     --------------------------- */
+  <div class="inline-flex items-center">
+    <div class="inline-flex items-center">
+      {/* Bigger avatar on the left */}
+      <div class="relative z-10">
+        <IdentityAvatar
+          picture={identity?.picture ?? null}
+          pubkey={identity?.pubkey ?? ""}
+          size={50}
+          alt={displayNameResolved}
+        />
+      </div>
+
+      {/* Pill on the right: same style as other meta pills, tucked under avatar */}
+      <span
+        class="inline-flex items-center gap-1.5 rounded-md border border-default px-2 py-1 text-[10px] text-offset -ml-3 pl-5"
+      >
+        <span class="font-medium truncate max-w-[160px]">
+          {displayNameResolved}
+        </span>
+
+        {isZappable && (
+          <Icon
+            name="mdi:lightning-bolt"
+            class="size-3.5 shrink-0 text-emerald-400"
+            title="Zappable"
+            aria-hidden="true"
+          />
+        )}
+
+        {hasNip05 && (
+          <Icon
+            name="mdi:check-decagram"
+            class="size-3.5 shrink-0 text-emerald-400"
+            title="NIP05 verified!"
+            aria-hidden="true"
+          />
+        )}
+
+        {npub && (
+          <CopyValue value={npub} title="Copy npub" />
+        )}
+      </span>
+    </div>
+  </div>
+)}

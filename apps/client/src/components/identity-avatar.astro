@@ -1,0 +1,59 @@
+---
+/**
+ * IdentityAvatar: shows profile picture when available, otherwise
+ * renders a deterministic DiceBear avatar from pubkey.
+ * If the picture URL fails to load, it automatically falls back
+ * to the generated avatar.
+ */
+import { createAvatar } from "@dicebear/core";
+import { rings } from "@dicebear/collection";
+
+interface Props {
+  picture?: string | null;
+  pubkey: string;
+  size?: number;
+  alt?: string;
+}
+
+const { picture, pubkey, size = 32, alt = "Creator avatar" } = Astro.props;
+
+const sizePx = `${size}px`;
+
+// Generate DiceBear avatar SVG (transparent background, fully rounded)
+const avatar = createAvatar(rings, {
+  seed: pubkey || "unknown",
+  size: 128, // high-res, we scale it down via CSS
+  radius: 50,
+  backgroundColor: ["transparent"],
+  ringFive: ["full"],
+  ringColor: ["60a5fa", "34d399", "f472b6", "a78bfa", "fb923c"]
+});
+
+const fallbackSvg = avatar.toString();
+const fallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(fallbackSvg)}`;
+
+const hasPicture = picture && String(picture).trim().length > 0;
+---
+
+<div
+  class="identity-avatar-wrapper relative shrink-0 rounded-full border border-default bg-default shadow-sm p-[4px] overflow-hidden"
+  style={`width: ${sizePx}; height: ${sizePx};`}
+>
+  {hasPicture && (
+    <img
+      src={picture}
+      alt={alt}
+      loading="lazy"
+      class="identity-avatar absolute inset-0 w-full h-full rounded-full object-cover"
+      onerror="this.classList.add('hidden'); this.nextElementSibling?.classList.remove('hidden');"
+    />
+  )}
+
+  <img
+    src={fallbackSrc}
+    alt={alt}
+    loading="lazy"
+    class={`identity-avatar-fallback w-full h-full rounded-full object-cover ${hasPicture ? "hidden" : ""}`}
+    aria-hidden={hasPicture ? "true" : "false"}
+  />
+</div>

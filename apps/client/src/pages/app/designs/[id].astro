@@ -3,6 +3,7 @@ import AppLayout from "~/layouts/app-layout.astro";
 import TruncateCopy from "~/components/truncate-copy.astro";
 import TimestampDisplay from "~/components/timestamp-display.astro";
 import IconPill from "~/components/icon-pill.astro";
+import IdentityBadge from "~/components/identity-badge.astro";
 import Pubkey from "~/components/pubkey.astro";
 import MockMarker from "~/components/mock-marker.astro";
 import MockDisclaimer from "~/components/mock-disclaimer.astro";
@@ -85,11 +86,6 @@ const name = design && design.name ? design.name : "Untitled design";
 
 const description =
   design && typeof design.content === "string" ? design.content : "";
-
-const creatorRaw =
-  design && design.pubkey ? design.pubkey : "Unknown creator";
-
-const creatorMaxChars = 10;
 
 const format = design && design.format ? design.format : "–";
 
@@ -177,7 +173,7 @@ const zapsList: any[] =
 ---
 
 <AppLayout title="OpenPrints – Design detail">
-  <!-- Keep this so the TruncateCopy script can attach to .truncate-copy elements -->
+  <!-- Keep this so the copy script (CopyValue) is included for TruncateCopy instances below -->
   <TruncateCopy value="" />
 
   <div class="mx-auto flex max-w-5xl flex-col gap-3">
@@ -226,9 +222,7 @@ const zapsList: any[] =
 
             <!-- meta pills row -->
             <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-offset">
-              <IconPill icon="mdi:account" title="Creator" iconColor="text-emerald-400">
-                <Pubkey value={creatorRaw} maxChars={creatorMaxChars} />
-              </IconPill>
+              <IdentityBadge identity={design.creator_identity} size="full" />
 
               {firstPublishedAt && (
                 <IconPill icon="mdi:calendar-start" title="First published">
