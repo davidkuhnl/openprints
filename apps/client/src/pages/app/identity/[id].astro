@@ -4,6 +4,7 @@ import { getIdentityStatusFlags } from "~/identity-status";
 import TruncateCopy from "~/components/truncate-copy.astro";
 import TimestampDisplay from "~/components/timestamp-display.astro";
 import IdentityAvatar from "~/components/identity-avatar.astro";
+import IdentityBanner from "~/components/identity-banner.astro";
 import IconPill from "~/components/icon-pill.astro";
 import { Icon } from "astro-icon/components";
 
@@ -49,10 +50,10 @@ const displayName =
     : "Unknown identity";
 const { hasNip05, isZappable } = getIdentityStatusFlags(identity);
 
-const profileRawJson =
-  identity && typeof identity.profile_raw_json === "string"
-    ? identity.profile_raw_json
-    : "";
+const hasKeys = identity && (identity.npub || identity.pubkey);
+const hasProfileFields =
+  identity &&
+  (identity.nip05 || identity.website || identity.lud16);
 ---
 
 <AppLayout title="OpenPrints – Identity detail">
@@ -78,15 +79,14 @@ const profileRawJson =
       {!errorMessage && identity && (
         <div>
           <header class="border-b border-default pb-4">
-            <div class="relative -mx-4 -mt-4 sm:-mx-5 sm:-mt-5">
-              {/* Banner */}
-              <div class="h-36 rounded-t-xl bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900" />
-            </div>
+            <IdentityBanner pubkey={identity.pubkey} />
 
             {/* Hero row: avatar + text */}
             <div class="flex items-start gap-[18px] px-4 sm:px-5 -mt-8">
               {/* Avatar */}
-              <div class="shrink-0">
+              <div
+                class="shrink-0 inline-flex rounded-full transition-transform duration-150 ease-out hover:scale-[1.03] hover:shadow-lg"
+              >
                 <IdentityAvatar
                   picture={identity.picture ?? null}
                   pubkey={identity.pubkey}
@@ -97,53 +97,29 @@ const profileRawJson =
 
               {/* Name + npub + chips */}
               <div class="flex flex-col gap-3 pt-9">
-<div class="flex items-center gap-1">
-  <h1 class="text-3xl font-semibold tracking-tight leading-tight">
-    {displayName}
-  </h1>
-
-  {isZappable && (
-    <span
-  class="inline-flex items-center justify-center w-5 h-5 rounded-full
-         bg-emerald-400/10 text-emerald-400 translate-y-[3px]
-         transition-all duration-150 
-         hover:scale-110 hover:bg-emerald-400/15
-         hover:shadow-[0_0_4px_1px_rgba(16,185,129,0.25)]"
->
-      <Icon
-        name="mdi:lightning-bolt"
-        class="w-3 h-3"
-        title="Zappable"
-        aria-hidden="true"
-      />
-    </span>
-  )}
-
-  {hasNip05 && (
- <span
-  class="inline-flex items-center justify-center w-5 h-5 rounded-full
-         bg-emerald-400/10 text-emerald-400 translate-y-[3px]
-         transition-all duration-150 
-         hover:scale-110 hover:bg-emerald-400/15
-         hover:shadow-[0_0_4px_1px_rgba(16,185,129,0.25)]"
->
-      <Icon
-        name="mdi:check-decagram"
-        class="w-3 h-3"
-        title="NIP05 Verified"
-        aria-hidden="true"
-      />
-    </span>
-  )}
-</div>
+                <div class="flex items-center gap-1">
+                  <h1 class="text-3xl font-semibold tracking-tight leading-tight">
+                    {displayName}
+                  </h1>
+                  {isZappable && (
+                    <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-400/10 text-emerald-400 translate-y-[3px] transition-all duration-150 hover:scale-110 hover:bg-emerald-400/15 hover:shadow-[0_0_4px_1px_rgba(16,185,129,0.25)]">
+                      <Icon name="mdi:lightning-bolt" class="w-3 h-3" title="Zappable" aria-hidden="true" />
+                    </span>
+                  )}
+                  {hasNip05 && (
+                    <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-400/10 text-emerald-400 translate-y-[3px] transition-all duration-150 hover:scale-110 hover:bg-emerald-400/15 hover:shadow-[0_0_4px_1px_rgba(16,185,129,0.25)]">
+                      <Icon name="mdi:check-decagram" class="w-3 h-3" title="NIP05 Verified" aria-hidden="true" />
+                    </span>
+                  )}
+                </div>
 
                 {identity.npub && (
-                  <div class="mt-1 font-mono text-xs text-offset">
+                  <div class="mt-1 text-xs text-offset">
                     <TruncateCopy value={identity.npub} maxChars={20} />
                   </div>
                 )}
 
-                <div class=" flex flex-wrap items-center gap-2 text-[10px] text-offset">
+                <div class="flex flex-wrap items-center gap-2 text-[10px] text-offset">
                   {identity.status && (
                     <IconPill icon="mdi:badge-account-outline" title="Status">
                       {identity.status}
@@ -178,72 +154,79 @@ const profileRawJson =
             </div>
           </header>
 
-          {identity.about && (
-            <section class="mt-3">
-              <h2 class="text-[11px] font-medium uppercase tracking-[0.14em] text-offset">
+          <section class="mt-4 grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            {/* Left: About */}
+            <div>
+              <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-offset">
                 About
               </h2>
-              <p class="mt-1 text-xs leading-relaxed text-offset">{identity.about}</p>
-            </section>
-          )}
-
-          <section class="mt-3 rounded-lg border border-default bg-default/40 p-3">
-            <h2 class="text-[11px] font-medium uppercase tracking-[0.14em] text-offset">
-              Keys
-            </h2>
-            <div class="mt-1.5 space-y-1 text-xs text-offset">
-              {identity.npub && (
-                <p>
-                  <span class="mr-1 font-medium text-default">npub:</span>
-                  <TruncateCopy value={identity.npub} maxChars={20} />
-                </p>
-              )}
-              {identity.pubkey && (
-                <p>
-                  <span class="mr-1 font-medium text-default">pubkey:</span>
-                  <TruncateCopy value={identity.pubkey} maxChars={20} />
-                </p>
-              )}
+              <p class="mt-2 text-xs leading-relaxed text-offset">
+                {identity.about || "No additional information provided for this identity yet."}
+              </p>
             </div>
-          </section>
 
-          <section class="mt-3 rounded-lg border border-default bg-default/40 p-3">
-            <h2 class="text-[11px] font-medium uppercase tracking-[0.14em] text-offset">
-              Profile fields
-            </h2>
-            <div class="mt-1.5 space-y-1 text-xs text-offset">
-              {identity.name && <p><span class="mr-1 font-medium text-default">name:</span>{identity.name}</p>}
-              {identity.display_name && (
-                <p><span class="mr-1 font-medium text-default">display_name:</span>{identity.display_name}</p>
-              )}
-              {identity.nip05 && <p><span class="mr-1 font-medium text-default">nip05:</span>{identity.nip05}</p>}
-              {identity.website && (
-                <p>
-                  <span class="mr-1 font-medium text-default">website:</span>
-                  <a href={identity.website} target="_blank" rel="noreferrer" class="underline-offset-2 hover:underline">
-                    {identity.website}
-                  </a>
-                </p>
-              )}
-              {identity.lud06 && <p><span class="mr-1 font-medium text-default">lud06:</span>{identity.lud06}</p>}
-              {identity.lud16 && <p><span class="mr-1 font-medium text-default">lud16:</span>{identity.lud16}</p>}
-              {!identity.name &&
-                !identity.display_name &&
-                !identity.nip05 &&
-                !identity.website &&
-                !identity.lud06 &&
-                !identity.lud16 && <p>No profile fields available yet.</p>}
-            </div>
-          </section>
+            {/* Right: Keys + Profile fields */}
+            {(hasKeys || hasProfileFields) && (
+              <div class="space-y-4">
+                {hasKeys && (
+                  <div>
+                    <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-offset">
+                      Keys
+                    </h2>
+                    <div class="mt-2 space-y-1 text-xs text-offset">
+                      {identity.npub && (
+                        <p>
+                          <span class="mr-1 font-medium text-default">npub:</span>
+                          <TruncateCopy value={identity.npub} maxChars={20} />
+                        </p>
+                      )}
+                      {identity.pubkey && (
+                        <p>
+                          <span class="mr-1 font-medium text-default">pubkey:</span>
+                          <TruncateCopy value={identity.pubkey} maxChars={20} />
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
-          {profileRawJson && (
-            <section class="mt-3 rounded-lg border border-default bg-default/40 p-3">
-              <h2 class="text-[11px] font-medium uppercase tracking-[0.14em] text-offset">
-                Raw profile JSON
-              </h2>
-              <pre class="mt-1.5 overflow-auto rounded-md border border-default/40 bg-default/40 p-2 text-[10px] text-offset">{profileRawJson}</pre>
-            </section>
-          )}
+                {hasProfileFields && (
+                  <div>
+                    <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-offset">
+                      Profile
+                    </h2>
+                    <div class="mt-2 space-y-1 text-xs text-offset">
+                      {identity.nip05 && (
+                        <p>
+                          <span class="mr-1 font-medium text-default">nip05:</span>
+                          {identity.nip05}
+                        </p>
+                      )}
+                      {identity.website && (
+                        <p>
+                          <span class="mr-1 font-medium text-default">website:</span>
+                          <a
+                            href={identity.website}
+                            target="_blank"
+                            rel="noreferrer"
+                            class="underline-offset-2 hover:underline"
+                          >
+                            {identity.website}
+                          </a>
+                        </p>
+                      )}
+                      {identity.lud16 && (
+                        <p>
+                          <span class="mr-1 font-medium text-default">lud16:</span>
+                          {identity.lud16}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
         </div>
       )}
     </article>

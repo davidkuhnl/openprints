@@ -19,7 +19,7 @@ const display =
 <!-- Visible instance when value is non-empty -->
 {value.length > 0 && (
   <span class="truncate-copy inline-flex items-center gap-1">
-    <span class="truncate-copy__text">{display}</span>
+    <span class="truncate-copy__text font-mono">{display}</span>
     <CopyValue value={value} />
   </span>
 )}
