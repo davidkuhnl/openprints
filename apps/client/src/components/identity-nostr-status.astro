@@ -23,6 +23,20 @@ const statusLabel =
 
 const iconName = "mdi:radio-tower";
 
+const statusAccent =
+  normalizedStatus === "pending"
+    ? "#38bdf8"
+    : normalizedStatus === "failed"
+    ? "#fb7185"
+    : "#34d399";
+
+const statusBg =
+  normalizedStatus === "pending"
+    ? "rgba(56, 189, 248, 0.12)"
+    : normalizedStatus === "failed"
+    ? "rgba(251, 113, 133, 0.12)"
+    : "rgba(52, 211, 153, 0.12)";
+
 function getDateFromInput(input: any): Date | null {
   if (input == null) return null;
 
@@ -38,18 +52,17 @@ function getDateFromInput(input: any): Date | null {
 ---
 
 {rawStatus && (
-  <details class="group inline-block text-[10px] text-offset">
-    {/* PILL (shown when collapsed) */}
+  <details
+    class="group inline-block text-[10px] text-offset"
+    style={`--status-accent: ${statusAccent}; --status-bg: ${statusBg};`}
+  >
+       {/* PILL (shown when collapsed) */}
     <summary
-      class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md border border-default bg-default/40 px-2 py-1 text-[10px] text-offset transition hover:bg-default/60 group-open:hidden"
+      class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md border border-default bg-default/40 px-2 py-1 text-[10px] leading-[1.3] text-offset transition hover:bg-default/60 group-open:hidden"
     >
       <span class="inline-flex items-center gap-1.5">
         <span
-          class={`inline-flex h-4 w-4 items-center justify-center rounded-full ${
-            normalizedStatus === "fetched"
-              ? "bg-emerald-400/10 text-emerald-500"
-              : "bg-default/40 text-default"
-          }`}
+          class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[var(--status-bg)] text-[var(--status-accent)]"
         >
           <Icon
             name={iconName}
@@ -74,40 +87,46 @@ function getDateFromInput(input: any): Date | null {
     </summary>
 
     {/* INLINE PANEL (shown when expanded, replaces pill) */}
-    <div
-      class="mt-1 hidden rounded-xl border border-default/60 border-l-2 border-emerald-300/30 bg-offset/90 px-3 py-2 text-[11px] leading-relaxed text-offset shadow-sm backdrop-blur-sm group-open:block"
-      data-status-panel
-    >
-      <div class="flex items-start gap-2">
-        <div class="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-default/40 text-default">
-          <Icon
-            name={iconName}
-            class="size-3"
-            aria-hidden="true"
-          />
-        </div>
-
-        <div class="flex-1 space-y-1">
-          <div class="flex items-center justify-between gap-2">
-            <p class="text-[10px] font-semibold text-default">
-              {statusLabel}
-            </p>
-
-            {/* subtle close button */}
-            <button
-              type="button"
-              class="inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-offset/70 hover:bg-default/20 hover:text-default transition"
-              aria-label="Close status details"
-              data-close-status-panel
+    <div class="mt-0 hidden group-open:block">
+<div
+  class="rounded-md border border-default/60 border-l-2 border-l-[var(--status-accent)] bg-offset/90 px-2 py-1 text-[10px] leading-[1.3] text-offset shadow-sm backdrop-blur-sm -ml-px"
+  data-status-panel
+>
+        {/* header row – same leading as pill */}
+        <div class="flex items-center justify-between gap-2">
+          <span class="inline-flex items-center gap-1.5">
+            <span
+              class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[var(--status-bg)] text-[var(--status-accent)]"
             >
               <Icon
-                name="mdi:close"
+                name={iconName}
                 class="size-3"
                 aria-hidden="true"
               />
-            </button>
-          </div>
+            </span>
 
+            <span class="font-medium text-default">
+              {statusLabel}
+            </span>
+          </span>
+
+          {/* subtle close button */}
+          <button
+            type="button"
+            class="inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] text-offset/70 hover:bg-default/20 hover:text-default transition"
+            aria-label="Close status details"
+            data-close-status-panel
+          >
+            <Icon
+              name="mdi:close"
+              class="size-3"
+              aria-hidden="true"
+            />
+          </button>
+        </div>
+
+        {/* body text – can be a bit looser */}
+        <div class="mt-1 space-y-1 text-[11px] leading-relaxed">
           {/* Pending */}
           {normalizedStatus === "pending" && (
             <p class="text-offset/70">
@@ -118,7 +137,7 @@ function getDateFromInput(input: any): Date | null {
 
           {/* Fetched */}
           {normalizedStatus === "fetched" && (
-            <div class="mt-1 space-y-1">
+            <div class="space-y-1">
               <p class="text-offset/80">
                 Oh, we know this npub well.
                 {identity?.pubkey_first_seen_at && (
@@ -166,7 +185,7 @@ function getDateFromInput(input: any): Date | null {
 
           {/* Failed */}
           {normalizedStatus === "failed" && (
-            <div class="mt-1 space-y-1">
+            <div class="space-y-1">
               {typeof identity?.retry_count === "number" &&
                 identity.retry_count > 0 && (
                   <p class="text-offset/70">
@@ -182,6 +201,12 @@ function getDateFromInput(input: any): Date | null {
           )}
         </div>
       </div>
+    </div>
+
+
+
+
+
     </div>
   </details>
 )}
