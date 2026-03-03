@@ -92,20 +92,19 @@ const profileRawJson =
                 />
               </div>
 
-              {/* Name + chips */}
+              {/* Name + npub + chips */}
               <div class="flex flex-col gap-3 pt-9">
                 <h1 class="text-3xl font-semibold tracking-tight leading-tight">
                   {displayName}
                 </h1>
 
-                <div class="flex flex-wrap items-center gap-2 text-[10px] text-offset">
-                  {identity.npub && (
-                    <div class="inline-flex items-center gap-1 rounded-md border border-default bg-default/30 px-2 py-1">
-                      <span class="font-medium text-default">npub</span>
-                      <TruncateCopy value={identity.npub} maxChars={20} />
-                    </div>
-                  )}
+                {identity.npub && (
+                  <div class="mt-1 font-mono text-xs text-offset">
+                    <TruncateCopy value={identity.npub} maxChars={20} />
+                  </div>
+                )}
 
+                <div class=" flex flex-wrap items-center gap-2 text-[10px] text-offset">
                   {identity.status && (
                     <IconPill icon="mdi:badge-account-outline" title="Status">
                       {identity.status}
