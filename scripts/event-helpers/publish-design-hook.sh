@@ -47,4 +47,3 @@ echo
 if [[ "$attach_identity" =~ ^[yY] ]]; then
   "$REPO_ROOT/scripts/event-helpers/publish-identity-kind0.sh"
 fi
-

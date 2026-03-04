@@ -1,5 +1,7 @@
 ---
 import AppLayout from "~/layouts/app-layout.astro";
+import NostrSignerRequired from "~/components/nostr-signer-required.astro";
+import NostrSignerDetected from "~/components/nostr-signer-detected.astro";
 
 export const prerender = false;
 ---
@@ -14,8 +16,19 @@ export const prerender = false;
       <span>Back to designs</span>
     </a>
 
-    <section class="flex flex-col gap-2.5 rounded-xl border border-default bg-offset/30 p-4 sm:p-5">
-      <header class="space-y-1.5 border-b border-default pb-4">
+    <!-- Shown when no NIP-07 signer: block further steps and prompt to install -->
+    <section id="nostr-missing" aria-live="polite">
+      <NostrSignerRequired />
+    </section>
+
+    <!-- Shown when window.nostr is present: wizard / form will go here -->
+    <section
+      id="nostr-ok"
+      class="relative hidden flex flex-col overflow-hidden rounded-xl border border-default bg-offset/30"
+      aria-live="polite"
+    >
+      <NostrSignerDetected />
+      <header class="space-y-1.5 border-b border-default p-4 pb-4 sm:p-5 sm:pb-5">
         <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
           Publish
         </p>
@@ -30,4 +43,28 @@ export const prerender = false;
       </header>
     </section>
   </div>
+
+  <script is:inline>
+    (function () {
+      const missingEl = document.getElementById("nostr-missing");
+      const okEl = document.getElementById("nostr-ok");
+      if (!missingEl || !okEl) return;
+
+      const showWizard = () => {
+        missingEl.classList.add("hidden");
+        okEl.classList.remove("hidden");
+      };
+
+      document.addEventListener("nostr-signer-ready", showWizard);
+
+      // In case signer was already present and component dispatched before this script ran
+      if (
+        window.nostr &&
+        typeof window.nostr.getPublicKey === "function" &&
+        typeof window.nostr.signEvent === "function"
+      ) {
+        showWizard();
+      }
+    })();
+  </script>
 </AppLayout>
