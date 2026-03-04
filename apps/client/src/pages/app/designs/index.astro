@@ -10,6 +10,7 @@ const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
 const searchParams = Astro.url.searchParams;
 const q = (searchParams.get("q") ?? "").trim();
+const identityId = (searchParams.get("identity_id") ?? "").trim();
 
 const validOrders = new Set([
   "latest_published_at_desc",
@@ -44,6 +45,7 @@ if (!base) {
     order,
   });
   if (q) params.set("q", q);
+   if (identityId) params.set("identity_id", identityId);
 
   const url = `${base}/designs?${params.toString()}`;
   try {
@@ -69,6 +71,7 @@ const hasNextPage = page < totalPages;
 function buildPageHref(targetPage: number) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
+  if (identityId) params.set("identity_id", identityId);
   if (order !== defaultOrder) params.set("order", order);
   if (limit !== 24) params.set("limit", String(limit));
   if (targetPage > 1) params.set("page", String(targetPage));

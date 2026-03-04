@@ -8,6 +8,7 @@ const {
   items: providedItems = null,
   errorMessage: providedErrorMessage = null,
   emptyMessage = "No designs yet.",
+  identityId = null,
 } = Astro.props;
 
 const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
@@ -25,6 +26,10 @@ if (!Array.isArray(providedItems)) {
       limit: String(limit),
       order: "latest_published_at_desc",
     });
+
+    if (identityId) {
+      params.set("identity_id", identityId);
+    }
 
     const url = `${base}/designs?${params.toString()}`;
     try {
