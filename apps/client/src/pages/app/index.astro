@@ -3,6 +3,7 @@ import AppLayout from "~/layouts/app-layout.astro";
 import RecentDesignsGrid from "~/components/recent-designs-grid.astro";
 import DesignSearchControls from "~/components/design-search-controls.astro";
 import MockMarker from "~/components/mock-marker.astro";
+import { nounForCount } from "~/lib/plural";
 import { Icon } from "astro-icon/components";
 
 export const prerender = false;
@@ -12,6 +13,15 @@ const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
 let totalDesigns: number | null = null;
 let totalVersions: number | null = null;
+
+const designsLabel = nounForCount(totalDesigns ?? 0, {
+  one: "design",
+  other: "designs",
+});
+const versionsLabel = nounForCount(totalVersions ?? 0, {
+  one: "version",
+  other: "versions",
+});
 const popularCategories = [
   { name: "Tools", icon: "mdi:hammer-wrench", count: 1842 },
   { name: "Holders", icon: "mdi:shape-outline", count: 1296 },
@@ -55,19 +65,30 @@ if (base) {
             <span class="inline-flex items-center gap-1 rounded-full border border-default px-2.5 py-1">
               <Icon name="mdi:shape-outline" class="size-3" aria-hidden="true" />
               <span class="text-default">{totalDesigns ?? "—"}</span>
-              designs
+              {designsLabel}
             </span>
+
             <span class="inline-flex items-center gap-1 rounded-full border border-default px-2.5 py-1">
               <Icon name="mdi:layers-outline" class="size-3" aria-hidden="true" />
               <span class="text-default">{totalVersions ?? "—"}</span>
-              versions
+              {versionsLabel}
             </span>
+
             <a
               href="/app/designs"
-              class="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2.5 py-1 text-default transition-colors hover:text-emerald-400"
+              class="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2.5 py-1 text-default transition-colors hover:bg-emerald-400/20 hover:text-emerald-400"
             >
               <Icon name="mdi:arrow-right" class="size-3" aria-hidden="true" />
               Browse all designs
+            </a>
+
+            <a
+              href="/app/designs/new"
+              aria-label="Publish a design"
+              class="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 px-2.5 py-1 text-default transition-colors hover:bg-emerald-400/10 hover:text-emerald-400"
+            >
+              <Icon name="mdi:plus" class="size-3" aria-hidden="true" />
+              Publish
             </a>
           </div>
         </div>

@@ -118,6 +118,11 @@ Phased plan for the OpenPrints PoC and beyond.
 
 **Includes:**
 
+- Identity plumbing required for publishing, built slightly ahead of this phase:
+  - Identity seeding from design events into the `identities` table.
+  - Identity indexer pipeline that fetches and refreshes kind `0` metadata from relays.
+  - Identity API route (`GET /identity/{id}`) backed by the `identities` table.
+  - Identity-aware client UI (identity detail page, creator badges on designs).
 - "Create design" or "Publish" flow in the client: form for metadata (title, format, license, tags, etc.) and the design file **URL**. User is responsible for hosting the file (e.g. S3, Thingiverse, personal server); we do not accept uploads or provide storage in this phase.
 - Optional: user can paste or supply a precomputed `sha256` for the file at that URL for integrity; otherwise we may omit or defer hash in the event.
 - Build `kind 33301` event with correct tags and content; sign via NIP-07 or Nostr Connect; broadcast to configured relay(s).
