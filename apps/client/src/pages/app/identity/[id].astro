@@ -1,13 +1,14 @@
 ---
 import AppLayout from "~/layouts/app-layout.astro";
-import { getIdentityStatusFlags } from "~/identity-status";
+import { getIdentityStatusFlags } from "~/lib/identity-status";
 import TruncateCopy from "~/components/truncate-copy.astro";
 import TimestampDisplay from "~/components/timestamp-display.astro";
 import IdentityAvatar from "~/components/identity-avatar.astro";
 import IdentityBanner from "~/components/identity-banner.astro";
 import IconPill from "~/components/icon-pill.astro";
 import IdentityNostrStatus from "~/components/identity-nostr-status.astro";
-import MockRecentDesigns from "~/components/mock-recent-designs.astro";
+import RecentDesignsGrid from "~/components/recent-designs-grid.astro";
+import { nounForCount } from "~/lib/plural";
 import { Icon } from "astro-icon/components";
 
 export const prerender = false;
@@ -15,10 +16,16 @@ export const prerender = false;
 const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
 const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 const { id } = Astro.params;
+const identityIdParam: string = typeof id === "string" ? id : "";
+
+const designsPreviewLimit = 6;
 
 let identity: any = null;
 let errorTitle: string | null = null;
 let errorMessage: string | null = null;
+let totalDesignsForIdentity: number | null = null;
+let totalVersionsForIdentity: number | null = null;
+let statsError: string | null = null;
 
 if (!base) {
   errorTitle = "Identity not available";
@@ -28,10 +35,10 @@ if (!base) {
   errorTitle = "Identity not found";
   errorMessage = "Missing identity id in the URL.";
 } else {
-  const url = `${base}/identity/${encodeURIComponent(id)}`;
+  const identityUrl = `${base}/identity/${encodeURIComponent(id)}`;
 
   try {
-    const res = await fetch(url);
+    const res = await fetch(identityUrl);
 
     if (!res.ok) {
       errorTitle = "Identity not found";
@@ -43,6 +50,28 @@ if (!base) {
     errorTitle = "Identity not found";
     errorMessage =
       "We couldn't load this identity due to a network or server error.";
+  }
+
+  // If identity loaded successfully, fetch scoped design stats for this identity.
+  if (!errorMessage && identity) {
+    const statsUrl = `${base}/designs/stats?identity_id=${encodeURIComponent(
+      id,
+    )}`;
+    try {
+      const statsRes = await fetch(statsUrl);
+      if (statsRes.ok) {
+        const stats = await statsRes.json();
+        totalDesignsForIdentity =
+          typeof stats?.designs === "number" ? stats.designs : null;
+        totalVersionsForIdentity =
+          typeof stats?.versions === "number" ? stats.versions : null;
+      } else {
+        statsError = `Failed to load design stats (${statsRes.status} ${statsRes.statusText}).`;
+      }
+    } catch {
+      statsError =
+        "We couldn't load design stats for this identity due to a network or server error.";
+    }
   }
 }
 
@@ -57,9 +86,23 @@ const hasProfileFields =
   identity &&
   (identity.nip05 || identity.website || identity.lud16);
 
-// TODO: Replace these placeholder counts with real data from the API
-const totalDesignsForIdentity = identity?.design_count ?? 12;
-const totalVersionsForIdentity = identity?.version_count ?? 37;
+// Fallback display values if stats are unavailable
+const totalDesignsDisplay = totalDesignsForIdentity ?? "—";
+const totalVersionsDisplay = totalVersionsForIdentity ?? "—";
+
+const showAllDesignsButton =
+  typeof totalDesignsForIdentity === "number" &&
+  totalDesignsForIdentity > designsPreviewLimit;
+
+const designsLabel = nounForCount(totalDesignsForIdentity ?? 0, {
+  one: "design",
+  other: "designs",
+});
+
+const versionsLabel = nounForCount(totalVersionsForIdentity ?? 0, {
+  one: "version",
+  other: "versions",
+});
 ---
 
 <AppLayout title="OpenPrints – Identity detail">
@@ -127,29 +170,19 @@ const totalVersionsForIdentity = identity?.version_count ?? 37;
 
                 <div class="flex flex-wrap items-center gap-2 text-[10px] text-offset">
                   <IdentityNostrStatus identity={identity} />
-                  <span class="inline-flex items-center gap-1 rounded-md border border-default bg-default/40 px-2 py-1">
-                    <Icon
-                      name="mdi:shape-outline"
-                      class="size-3"
-                      aria-hidden="true"
-                    />
+                  <IconPill icon="mdi:shape-outline">
                     <span class="text-default">
-                      {totalDesignsForIdentity}
+                      {totalDesignsDisplay}
                     </span>
-                    designs
-                  </span>
+                    {designsLabel}
+                  </IconPill>
 
-                  <span class="inline-flex items-center gap-1 rounded-md border border-default bg-default/40 px-2 py-1">
-                    <Icon
-                      name="mdi:layers-outline"
-                      class="size-3"
-                      aria-hidden="true"
-                    />
+                  <IconPill icon="mdi:layers-outline">
                     <span class="text-default">
-                      {totalVersionsForIdentity}
+                      {totalVersionsDisplay}
                     </span>
-                    versions
-                  </span>
+                    {versionsLabel}
+                  </IconPill>
 
                 </div>
               </div>
@@ -230,7 +263,39 @@ const totalVersionsForIdentity = identity?.version_count ?? 37;
             )}
           </section>
 
-          <MockRecentDesigns identityPubkey={identity.pubkey} />
+          <section class="relative mt-4 border-t border-default/60 pt-4">
+<h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-offset">
+  Latest designs
+  {displayName && (
+    <span
+      class="ml-1 text-offset/70 normal-case inline-block max-w-[220px] truncate align-bottom"
+      title={displayName}
+    >
+      · {displayName}
+    </span>
+  )}
+</h2>
+
+            <div class="mt-3">
+              <RecentDesignsGrid
+                limit={designsPreviewLimit}
+                identityId={id}
+                emptyMessage="This user hasn't published any designs yet."
+              />
+            </div>
+
+            {showAllDesignsButton && (
+              <div class="mt-3 flex justify-end">
+                <a
+                  href={`/app/designs?identity_id=${encodeURIComponent(identityIdParam)}`}
+                  class="inline-flex items-center gap-1.5 rounded-md border border-default/60 bg-default/20 px-2 py-1 text-[11px] text-offset transition hover:bg-default/30 hover:text-default"
+                >
+                  View all {totalDesignsForIdentity} designs
+                  <span class="text-offset/70">→</span>
+                </a>
+              </div>
+            )}
+          </section>
         </div>
       )}
     </article>

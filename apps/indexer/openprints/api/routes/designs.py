@@ -8,6 +8,7 @@ from openprints.api.deps import get_store
 from openprints.common.design_id import api_id_decode, api_id_encode
 from openprints.common.identity_utils import (
     identity_api_id_from_pubkey,
+    identity_api_id_to_pubkey,
     non_empty_string,
     to_npub,
     truncate_middle,
@@ -81,8 +82,20 @@ async def list_designs(
         description="Sort: latest_published_at_desc|asc, first_published_at_desc|asc",
     ),
     q: str | None = Query(None, description="Search designs by name (substring)."),
+    identity_id: str | None = Query(
+        default=None,
+        description="Filter designs by creator identity id (npub or hex pubkey).",
+    ),
 ) -> dict:
-    """List designs with pagination and optional name search."""
+    """List designs with pagination and optional filters."""
+    creator_pubkey: str | None = None
+    if identity_id is not None:
+        creator_pubkey = identity_api_id_to_pubkey(identity_id)
+        if creator_pubkey is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid identity id format.",
+            )
     store = get_store()
     if store is None:
         raise HTTPException(
@@ -101,6 +114,7 @@ async def list_designs(
         offset=offset,
         order=order,
         name_contains=q.strip() if q else None,
+        creator_pubkey=creator_pubkey,
     )
     identities_by_pubkey = await store.get_identities_by_pubkeys([row.pubkey for row in rows])
     return {
@@ -115,15 +129,29 @@ async def list_designs(
 
 
 @router.get("/stats")
-async def design_stats() -> dict:
-    """Return total number of designs and versions."""
+async def design_stats(
+    identity_id: str | None = Query(
+        default=None,
+        description="Filter stats by creator identity id (npub or hex pubkey).",
+    ),
+) -> dict:
+    """Return total number of designs and versions, optionally scoped to a creator."""
+    creator_pubkey: str | None = None
+    if identity_id is not None:
+        creator_pubkey = identity_api_id_to_pubkey(identity_id)
+        if creator_pubkey is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid identity id format.",
+            )
+
     store = get_store()
     if store is None:
         raise HTTPException(
             status_code=503,
             detail="Database not configured; run indexer with database_path first.",
         )
-    designs_count, versions_count = await store.get_counts()
+    designs_count, versions_count = await store.get_counts(creator_pubkey=creator_pubkey)
     return {"designs": designs_count, "versions": versions_count}
 
 

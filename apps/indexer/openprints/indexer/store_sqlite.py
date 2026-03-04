@@ -298,6 +298,7 @@ class SQLiteIndexStore:
         offset: int = 0,
         order: str = "latest_published_at_desc",
         name_contains: str | None = None,
+        creator_pubkey: str | None = None,
     ) -> tuple[list[DesignCurrentRow], int]:
         """List current designs with optional filters. Returns (rows, total_count)."""
         conn = self._conn_required()
@@ -313,6 +314,9 @@ class SQLiteIndexStore:
 
         where = "WHERE 1=1"
         params: list[object] = []
+        if creator_pubkey is not None and creator_pubkey.strip():
+            where += " AND pubkey = ?"
+            params.append(creator_pubkey.strip().lower())
         if name_contains and name_contains.strip():
             where += " AND name LIKE ?"
             params.append(f"%{name_contains.strip()}%")
@@ -387,13 +391,36 @@ class SQLiteIndexStore:
             tags_json=r["tags_json"],
         )
 
-    async def get_counts(self) -> tuple[int, int]:
-        """Return (designs_count, versions_count) for stats."""
+    async def get_counts(
+        self,
+        *,
+        creator_pubkey: str | None = None,
+    ) -> tuple[int, int]:
+        """Return (designs_count, versions_count) for stats.
+
+        If creator_pubkey is provided, both counts are scoped to that creator.
+        """
         conn = self._conn_required()
-        async with conn.execute("SELECT COUNT(*) FROM designs") as cur:
-            (designs_count,) = await cur.fetchone()
-        async with conn.execute("SELECT COUNT(*) FROM design_versions") as cur:
-            (versions_count,) = await cur.fetchone()
+        if creator_pubkey is not None and creator_pubkey.strip():
+            pubkey = creator_pubkey.strip().lower()
+            async with conn.execute(
+                "SELECT COUNT(*) FROM designs WHERE pubkey = ?",
+                (pubkey,),
+            ) as cur:
+                (designs_count,) = await cur.fetchone()
+            async with conn.execute(
+                """
+                SELECT COUNT(*) FROM design_versions
+                WHERE pubkey = ?
+                """,
+                (pubkey,),
+            ) as cur:
+                (versions_count,) = await cur.fetchone()
+        else:
+            async with conn.execute("SELECT COUNT(*) FROM designs") as cur:
+                (designs_count,) = await cur.fetchone()
+            async with conn.execute("SELECT COUNT(*) FROM design_versions") as cur:
+                (versions_count,) = await cur.fetchone()
         return designs_count, versions_count
 
 
