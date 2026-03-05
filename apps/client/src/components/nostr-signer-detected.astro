@@ -12,7 +12,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
   aria-live="polite"
 >
   <section
-    class="hidden flex flex-col gap-2 border-l-2 border-emerald-400/40 bg-offset/30 p-3 sm:p-4"
+    class="hidden flex flex-col gap-2 border-l-2 border-emerald-400/40 bg-offset/30 p-3 sm:p-4 mb-4"
     data-panel-expanded
   >
     <header class="flex items-start justify-between gap-3">
@@ -26,7 +26,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       </div>
     </header>
 
-    <div class="space-y-2">
+    <div class="space-y-3 mt-2">
       <!-- Primary identity pills (npub + signed-in location) -->
       <div class="flex flex-wrap items-center gap-2 text-[11px] text-offset/80">
         <span class="inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1">
@@ -51,19 +51,19 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       </div>
 
       <!-- Identity fetch status text -->
-      <div class="space-y-1.5">
-        <p class="text-xs leading-relaxed text-offset" data-panel-message>
+      <div class="space-y-2 mt-3">
+        <p class="text-[13px] font-medium text-default" data-panel-message>
           We’re fetching your profile from OpenPrints so we can greet you and show where your designs will be published from.
         </p>
       </div>
 
-      <div class="flex flex-wrap items-center gap-4 text-[11px] text-offset/70 hidden" data-panel-hint-row>
-        <p data-panel-hint>
-          Not the identity you want? Switch accounts in your signer extension, then reload.
+      <div class="flex flex-wrap items-center gap-2 text-[11px] text-offset/70 hidden mt-3" data-panel-hint-row>
+        <p class="text-[12px] text-offset/60" data-panel-hint>
+          If this isn't the identity you want, switch accounts in your signer extension and reload.
         </p>
         <button
           type="button"
-          class="inline-flex items-center gap-1 text-[11px] text-offset/70 transition hover:text-default hidden"
+          class="inline-flex items-center gap-1 text-[11px] text-offset/70 transition hover:text-default"
           data-panel-reload
           onclick="location.reload()"
         >
@@ -151,7 +151,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     const titleEl = root.querySelector("[data-panel-title]");
     const msgEl = root.querySelector("[data-panel-message]");
     const pillEl = root.querySelector("[data-panel-status-pill]");
-    const hintEl = root.querySelector("[data-panel-hint]");
     const expandedPanel = root.querySelector("[data-panel-expanded]");
     const chipEl = root.querySelector("[data-panel-chip]");
     const chevronEl = root.querySelector("[data-panel-chevron]");
@@ -333,7 +332,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
             setText(titleEl, `Welcome back, ${displayName}.`);
             setText(
               msgEl,
-              "Everything’s set. Fill out the design details below, then sign and publish."
+              "You can now publish designs using this identity."
             );
             setText(identityEl, displayName);
             updatePillLabel(displayName);
@@ -342,14 +341,9 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
             updatePillLabel(shortNpub);
             setText(
               msgEl,
-              "Everything’s set. Fill out the design details below, then sign and publish."
+              "You can now publish designs using this identity."
             );
           }
-
-          setText(
-            hintEl,
-            "Not the identity you want? Switch accounts in your signer extension, then reload."
-          );
 
           hasRendered = true;
           console.debug("[nostr-signer] renderFromPubkey complete");
