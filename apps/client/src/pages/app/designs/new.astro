@@ -16,12 +16,9 @@ export const prerender = false;
       <span>Back to designs</span>
     </a>
 
-    <!-- Shown when no NIP-07 signer: block further steps and prompt to install -->
     <section id="nostr-missing" aria-live="polite">
       <NostrSignerRequired />
     </section>
-
-    <!-- Shown when window.nostr is present: wizard / form will go here -->
     <section
       id="nostr-ok"
       class="relative hidden flex flex-col overflow-hidden rounded-xl border border-default bg-offset/30"
@@ -51,15 +48,17 @@ export const prerender = false;
       if (!missingEl || !okEl) return;
 
       const w = /** @type {Window & { __openprintsSignerState?: any }} */ (window);
-      if (w.__openprintsSignerState?.initialized) return;
-
-      const state = {
-        initialized: true,
-        signerAvailable: false,
-        pubkey: null,
-        timedOut: false,
-        pubkeyPromise: null,
-      };
+      const state =
+        w.__openprintsSignerState ??
+        {
+          initialized: true,
+          signerAvailable: false,
+          pubkey: null,
+          timedOut: false,
+          pubkeyTimedOut: false,
+          pubkeyPromise: null,
+          signerPollStarted: false,
+        };
       w.__openprintsSignerState = state;
 
       const showWizard = () => {
@@ -78,10 +77,17 @@ export const prerender = false;
           typeof window.nostr.signEvent === "function"
         );
 
+      const getPubkeyWithTimeout = (timeoutMs = 10000) =>
+        Promise.race([
+          window.nostr.getPublicKey(),
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("Timed out waiting for signer pubkey")), timeoutMs);
+          }),
+        ]);
+
       const resolvePubkeyOnce = () => {
         if (state.pubkeyPromise) return state.pubkeyPromise;
-        state.pubkeyPromise = window.nostr
-          .getPublicKey()
+        state.pubkeyPromise = getPubkeyWithTimeout()
           .then((pubkey) => {
             if (typeof pubkey === "string" && pubkey.length > 0) {
               state.pubkey = pubkey;
@@ -92,6 +98,11 @@ export const prerender = false;
             return null;
           })
           .catch((error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            if (message.includes("Timed out waiting for signer pubkey")) {
+              state.pubkeyTimedOut = true;
+              emit("nostr-signer-pubkey-timeout", { error });
+            }
             emit("nostr-signer-ready", { pubkey: null, error });
             return null;
           });
@@ -99,14 +110,17 @@ export const prerender = false;
       };
 
       const markSignerAvailable = () => {
-        if (state.signerAvailable) return;
-        state.signerAvailable = true;
         showWizard();
-        emit("nostr-signer-available");
+        if (!state.signerAvailable) {
+          state.signerAvailable = true;
+          emit("nostr-signer-available");
+        }
         void resolvePubkeyOnce();
       };
 
       const waitForSigner = ({ timeoutMs = 60000, intervalMs = 750 } = {}) => {
+        if (state.signerPollStarted) return;
+        state.signerPollStarted = true;
         const started = Date.now();
         const tick = () => {
           if (isSignerAvailable()) {

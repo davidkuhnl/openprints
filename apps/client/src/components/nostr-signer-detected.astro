@@ -41,12 +41,13 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           class="inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1"
           data-panel-status-pill
         >
-          <span class="nostr-dots inline-flex items-center" aria-hidden="true">
+          <span class="nostr-dots inline-flex items-center" data-panel-status-dots aria-hidden="true">
             <span class="dot" />
             <span class="dot" />
             <span class="dot" />
           </span>
-          Getting pubkey from signer
+          <span class="hidden" data-panel-status-icon aria-hidden="true"></span>
+          <span data-panel-status-label>Getting pubkey from signer</span>
         </span>
       </div>
 
@@ -150,8 +151,44 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 <script>
   import { nip19 } from "nostr-tools";
 
-  /** @typedef {{ getPublicKey?: () => Promise<string>; signEvent?: unknown }} NostrSigner */
-  /** @typedef {{ display_name_resolved?: string|null; display_name?: string|null; name?: string|null }} IdentityResponse */
+  type IdentityResponse = {
+    display_name_resolved?: string | null;
+    display_name?: string | null;
+    name?: string | null;
+  };
+
+  type IdentityError = "no-api" | "bad-status" | "network" | null;
+
+  type IdentityLookupResult = {
+    identity: IdentityResponse | null;
+    exists: boolean;
+    error: IdentityError;
+  };
+
+  type SharedSignerState = {
+    pubkey?: string | null;
+    pubkeyTimedOut?: boolean;
+  };
+
+  type SignerReadyDetail = {
+    pubkey?: string | null;
+  };
+
+  type StatusMode = "checking" | "ready" | "offline";
+
+  type SignedDotState = "hidden" | "blinking" | "solid";
+
+  type PanelViewModel = {
+    title: string;
+    message: string;
+    identityText: string;
+    chipLabel: string;
+    statusLabel: string;
+    statusMode: StatusMode;
+    signedDot: SignedDotState;
+    showHint: boolean;
+    copyValue?: string;
+  };
 
   const root = document.querySelector("[data-nostr-signer-panel]");
   if (!root) {
@@ -163,28 +200,31 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     console.debug("[nostr-signer] panel root found, initializing");
     const apiBase = root.getAttribute("data-api-base") ?? "";
 
-    const titleEl = root.querySelector("[data-panel-title]");
-    const msgEl = root.querySelector("[data-panel-message]");
-    const pillEl = root.querySelector("[data-panel-status-pill]");
-    const expandedPanel = root.querySelector("[data-panel-expanded]");
-    const chipEl = root.querySelector("[data-panel-chip]");
-    const chevronEl = root.querySelector("[data-panel-chevron]");
-    const pillLabelEl = root.querySelector("[data-panel-pill-label]");
-    const signedDotEl = root.querySelector("[data-panel-signed-dot]");
-    const hintRow = root.querySelector("[data-panel-hint-row]");
-    const reloadBtn = root.querySelector("[data-panel-reload]");
-    const copyBtn = root.querySelector(".copy-value__btn");
+    const titleEl = root.querySelector<HTMLElement>("[data-panel-title]");
+    const msgEl = root.querySelector<HTMLElement>("[data-panel-message]");
+    const pillEl = root.querySelector<HTMLElement>("[data-panel-status-pill]");
+    const statusDotsEl = root.querySelector<HTMLElement>("[data-panel-status-dots]");
+    const statusIconEl = root.querySelector<HTMLElement>("[data-panel-status-icon]");
+    const statusLabelEl = root.querySelector<HTMLElement>("[data-panel-status-label]");
+    const expandedPanel = root.querySelector<HTMLElement>("[data-panel-expanded]");
+    const chipEl = root.querySelector<HTMLElement>("[data-panel-chip]");
+    const chevronEl = root.querySelector<HTMLElement>("[data-panel-chevron]");
+    const pillLabelEl = root.querySelector<HTMLElement>("[data-panel-pill-label]");
+    const signedDotEl = root.querySelector<HTMLElement>("[data-panel-signed-dot]");
+    const hintRow = root.querySelector<HTMLElement>("[data-panel-hint-row]");
+    const reloadBtn = root.querySelector<HTMLElement>("[data-panel-reload]");
+    const copyBtn = root.querySelector<HTMLButtonElement>(".copy-value__btn");
 
     let hasRendered = false;
     let isRendering = false;
     let isCollapsed = true;
     let fullNpub = "";
 
-    const updatePillLabel = (text) => {
+    const updatePillLabel = (text: string) => {
       if (pillLabelEl) pillLabelEl.textContent = text || "—";
     };
 
-    const setCollapsed = (collapsed) => {
+    const setCollapsed = (collapsed: boolean) => {
       isCollapsed = collapsed;
       if (expandedPanel) expandedPanel.classList.toggle("hidden", collapsed);
       if (chipEl) {
@@ -194,61 +234,91 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     };
 
     const setupCollapseToggle = () => {
-      chipEl?.addEventListener("click", (e) => {
-        const target = /** @type {EventTarget | null} */ (e.target);
+      chipEl?.addEventListener("click", (e: MouseEvent) => {
+        const target = e.target;
         if (target instanceof Element && target.closest(".copy-value__btn")) {
           return;
         }
         setCollapsed(!isCollapsed);
       });
-      chipEl?.addEventListener("keydown", (e) => {
-        const ev = /** @type {KeyboardEvent} */ (e);
-        if (ev.key === "Enter" || ev.key === " ") {
-          ev.preventDefault();
+      chipEl?.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
           setCollapsed(!isCollapsed);
         }
       });
     };
 
-    const truncateNpub = (npub) => {
+    const truncateNpub = (npub: string) => {
       if (!npub || npub.length <= 18) return npub;
       return `${npub.slice(0, 10)}...${npub.slice(-6)}`;
     };
 
-    const setText = (el, text) => {
+    const setText = (el: Element | null, text: string) => {
       if (!el) return;
       el.textContent = text;
     };
 
-    const setPill = (label, mode) => {
+    const setPill = (label: string, mode: StatusMode) => {
       if (!pillEl) return;
       const sharedPillClass =
         "inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1";
+      pillEl.className = sharedPillClass;
 
-      // keep the dots for "checking", remove for other states
+      if (statusLabelEl) statusLabelEl.textContent = label;
+
+      // keep dots only while checking
       if (mode === "checking") {
-        pillEl.className = sharedPillClass;
-        pillEl.innerHTML = `
-          <span class="nostr-dots inline-flex items-center" aria-hidden="true">
-            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          </span>
-          ${label}
-        `;
+        statusDotsEl?.classList.remove("hidden");
+        if (statusIconEl) {
+          statusIconEl.classList.add("hidden");
+          statusIconEl.textContent = "";
+        }
         return;
       }
 
-      const icon =
-        mode === "ready"
-          ? "✓"
-          : mode === "offline"
-          ? "!"
-          : "";
-
-      pillEl.innerHTML = `<span aria-hidden="true">${icon}</span>${label}`;
-      pillEl.className = sharedPillClass;
+      statusDotsEl?.classList.add("hidden");
+      if (statusIconEl) {
+        statusIconEl.classList.remove("hidden");
+        statusIconEl.textContent = mode === "ready" ? "✓" : "!";
+      }
     };
 
-    const fetchIdentity = async (pubkey) => {
+    const applyView = (view: PanelViewModel) => {
+      const identityEl = root.querySelector("[data-panel-identity]");
+
+      setText(titleEl, view.title);
+      setText(msgEl, view.message);
+      setText(identityEl, view.identityText);
+      setPill(view.statusLabel, view.statusMode);
+      updatePillLabel(view.chipLabel);
+
+      if (copyBtn && view.copyValue) {
+        copyBtn.setAttribute("data-copy-value", view.copyValue);
+      }
+
+      if (view.showHint) {
+        hintRow?.classList.remove("hidden");
+        reloadBtn?.classList.remove("hidden");
+      } else {
+        hintRow?.classList.add("hidden");
+        reloadBtn?.classList.add("hidden");
+      }
+
+      if (signedDotEl) {
+        signedDotEl.classList.remove("nostr-status-dot--blinking");
+        if (view.signedDot === "hidden") {
+          signedDotEl.classList.add("hidden");
+        } else if (view.signedDot === "blinking") {
+          signedDotEl.classList.remove("hidden");
+          signedDotEl.classList.add("nostr-status-dot--blinking");
+        } else {
+          signedDotEl.classList.remove("hidden");
+        }
+      }
+    };
+
+    const fetchIdentity = async (pubkey: string): Promise<IdentityLookupResult> => {
       if (!apiBase) return { identity: null, exists: false, error: "no-api" };
 
       const identityUrl = `${apiBase}/identity/${encodeURIComponent(pubkey)}`;
@@ -272,7 +342,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       }
     };
 
-    const renderFromPubkey = async (pubkey) => {
+    const renderFromPubkey = async (pubkey: string) => {
       if (!pubkey) {
         console.debug("[nostr-signer] renderFromPubkey called with empty pubkey");
         return;
@@ -302,26 +372,17 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         fullNpub = npub;
         const shortNpub = truncateNpub(npub);
 
-        // Fill primary identity pill immediately with truncated npub
-        const identityEl = root.querySelector("[data-panel-identity]");
-        setText(identityEl, shortNpub);
-        updatePillLabel(shortNpub);
-        if (copyBtn && fullNpub) {
-          copyBtn.setAttribute("data-copy-value", fullNpub);
-        }
-
-        if (hintRow instanceof HTMLElement) {
-          hintRow.classList.remove("hidden");
-        }
-        if (reloadBtn instanceof HTMLElement) {
-          reloadBtn.classList.remove("hidden");
-        }
-
-        if (signedDotEl) {
-          signedDotEl.classList.remove("hidden");
-          signedDotEl.classList.add("nostr-status-dot--blinking");
-        }
-        setPill("Checking OpenPrints identity", "checking");
+        applyView({
+          title: "Signer ready.",
+          message: "Waiting for your signer to share an identity so we can look it up in OpenPrints.",
+          identityText: shortNpub,
+          chipLabel: shortNpub,
+          statusLabel: "Checking OpenPrints identity",
+          statusMode: "checking",
+          signedDot: "blinking",
+          showHint: true,
+          copyValue: fullNpub,
+        });
 
         const { identity, exists, error } = await fetchIdentity(pubkey);
 
@@ -330,27 +391,31 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
             hasDisplayName: !!identity?.display_name_resolved,
           });
           const displayName = identity?.display_name_resolved;
-          if (signedDotEl) {
-            signedDotEl.classList.remove("hidden");
-            signedDotEl.classList.remove("nostr-status-dot--blinking");
-          }
-          setPill("OpenPrints identity confirmed", "ready");
 
           if (displayName) {
-            setText(titleEl, `Welcome back, ${displayName}.`);
-            setText(
-              msgEl,
-              "You're ready to publish with this identity."
-            );
-            setText(identityEl, displayName);
-            updatePillLabel(displayName);
+            applyView({
+              title: `Welcome back, ${displayName}.`,
+              message: "You're ready to publish with this identity.",
+              identityText: displayName,
+              chipLabel: displayName,
+              statusLabel: "OpenPrints identity confirmed",
+              statusMode: "ready",
+              signedDot: "solid",
+              showHint: true,
+              copyValue: fullNpub,
+            });
           } else {
-            setText(titleEl, "Signer ready.");
-            updatePillLabel(shortNpub);
-            setText(
-              msgEl,
-              "You're ready to publish with this identity."
-            );
+            applyView({
+              title: "Signer ready.",
+              message: "You're ready to publish with this identity.",
+              identityText: shortNpub,
+              chipLabel: shortNpub,
+              statusLabel: "OpenPrints identity confirmed",
+              statusMode: "ready",
+              signedDot: "solid",
+              showHint: true,
+              copyValue: fullNpub,
+            });
           }
 
           hasRendered = true;
@@ -361,43 +426,46 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         // identity not in DB yet, or API unavailable
         if (error === "no-api") {
           console.debug("[nostr-signer] no apiBase, skipping identity lookup");
-          if (signedDotEl) {
-            signedDotEl.classList.add("hidden");
-            signedDotEl.classList.remove("nostr-status-dot--blinking");
-          }
-          setPill("Ready", "ready");
-          updatePillLabel(shortNpub);
-          setText(titleEl, "Signer ready.");
-          setText(
-            msgEl,
-            "We’ll show your profile once OpenPrints is connected. You can still continue publishing."
-          );
+          applyView({
+            title: "Signer ready.",
+            message:
+              "We’ll show your profile once OpenPrints is connected. You can still continue publishing.",
+            identityText: shortNpub,
+            chipLabel: shortNpub,
+            statusLabel: "Ready",
+            statusMode: "ready",
+            signedDot: "hidden",
+            showHint: true,
+            copyValue: fullNpub,
+          });
         } else if (error) {
           console.warn("[nostr-signer] identity lookup failed", { error });
-          if (signedDotEl) {
-            signedDotEl.classList.add("hidden");
-            signedDotEl.classList.remove("nostr-status-dot--blinking");
-          }
-          setPill("API unavailable", "offline");
-          updatePillLabel(shortNpub);
-          setText(titleEl, "Signer ready.");
-          setText(
-            msgEl,
-            "We couldn’t reach the OpenPrints API to look up your profile. You can still continue publishing."
-          );
+          applyView({
+            title: "Signer ready.",
+            message:
+              "We couldn’t reach the OpenPrints API to look up your profile. You can still continue publishing.",
+            identityText: shortNpub,
+            chipLabel: shortNpub,
+            statusLabel: "API unavailable",
+            statusMode: "offline",
+            signedDot: "hidden",
+            showHint: true,
+            copyValue: fullNpub,
+          });
         } else {
           console.debug("[nostr-signer] identity not found, treating as new");
-          if (signedDotEl) {
-            signedDotEl.classList.add("hidden");
-            signedDotEl.classList.remove("nostr-status-dot--blinking");
-          }
-          setPill("New identity", "ready");
-          updatePillLabel(shortNpub);
-          setText(titleEl, "Nice to meet you.");
-          setText(
-          msgEl,
-          "We haven’t seen this identity in OpenPrints yet, but you can still use it to sign and publish your design."
-          );
+          applyView({
+            title: "Nice to meet you.",
+            message:
+              "We haven’t seen this identity in OpenPrints yet, but you can still use it to sign and publish your design.",
+            identityText: shortNpub,
+            chipLabel: shortNpub,
+            statusLabel: "New identity",
+            statusMode: "ready",
+            signedDot: "hidden",
+            showHint: true,
+            copyValue: fullNpub,
+          });
         }
 
         hasRendered = true;
@@ -407,8 +475,8 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       }
     };
 
-    const handleSignerReady = (event) => {
-      const customEvent = /** @type {CustomEvent<{ pubkey?: string|null }>} */ (event);
+    const handleSignerReady = (event: Event) => {
+      const customEvent = event as CustomEvent<SignerReadyDetail>;
       const pubkey = customEvent?.detail?.pubkey;
       console.debug("[nostr-signer] nostr-signer-ready event", {
         hasPubkey: typeof pubkey === "string" && pubkey.length > 0,
@@ -418,15 +486,34 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       }
     };
 
+    const renderSignerTimeout = () => {
+      applyView({
+        title: "Signer detected.",
+        message:
+          "Your signer is enabled but did not return a public key in time. Reload and try again.",
+        identityText: "—",
+        chipLabel: "Signer timeout",
+        statusLabel: "Signer not responding",
+        statusMode: "offline",
+        signedDot: "hidden",
+        showHint: true,
+      });
+    };
+
     document.addEventListener("nostr-signer-ready", handleSignerReady);
     console.debug("[nostr-signer] listener attached for nostr-signer-ready");
+    document.addEventListener("nostr-signer-pubkey-timeout", renderSignerTimeout);
+    console.debug("[nostr-signer] listener attached for nostr-signer-pubkey-timeout");
 
     setupCollapseToggle();
     console.debug("[nostr-signer] collapse toggle wired up");
 
     const signerState = (
-      window as unknown as { __openprintsSignerState?: { pubkey?: string | null } }
+      window as unknown as { __openprintsSignerState?: SharedSignerState }
     ).__openprintsSignerState;
+    if (signerState?.pubkeyTimedOut) {
+      renderSignerTimeout();
+    }
     const initialPubkey = signerState?.pubkey;
     if (typeof initialPubkey === "string" && initialPubkey.length > 0) {
       console.debug("[nostr-signer] using coordinator pubkey from shared state");
