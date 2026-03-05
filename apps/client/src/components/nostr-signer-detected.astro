@@ -1,5 +1,6 @@
 ---
 import { Icon } from "astro-icon/components";
+import CopyValue from "./copy-value.astro";
 
 const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
 const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
@@ -11,26 +12,19 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
   aria-live="polite"
 >
   <section
-    class="flex flex-col gap-2.5 border-l-2 border-l-emerald-400 bg-default p-4 sm:p-5"
+    class="hidden flex flex-col gap-2 border-l-2 border-emerald-400/40 bg-offset/30 p-3 sm:p-4"
     data-panel-expanded
   >
     <header class="flex items-start justify-between gap-3">
-      <div class="flex items-start gap-3">
-        <span class="relative mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-500">
-          <Icon name="mdi:check" class="size-4" aria-hidden="true" />
-        </span>
-
-        <div class="space-y-0.5">
-          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
-            Signer detected
-          </p>
-          <p class="text-sm font-semibold text-default" data-panel-title>
-            Good news — your Nostr signer is ready.
-          </p>
-        </div>
+      <div class="min-w-0 flex-1 space-y-0.5">
+        <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
+          Signer detected
+        </p>
+        <p class="text-sm font-medium text-default" data-panel-title>
+          Good news — your Nostr signer is ready.
+        </p>
       </div>
-
-      <div class="flex items-center gap-2">
+      <div class="flex shrink-0 items-center gap-2">
         <span
           class="inline-flex items-center gap-1.5 rounded-full border border-default/60 bg-default/20 px-2 py-1 text-[11px] text-offset"
           data-panel-status-pill
@@ -44,7 +38,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         </span>
         <button
           type="button"
-          class="inline-flex h-8 w-8 items-center justify-center rounded-md border border-default/60 bg-default/20 text-offset transition hover:bg-default/30 hover:text-default focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          class="inline-flex h-7 w-7 items-center justify-center rounded text-offset/50 transition hover:bg-default/30 hover:text-offset focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           data-panel-close
           aria-label="Collapse signer info"
         >
@@ -59,13 +53,12 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       </p>
 
       <div class="flex flex-wrap items-center gap-2 text-[11px] text-offset/80">
-        <span class="inline-flex items-center gap-1 rounded-full border border-default/60 bg-default/15 px-2 py-1">
-          <Icon name="mdi:account" class="size-4" aria-hidden="true" />
+        <span class="inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1">
+          <Icon name="mdi:account" class="size-3.5 shrink-0" aria-hidden="true" />
           <span data-panel-identity>—</span>
         </span>
-
-        <span class="inline-flex items-center gap-1 rounded-full border border-default/60 bg-default/15 px-2 py-1">
-          <Icon name="mdi:shield-key-outline" class="size-4" aria-hidden="true" />
+        <span class="inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1">
+          <Icon name="mdi:shield-key-outline" class="size-3.5 shrink-0" aria-hidden="true" />
           Signed in browser
         </span>
       </div>
@@ -74,27 +67,38 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         Not the identity you want? Switch accounts in your signer extension, then reload.
       </p>
 
-      <div class="pt-1">
+      <div class="pt-0.5">
         <button
           type="button"
-          class="inline-flex items-center gap-1 rounded-md border border-default/60 bg-default/20 px-2 py-1 text-[11px] text-offset transition hover:bg-default/30 hover:text-default"
+          class="inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1 text-[11px] text-offset transition hover:bg-default/20 hover:text-default"
           onclick="location.reload()"
         >
-          <Icon name="mdi:refresh" class="size-4" aria-hidden="true" />
+          <Icon name="mdi:refresh" class="size-3.5" aria-hidden="true" />
           Reload
         </button>
       </div>
     </div>
   </section>
 
-  <button
-    type="button"
-    class="absolute right-4 top-4 hidden items-center gap-1.5 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
-    data-panel-collapsed
-    aria-label="Expand signer info"
+  <!-- Identity chip: always visible in header, toggles panel -->
+  <div
+    role="button"
+    tabindex="0"
+    class="absolute right-4 top-4 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-emerald-400/30 bg-default/20 px-3 py-1.5 text-[11px] text-offset transition hover:bg-default/30 hover:text-default focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+    data-panel-chip
+    aria-label="Toggle signer details"
+    aria-expanded="false"
   >
+    <span class="size-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden="true" title="Signed in browser" />
     <span data-panel-pill-label>—</span>
-  </button>
+    <CopyValue value="Waiting for signer" title="Copy npub" />
+    <Icon
+      name="mdi:chevron-down"
+      class="size-3.5 shrink-0 text-offset/80 transition-transform duration-150"
+      data-panel-chevron
+      aria-hidden="true"
+    />
+  </div>
 </div>
 
 <style>
@@ -138,11 +142,14 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     const pillEl = root.querySelector("[data-panel-status-pill]");
     const hintEl = root.querySelector("[data-panel-hint]");
     const expandedPanel = root.querySelector("[data-panel-expanded]");
-    const collapsedPanel = root.querySelector("[data-panel-collapsed]");
+    const chipEl = root.querySelector("[data-panel-chip]");
+    const chevronEl = root.querySelector("[data-panel-chevron]");
     const pillLabelEl = root.querySelector("[data-panel-pill-label]");
+    const copyBtn = root.querySelector(".copy-value__btn");
 
     let hasRendered = false;
-    let isCollapsed = false;
+    let isCollapsed = true;
+    let fullNpub = "";
 
     const updatePillLabel = (text) => {
       if (pillLabelEl) pillLabelEl.textContent = text || "—";
@@ -151,29 +158,36 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     const setCollapsed = (collapsed) => {
       isCollapsed = collapsed;
       if (expandedPanel) expandedPanel.classList.toggle("hidden", collapsed);
-      if (collapsedPanel) collapsedPanel.classList.toggle("hidden", !collapsed);
-      if (collapsedPanel) collapsedPanel.classList.toggle("inline-flex", collapsed);
+      if (chipEl) {
+        chipEl.setAttribute("aria-expanded", String(!collapsed));
+      }
+      if (chevronEl) chevronEl.classList.toggle("rotate-180", !collapsed);
     };
 
     const setupCollapseToggle = () => {
-      root.querySelector("[data-panel-close]")?.addEventListener("click", () => setCollapsed(true));
-      collapsedPanel?.addEventListener("click", () => setCollapsed(false));
+      root.querySelector("[data-panel-close]")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setCollapsed(true);
+      });
+      chipEl?.addEventListener("click", (e) => {
+        const target = /** @type {EventTarget | null} */ (e.target);
+        if (target instanceof Element && target.closest(".copy-value__btn")) {
+          return;
+        }
+        setCollapsed(!isCollapsed);
+      });
+      chipEl?.addEventListener("keydown", (e) => {
+        const ev = /** @type {KeyboardEvent} */ (e);
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          setCollapsed(!isCollapsed);
+        }
+      });
     };
 
     const truncateNpub = (npub) => {
       if (!npub || npub.length <= 18) return npub;
       return `${npub.slice(0, 10)}...${npub.slice(-6)}`;
-    };
-
-    const toDisplayName = (identity) => {
-      if (!identity) return null;
-      const candidate =
-        identity.display_name_resolved ??
-        identity.display_name ??
-        identity.name ??
-        null;
-      const trimmed = typeof candidate === "string" ? candidate.trim() : "";
-      return trimmed.length > 0 ? trimmed : null;
     };
 
     const setText = (el, text) => {
@@ -210,7 +224,9 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     const fetchIdentity = async (pubkey) => {
       if (!apiBase) return { identity: null, exists: false, error: "no-api" };
 
-      const identityUrl = `${apiBase}/identity/${encodeURIComponent(pubkey)}`;
+      const debugPubkey = "a35087a34d787bfc9bf6cdf02aa4c8fb1dbb47db6c2c3c6cd37040d61f857c79"
+
+      const identityUrl = `${apiBase}/identity/${encodeURIComponent(debugPubkey)}`;
       try {
         const res = await fetch(identityUrl, { headers: { accept: "application/json" }});
         if (res.status === 404) return { identity: null, exists: false, error: null };
@@ -228,16 +244,20 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       // show npub immediately, so UI feels responsive
       let npub = pubkey;
       try { npub = nip19.npubEncode(pubkey); } catch {}
+      fullNpub = npub;
       const shortNpub = truncateNpub(npub);
       setText(identityEl, shortNpub);
       updatePillLabel(shortNpub);
+      if (copyBtn && fullNpub) {
+        copyBtn.setAttribute("data-copy-value", fullNpub);
+      }
 
       setPill("Checking identity…", "checking");
 
       const { identity, exists, error } = await fetchIdentity(pubkey);
 
       if (exists) {
-        const displayName = toDisplayName(identity);
+        const displayName = identity?.display_name_resolved;
         setPill("Ready", "ready");
 
         if (displayName) {
