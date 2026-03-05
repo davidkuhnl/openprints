@@ -24,34 +24,10 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           Good news — your Nostr signer is ready.
         </p>
       </div>
-      <div class="flex shrink-0 items-center gap-2">
-        <span
-          class="inline-flex items-center gap-1.5 rounded-full border border-default/60 bg-default/20 px-2 py-1 text-[11px] text-offset"
-          data-panel-status-pill
-        >
-          <span class="nostr-dots inline-flex items-center" aria-hidden="true">
-            <span class="dot" />
-            <span class="dot" />
-            <span class="dot" />
-          </span>
-          Checking identity…
-        </span>
-        <button
-          type="button"
-          class="inline-flex h-7 w-7 items-center justify-center rounded text-offset/50 transition hover:bg-default/30 hover:text-offset focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-          data-panel-close
-          aria-label="Collapse signer info"
-        >
-          <Icon name="mdi:close" class="size-4" aria-hidden="true" />
-        </button>
-      </div>
     </header>
 
     <div class="space-y-2">
-      <p class="text-xs leading-relaxed text-offset" data-panel-message>
-      We’re fetching your profile from OpenPrints so we can greet you and show where your designs will be published from.
-      </p>
-
+      <!-- Primary identity pills (npub + signed-in location) -->
       <div class="flex flex-wrap items-center gap-2 text-[11px] text-offset/80">
         <span class="inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1">
           <Icon name="mdi:account" class="size-3.5 shrink-0" aria-hidden="true" />
@@ -59,21 +35,39 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         </span>
         <span class="inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1">
           <Icon name="mdi:shield-key-outline" class="size-3.5 shrink-0" aria-hidden="true" />
-          Signed in browser
+          Signer extension
+        </span>
+        <span
+          class="inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1"
+          data-panel-status-pill
+        >
+          <span class="nostr-dots inline-flex items-center" aria-hidden="true">
+            <span class="dot" />
+            <span class="dot" />
+            <span class="dot" />
+          </span>
+          Getting pubkey from signer
         </span>
       </div>
 
-      <p class="text-[11px] text-offset/70" data-panel-hint>
-        Not the identity you want? Switch accounts in your signer extension, then reload.
-      </p>
+      <!-- Identity fetch status text -->
+      <div class="space-y-1.5">
+        <p class="text-xs leading-relaxed text-offset" data-panel-message>
+          We’re fetching your profile from OpenPrints so we can greet you and show where your designs will be published from.
+        </p>
+      </div>
 
-      <div class="pt-0.5">
+      <div class="flex flex-wrap items-center gap-4 text-[11px] text-offset/70 hidden" data-panel-hint-row>
+        <p data-panel-hint>
+          Not the identity you want? Switch accounts in your signer extension, then reload.
+        </p>
         <button
           type="button"
-          class="inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1 text-[11px] text-offset transition hover:bg-default/20 hover:text-default"
+          class="inline-flex items-center gap-1 text-[11px] text-offset/70 transition hover:text-default hidden"
+          data-panel-reload
           onclick="location.reload()"
         >
-          <Icon name="mdi:refresh" class="size-3.5" aria-hidden="true" />
+          <Icon name="mdi:refresh" class="size-4" aria-hidden="true" />
           Reload
         </button>
       </div>
@@ -89,7 +83,12 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     aria-label="Toggle signer details"
     aria-expanded="false"
   >
-    <span class="size-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden="true" title="Signed in browser" />
+    <span
+      class="hidden size-1.5 shrink-0 rounded-full bg-emerald-400 nostr-status-dot"
+      data-panel-signed-dot
+      aria-hidden="true"
+      title="OpenPrints identity confirmed"
+    />
     <span data-panel-pill-label>—</span>
     <CopyValue value="Waiting for signer" title="Copy npub" />
     <Icon
@@ -114,9 +113,18 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
   .nostr-dots .dot:nth-child(2) { animation-delay: 0.15s; opacity: 0.75; }
   .nostr-dots .dot:nth-child(3) { animation-delay: 0.30s; opacity: 0.55; margin-right: 0; }
 
+  .nostr-status-dot--blinking {
+    animation: nostrStatusBlink 1.2s infinite ease-in-out;
+  }
+
   @keyframes nostrDot {
     0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
     40%           { transform: translateY(-3px); opacity: 1; }
+  }
+
+  @keyframes nostrStatusBlink {
+    0%, 100% { opacity: 0.35; }
+    50%      { opacity: 1; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -132,22 +140,29 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
   const root = document.querySelector("[data-nostr-signer-panel]");
   if (!root) {
-    // no mount point
+    console.debug("[nostr-signer] no panel root found");
+  } else if (root.getAttribute("data-nostr-initialized") === "true") {
+    console.debug("[nostr-signer] already initialized on this root, skipping");
   } else {
+    root.setAttribute("data-nostr-initialized", "true");
+    console.debug("[nostr-signer] panel root found, initializing");
     const apiBase = root.getAttribute("data-api-base") ?? "";
 
     const titleEl = root.querySelector("[data-panel-title]");
     const msgEl = root.querySelector("[data-panel-message]");
-    const identityEl = root.querySelector("[data-panel-identity]");
     const pillEl = root.querySelector("[data-panel-status-pill]");
     const hintEl = root.querySelector("[data-panel-hint]");
     const expandedPanel = root.querySelector("[data-panel-expanded]");
     const chipEl = root.querySelector("[data-panel-chip]");
     const chevronEl = root.querySelector("[data-panel-chevron]");
     const pillLabelEl = root.querySelector("[data-panel-pill-label]");
+    const signedDotEl = root.querySelector("[data-panel-signed-dot]");
+    const hintRow = root.querySelector("[data-panel-hint-row]");
+    const reloadBtn = root.querySelector("[data-panel-reload]");
     const copyBtn = root.querySelector(".copy-value__btn");
 
     let hasRendered = false;
+    let isRendering = false;
     let isCollapsed = true;
     let fullNpub = "";
 
@@ -165,10 +180,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     };
 
     const setupCollapseToggle = () => {
-      root.querySelector("[data-panel-close]")?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        setCollapsed(true);
-      });
       chipEl?.addEventListener("click", (e) => {
         const target = /** @type {EventTarget | null} */ (e.target);
         if (target instanceof Element && target.closest(".copy-value__btn")) {
@@ -197,9 +208,12 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
     const setPill = (label, mode) => {
       if (!pillEl) return;
+      const sharedPillClass =
+        "inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1";
 
       // keep the dots for "checking", remove for other states
       if (mode === "checking") {
+        pillEl.className = sharedPillClass;
         pillEl.innerHTML = `
           <span class="nostr-dots inline-flex items-center" aria-hidden="true">
             <span class="dot"></span><span class="dot"></span><span class="dot"></span>
@@ -217,129 +231,216 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           : "";
 
       pillEl.innerHTML = `<span aria-hidden="true">${icon}</span>${label}`;
-      pillEl.className =
-        "inline-flex items-center gap-1.5 rounded-full border border-default/60 bg-default/20 px-2 py-1 text-[11px] text-offset";
+      pillEl.className = sharedPillClass;
     };
 
     const fetchIdentity = async (pubkey) => {
       if (!apiBase) return { identity: null, exists: false, error: "no-api" };
 
+      // TODO: remove this once we have a real API
       const debugPubkey = "a35087a34d787bfc9bf6cdf02aa4c8fb1dbb47db6c2c3c6cd37040d61f857c79"
 
       const identityUrl = `${apiBase}/identity/${encodeURIComponent(debugPubkey)}`;
+      console.debug("[nostr-signer] fetching identity", {
+        pubkey,
+        url: identityUrl,
+      });
       try {
         const res = await fetch(identityUrl, { headers: { accept: "application/json" }});
         if (res.status === 404) return { identity: null, exists: false, error: null };
         if (!res.ok) return { identity: null, exists: false, error: "bad-status" };
         const identity = /** @type {IdentityResponse} */ (await res.json());
+        console.debug("[nostr-signer] identity response ok", {
+          status: res.status,
+          hasIdentity: !!identity,
+        });
         return { identity, exists: true, error: null };
       } catch {
+        console.warn("[nostr-signer] identity fetch failed");
         return { identity: null, exists: false, error: "network" };
       }
     };
 
     const renderFromPubkey = async (pubkey) => {
-      if (!pubkey || hasRendered) return;
-
-      // show npub immediately, so UI feels responsive
-      let npub = pubkey;
-      try { npub = nip19.npubEncode(pubkey); } catch {}
-      fullNpub = npub;
-      const shortNpub = truncateNpub(npub);
-      setText(identityEl, shortNpub);
-      updatePillLabel(shortNpub);
-      if (copyBtn && fullNpub) {
-        copyBtn.setAttribute("data-copy-value", fullNpub);
+      if (!pubkey) {
+        console.debug("[nostr-signer] renderFromPubkey called with empty pubkey");
+        return;
       }
+      if (hasRendered) {
+        console.debug("[nostr-signer] renderFromPubkey skipped (already rendered)");
+        return;
+      }
+      if (isRendering) {
+        console.debug("[nostr-signer] renderFromPubkey skipped (render in progress)");
+        return;
+      }
+      isRendering = true;
 
-      setPill("Checking identity…", "checking");
+      console.debug("[nostr-signer] renderFromPubkey start", {
+        pubkey,
+      });
 
-      const { identity, exists, error } = await fetchIdentity(pubkey);
+      try {
+        // show npub immediately, so UI feels responsive
+        let npub = pubkey;
+        try {
+          npub = nip19.npubEncode(pubkey);
+        } catch {
+          console.warn("[nostr-signer] failed to npub-encode pubkey, using raw hex");
+        }
+        fullNpub = npub;
+        const shortNpub = truncateNpub(npub);
 
-      if (exists) {
-        const displayName = identity?.display_name_resolved;
-        setPill("Ready", "ready");
+        // Fill primary identity pill immediately with truncated npub
+        const identityEl = root.querySelector("[data-panel-identity]");
+        setText(identityEl, shortNpub);
+        updatePillLabel(shortNpub);
+        if (copyBtn && fullNpub) {
+          copyBtn.setAttribute("data-copy-value", fullNpub);
+        }
 
-        if (displayName) {
-          setText(titleEl, `Welcome back, ${displayName}.`);
+        if (hintRow instanceof HTMLElement) {
+          hintRow.classList.remove("hidden");
+        }
+        if (reloadBtn instanceof HTMLElement) {
+          reloadBtn.classList.remove("hidden");
+        }
+
+        if (signedDotEl) {
+          signedDotEl.classList.remove("hidden");
+          signedDotEl.classList.add("nostr-status-dot--blinking");
+        }
+        setPill("Checking OpenPrints identity", "checking");
+
+        // Small delay before hitting the API so the
+        // \"npub-only\" state is easier to see while debugging.
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        const { identity, exists, error } = await fetchIdentity(pubkey);
+
+        if (exists) {
+          console.debug("[nostr-signer] identity exists", {
+            hasDisplayName: !!identity?.display_name_resolved,
+          });
+          const displayName = identity?.display_name_resolved;
+          if (signedDotEl) {
+            signedDotEl.classList.remove("hidden");
+            signedDotEl.classList.remove("nostr-status-dot--blinking");
+          }
+          setPill("OpenPrints identity confirmed", "ready");
+
+          if (displayName) {
+            setText(titleEl, `Welcome back, ${displayName}.`);
+            setText(
+              msgEl,
+              "Everything’s set. Fill out the design details below, then sign and publish."
+            );
+            setText(identityEl, displayName);
+            updatePillLabel(displayName);
+          } else {
+            setText(titleEl, "Signer ready.");
+            updatePillLabel(shortNpub);
+            setText(
+              msgEl,
+              "Everything’s set. Fill out the design details below, then sign and publish."
+            );
+          }
+
           setText(
-            msgEl,
-            "Everything’s set. Fill out the design details below, then sign and publish."
+            hintEl,
+            "Not the identity you want? Switch accounts in your signer extension, then reload."
           );
-          setText(identityEl, displayName);
-          updatePillLabel(displayName);
-        } else {
-          setText(titleEl, "Signer ready.");
+
+          hasRendered = true;
+          console.debug("[nostr-signer] renderFromPubkey complete");
+          return;
+        }
+
+        // identity not in DB yet, or API unavailable
+        if (error === "no-api") {
+          console.debug("[nostr-signer] no apiBase, skipping identity lookup");
+          if (signedDotEl) {
+            signedDotEl.classList.add("hidden");
+            signedDotEl.classList.remove("nostr-status-dot--blinking");
+          }
+          setPill("Ready", "ready");
           updatePillLabel(shortNpub);
+          setText(titleEl, "Signer ready.");
           setText(
             msgEl,
-            "Everything’s set. Fill out the design details below, then sign and publish."
+            "We’ll show your profile once OpenPrints is connected. You can still continue publishing."
+          );
+        } else if (error) {
+          console.warn("[nostr-signer] identity lookup failed", { error });
+          if (signedDotEl) {
+            signedDotEl.classList.add("hidden");
+            signedDotEl.classList.remove("nostr-status-dot--blinking");
+          }
+          setPill("API unavailable", "offline");
+          updatePillLabel(shortNpub);
+          setText(titleEl, "Signer ready.");
+          setText(
+            msgEl,
+            "We couldn’t reach the OpenPrints API to look up your profile. You can still continue publishing."
+          );
+        } else {
+          console.debug("[nostr-signer] identity not found, treating as new");
+          if (signedDotEl) {
+            signedDotEl.classList.add("hidden");
+            signedDotEl.classList.remove("nostr-status-dot--blinking");
+          }
+          setPill("New identity", "ready");
+          updatePillLabel(shortNpub);
+          setText(titleEl, "Nice to meet you.");
+          setText(
+            msgEl,
+            "We haven’t seen this identity in OpenPrints yet. That’s fine — it will appear once it’s indexed."
           );
         }
 
-        setText(
-          hintEl,
-          "Not the identity you want? Switch accounts in your signer extension, then reload."
-        );
-
         hasRendered = true;
-        return;
+        console.debug("[nostr-signer] renderFromPubkey complete");
+      } finally {
+        isRendering = false;
       }
-
-      // identity not in DB yet, or API unavailable
-      if (error === "no-api") {
-        setPill("Ready", "ready");
-        updatePillLabel(shortNpub);
-        setText(titleEl, "Signer ready.");
-        setText(
-          msgEl,
-          "We’ll show your profile once OpenPrints is connected. You can still continue publishing."
-        );
-      } else if (error) {
-        setPill("API unavailable", "offline");
-        updatePillLabel(shortNpub);
-        setText(titleEl, "Signer ready.");
-        setText(
-          msgEl,
-          "We couldn’t reach the OpenPrints API to look up your profile. You can still continue publishing."
-        );
-      } else {
-        setPill("New identity", "ready");
-        updatePillLabel(shortNpub);
-        setText(titleEl, "Nice to meet you.");
-        setText(
-          msgEl,
-          "We haven’t seen this identity in OpenPrints yet. That’s fine — it will appear once it’s indexed."
-        );
-      }
-
-      hasRendered = true;
     };
 
     const handleSignerReady = (event) => {
       const customEvent = /** @type {CustomEvent<{ pubkey?: string|null }>} */ (event);
       const pubkey = customEvent?.detail?.pubkey;
+      console.debug("[nostr-signer] nostr-signer-ready event", {
+        hasPubkey: typeof pubkey === "string" && pubkey.length > 0,
+      });
       if (typeof pubkey === "string" && pubkey.length > 0) {
         void renderFromPubkey(pubkey);
       }
     };
 
     document.addEventListener("nostr-signer-ready", handleSignerReady);
+    console.debug("[nostr-signer] listener attached for nostr-signer-ready");
 
     setupCollapseToggle();
+    console.debug("[nostr-signer] collapse toggle wired up");
 
     const nostr = /** @type {Window & { nostr?: NostrSigner }} */ (window).nostr;
     if (nostr && typeof nostr.getPublicKey === "function" && typeof nostr.signEvent !== "undefined") {
+      console.debug("[nostr-signer] window.nostr detected, attempting getPublicKey()");
       nostr
         .getPublicKey()
         .then((pubkey) => {
+          console.debug("[nostr-signer] nostr.getPublicKey resolved", {
+            hasPubkey: typeof pubkey === "string" && pubkey.length > 0,
+          });
           if (typeof pubkey === "string" && pubkey.length > 0) {
             return renderFromPubkey(pubkey);
           }
         })
-        .catch(() => {
+        .catch((err) => {
+          console.warn("[nostr-signer] nostr.getPublicKey failed", err);
           // leave default content
         });
+    } else {
+      console.debug("[nostr-signer] window.nostr not available or missing methods");
     }
   }
 </script>

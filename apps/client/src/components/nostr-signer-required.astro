@@ -53,21 +53,21 @@ import { Icon } from "astro-icon/components";
   <p class="nostr-signer-timeout-note relative hidden text-xs text-offset">
     Still waiting for a NIP-07 signer. If you just installed one, try reloading this page.
   </p>
-  <div class="flex items-center gap-3">
-  <span class="inline-flex items-center gap-1.5 rounded-full border border-default/60 bg-default/20 px-2 py-1 text-[11px] text-offset">
-    <span class="nostr-dots inline-flex items-center">
-      <span class="dot"></span>
-      <span class="dot"></span>
-      <span class="dot"></span>
+  <div class="flex items-center gap-4">
+    <span class="inline-flex items-center gap-1.5 rounded-full border border-default/60 bg-default/20 px-2 py-1 text-[11px] text-offset">
+      <span class="nostr-dots inline-flex items-center">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </span>
+      Waiting for Nostr signer
     </span>
-    Waiting for Nostr signer
-  </span>
 
-  <button
-    type="button"
-    class="inline-flex items-center gap-1 text-[11px] text-offset/70 transition hover:text-default"
-    onclick="location.reload()"
-  >
+    <button
+      type="button"
+      class="inline-flex items-center gap-1 text-[11px] text-offset/70 transition hover:text-default"
+      onclick="location.reload()"
+    >
     <Icon name="mdi:refresh" class="size-4" aria-hidden="true" />
     Reload
   </button>
