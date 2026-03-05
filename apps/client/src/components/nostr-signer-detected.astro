@@ -12,7 +12,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
   aria-live="polite"
 >
   <section
-    class="hidden flex flex-col gap-2 border-l-2 border-emerald-400/40 bg-offset/30 p-3 sm:p-4 mb-4"
+    class="hidden animate-identity-in flex flex-col gap-2 border-l-2 border-emerald-400/40 bg-offset/30 p-3 sm:p-4 mb-4"
     data-panel-expanded
   >
     <header class="flex items-start justify-between gap-3">
@@ -53,7 +53,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       <!-- Identity fetch status text -->
       <div class="space-y-2 mt-3">
         <p class="text-[13px] font-medium text-default" data-panel-message>
-          We’re fetching your profile from OpenPrints so we can greet you and show where your designs will be published from.
+          Waiting for your signer to share an identity so we can look it up in OpenPrints.
         </p>
       </div>
 
@@ -78,7 +78,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
   <div
     role="button"
     tabindex="0"
-    class="absolute right-4 top-4 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-emerald-400/30 bg-default/20 px-3 py-1.5 text-[11px] text-offset transition hover:bg-default/30 hover:text-default focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+    class="absolute right-4 top-4 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-emerald-400/30 bg-default/20 px-3 py-1.5 text-[11px] text-offset transition transition-colors duration-150 hover:bg-emerald-400/15 hover:text-default focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
     data-panel-chip
     aria-label="Toggle signer details"
     aria-expanded="false"
@@ -101,6 +101,21 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 </div>
 
 <style>
+  .animate-identity-in {
+    animation: identityIn 180ms ease-out;
+  }
+
+  @keyframes identityIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   .nostr-dots .dot {
     width: 4px;
     height: 4px;
@@ -236,10 +251,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     const fetchIdentity = async (pubkey) => {
       if (!apiBase) return { identity: null, exists: false, error: "no-api" };
 
-      // TODO: remove this once we have a real API
-      const debugPubkey = "a35087a34d787bfc9bf6cdf02aa4c8fb1dbb47db6c2c3c6cd37040d61f857c79"
-
-      const identityUrl = `${apiBase}/identity/${encodeURIComponent(debugPubkey)}`;
+      const identityUrl = `${apiBase}/identity/${encodeURIComponent(pubkey)}`;
       console.debug("[nostr-signer] fetching identity", {
         pubkey,
         url: identityUrl,
@@ -311,10 +323,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         }
         setPill("Checking OpenPrints identity", "checking");
 
-        // Small delay before hitting the API so the
-        // \"npub-only\" state is easier to see while debugging.
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-
         const { identity, exists, error } = await fetchIdentity(pubkey);
 
         if (exists) {
@@ -332,7 +340,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
             setText(titleEl, `Welcome back, ${displayName}.`);
             setText(
               msgEl,
-              "You can now publish designs using this identity."
+              "You're ready to publish with this identity."
             );
             setText(identityEl, displayName);
             updatePillLabel(displayName);
@@ -341,7 +349,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
             updatePillLabel(shortNpub);
             setText(
               msgEl,
-              "You can now publish designs using this identity."
+              "You're ready to publish with this identity."
             );
           }
 
@@ -387,8 +395,8 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           updatePillLabel(shortNpub);
           setText(titleEl, "Nice to meet you.");
           setText(
-            msgEl,
-            "We haven’t seen this identity in OpenPrints yet. That’s fine — it will appear once it’s indexed."
+          msgEl,
+          "We haven’t seen this identity in OpenPrints yet, but you can still use it to sign and publish your design."
           );
         }
 
