@@ -424,25 +424,13 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     setupCollapseToggle();
     console.debug("[nostr-signer] collapse toggle wired up");
 
-    const nostr = /** @type {Window & { nostr?: NostrSigner }} */ (window).nostr;
-    if (nostr && typeof nostr.getPublicKey === "function" && typeof nostr.signEvent !== "undefined") {
-      console.debug("[nostr-signer] window.nostr detected, attempting getPublicKey()");
-      nostr
-        .getPublicKey()
-        .then((pubkey) => {
-          console.debug("[nostr-signer] nostr.getPublicKey resolved", {
-            hasPubkey: typeof pubkey === "string" && pubkey.length > 0,
-          });
-          if (typeof pubkey === "string" && pubkey.length > 0) {
-            return renderFromPubkey(pubkey);
-          }
-        })
-        .catch((err) => {
-          console.warn("[nostr-signer] nostr.getPublicKey failed", err);
-          // leave default content
-        });
-    } else {
-      console.debug("[nostr-signer] window.nostr not available or missing methods");
+    const signerState = (
+      window as unknown as { __openprintsSignerState?: { pubkey?: string | null } }
+    ).__openprintsSignerState;
+    const initialPubkey = signerState?.pubkey;
+    if (typeof initialPubkey === "string" && initialPubkey.length > 0) {
+      console.debug("[nostr-signer] using coordinator pubkey from shared state");
+      void renderFromPubkey(initialPubkey);
     }
   }
 </script>

@@ -50,20 +50,83 @@ export const prerender = false;
       const okEl = document.getElementById("nostr-ok");
       if (!missingEl || !okEl) return;
 
+      const w = /** @type {Window & { __openprintsSignerState?: any }} */ (window);
+      if (w.__openprintsSignerState?.initialized) return;
+
+      const state = {
+        initialized: true,
+        signerAvailable: false,
+        pubkey: null,
+        timedOut: false,
+        pubkeyPromise: null,
+      };
+      w.__openprintsSignerState = state;
+
       const showWizard = () => {
         missingEl.classList.add("hidden");
         okEl.classList.remove("hidden");
       };
 
-      document.addEventListener("nostr-signer-ready", showWizard);
+      const emit = (name, detail = {}) => {
+        document.dispatchEvent(new CustomEvent(name, { detail }));
+      };
 
-      // In case signer was already present and component dispatched before this script ran
-      if (
-        window.nostr &&
-        typeof window.nostr.getPublicKey === "function" &&
-        typeof window.nostr.signEvent === "function"
-      ) {
+      const isSignerAvailable = () =>
+        !!(
+          window.nostr &&
+          typeof window.nostr.getPublicKey === "function" &&
+          typeof window.nostr.signEvent === "function"
+        );
+
+      const resolvePubkeyOnce = () => {
+        if (state.pubkeyPromise) return state.pubkeyPromise;
+        state.pubkeyPromise = window.nostr
+          .getPublicKey()
+          .then((pubkey) => {
+            if (typeof pubkey === "string" && pubkey.length > 0) {
+              state.pubkey = pubkey;
+              emit("nostr-signer-ready", { pubkey });
+              return pubkey;
+            }
+            emit("nostr-signer-ready", { pubkey: null });
+            return null;
+          })
+          .catch((error) => {
+            emit("nostr-signer-ready", { pubkey: null, error });
+            return null;
+          });
+        return state.pubkeyPromise;
+      };
+
+      const markSignerAvailable = () => {
+        if (state.signerAvailable) return;
+        state.signerAvailable = true;
         showWizard();
+        emit("nostr-signer-available");
+        void resolvePubkeyOnce();
+      };
+
+      const waitForSigner = ({ timeoutMs = 60000, intervalMs = 750 } = {}) => {
+        const started = Date.now();
+        const tick = () => {
+          if (isSignerAvailable()) {
+            markSignerAvailable();
+            return;
+          }
+          if (Date.now() - started > timeoutMs) {
+            state.timedOut = true;
+            emit("nostr-signer-timeout");
+            return;
+          }
+          setTimeout(tick, intervalMs);
+        };
+        tick();
+      };
+
+      if (isSignerAvailable()) {
+        markSignerAvailable();
+      } else {
+        waitForSigner();
       }
     })();
   </script>

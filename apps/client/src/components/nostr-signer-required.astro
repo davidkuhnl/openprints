@@ -80,55 +80,18 @@ import { Icon } from "astro-icon/components";
   (function () {
     const root = document.querySelector("[data-nostr-signer-required]");
     if (!root) return;
-    const statusEl = root.querySelector(".nostr-signer-status-text");
     const timeoutNoteEl = root.querySelector(".nostr-signer-timeout-note");
 
-    function waitForNostrSigner({ timeoutMs = 60000, intervalMs = 750 } = {}) {
-      return new Promise((resolve, reject) => {
-        const start = Date.now();
+    const showTimeoutNote = () => {
+      if (timeoutNoteEl) timeoutNoteEl.classList.remove("hidden");
+    };
 
-        const tick = async () => {
-          const nostr = (window as Window & { nostr?: { getPublicKey?: unknown; signEvent?: unknown } }).nostr;
-          if (
-            nostr &&
-            typeof nostr.getPublicKey === "function" &&
-            typeof nostr.signEvent === "function"
-          ) {
-            try {
-              const pubkey = await nostr.getPublicKey();
-              resolve({ pubkey });
-              return;
-            } catch (error) {
-              resolve({ pubkey: null, error });
-              return;
-            }
-          }
+    document.addEventListener("nostr-signer-timeout", showTimeoutNote);
 
-          if (Date.now() - start > timeoutMs) {
-            reject(new Error("Timed out waiting for NIP-07 signer"));
-            return;
-          }
-
-          setTimeout(tick, intervalMs);
-        };
-
-        tick();
-      });
+    const state = (window as Window & { __openprintsSignerState?: { timedOut?: boolean } }).__openprintsSignerState;
+    if (state?.timedOut) {
+      showTimeoutNote();
     }
-
-    waitForNostrSigner()
-      .then((result) => {
-        root.dispatchEvent(
-          new CustomEvent("nostr-signer-ready", {
-            bubbles: true,
-            detail: result,
-          })
-        );
-      })
-      .catch(() => {
-        if (statusEl) statusEl.textContent = "No signer detected yet";
-        if (timeoutNoteEl) timeoutNoteEl.classList.remove("hidden");
-      });
   })();
 </script>
 
