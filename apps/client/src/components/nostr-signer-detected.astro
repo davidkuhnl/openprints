@@ -1,6 +1,5 @@
 ---
 import { Icon } from "astro-icon/components";
-import CopyValue from "./copy-value.astro";
 
 const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
 const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
@@ -12,7 +11,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
   aria-live="polite"
 >
   <section
-    class="hidden animate-identity-in flex flex-col gap-2 border-l-2 border-emerald-400/40 bg-offset/30 p-3 sm:p-4 mb-4"
+    class="animate-identity-in flex flex-col gap-2 bg-offset/30 p-3 sm:p-4"
     data-panel-expanded
   >
     <header class="flex items-start justify-between gap-3">
@@ -74,31 +73,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       </div>
     </div>
   </section>
-
-  <!-- Identity chip: always visible in header, toggles panel -->
-  <div
-    role="button"
-    tabindex="0"
-    class="absolute right-4 top-4 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-emerald-400/30 bg-default/20 px-3 py-1.5 text-[11px] text-offset transition transition-colors duration-150 hover:bg-emerald-400/15 hover:text-default focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-    data-panel-chip
-    aria-label="Toggle signer details"
-    aria-expanded="false"
-  >
-    <span
-      class="hidden size-1.5 shrink-0 rounded-full bg-emerald-400 nostr-status-dot"
-      data-panel-signed-dot
-      aria-hidden="true"
-      title="OpenPrints identity confirmed"
-    />
-    <span data-panel-pill-label>—</span>
-    <CopyValue value="Waiting for signer" title="Copy npub" />
-    <Icon
-      name="mdi:chevron-down"
-      class="size-3.5 shrink-0 text-offset/80 transition-transform duration-150"
-      data-panel-chevron
-      aria-hidden="true"
-    />
-  </div>
+  <span class="hidden" data-panel-pill-label>—</span>
 </div>
 
 <style>
@@ -129,18 +104,9 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
   .nostr-dots .dot:nth-child(2) { animation-delay: 0.15s; opacity: 0.75; }
   .nostr-dots .dot:nth-child(3) { animation-delay: 0.30s; opacity: 0.55; margin-right: 0; }
 
-  .nostr-status-dot--blinking {
-    animation: nostrStatusBlink 1.2s infinite ease-in-out;
-  }
-
   @keyframes nostrDot {
     0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
     40%           { transform: translateY(-3px); opacity: 1; }
-  }
-
-  @keyframes nostrStatusBlink {
-    0%, 100% { opacity: 0.35; }
-    50%      { opacity: 1; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -152,9 +118,13 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
   import { nip19 } from "nostr-tools";
 
   type IdentityResponse = {
+    status?: string | null;
     display_name_resolved?: string | null;
     display_name?: string | null;
     name?: string | null;
+    lud06?: string | null;
+    lud16?: string | null;
+    lnurl?: string | null;
   };
 
   type IdentityError = "no-api" | "bad-status" | "network" | null;
@@ -168,6 +138,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
   type SharedSignerState = {
     pubkey?: string | null;
     pubkeyTimedOut?: boolean;
+    lnurl?: string | null;
   };
 
   type SignerReadyDetail = {
@@ -190,6 +161,16 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     copyValue?: string;
   };
 
+  type IdentityMetadataDetail = {
+    pubkey: string;
+    lnurl?: string | null;
+  };
+
+  type SignerViewChangeDetail = {
+    chipLabel: string;
+    signedDot: SignedDotState;
+  };
+
   const root = document.querySelector("[data-nostr-signer-panel]");
   if (!root) {
     console.debug("[nostr-signer] no panel root found");
@@ -206,47 +187,16 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     const statusDotsEl = root.querySelector<HTMLElement>("[data-panel-status-dots]");
     const statusIconEl = root.querySelector<HTMLElement>("[data-panel-status-icon]");
     const statusLabelEl = root.querySelector<HTMLElement>("[data-panel-status-label]");
-    const expandedPanel = root.querySelector<HTMLElement>("[data-panel-expanded]");
-    const chipEl = root.querySelector<HTMLElement>("[data-panel-chip]");
-    const chevronEl = root.querySelector<HTMLElement>("[data-panel-chevron]");
     const pillLabelEl = root.querySelector<HTMLElement>("[data-panel-pill-label]");
-    const signedDotEl = root.querySelector<HTMLElement>("[data-panel-signed-dot]");
     const hintRow = root.querySelector<HTMLElement>("[data-panel-hint-row]");
     const reloadBtn = root.querySelector<HTMLElement>("[data-panel-reload]");
-    const copyBtn = root.querySelector<HTMLButtonElement>(".copy-value__btn");
 
     let hasRendered = false;
     let isRendering = false;
-    let isCollapsed = true;
     let fullNpub = "";
 
     const updatePillLabel = (text: string) => {
       if (pillLabelEl) pillLabelEl.textContent = text || "—";
-    };
-
-    const setCollapsed = (collapsed: boolean) => {
-      isCollapsed = collapsed;
-      if (expandedPanel) expandedPanel.classList.toggle("hidden", collapsed);
-      if (chipEl) {
-        chipEl.setAttribute("aria-expanded", String(!collapsed));
-      }
-      if (chevronEl) chevronEl.classList.toggle("rotate-180", !collapsed);
-    };
-
-    const setupCollapseToggle = () => {
-      chipEl?.addEventListener("click", (e: MouseEvent) => {
-        const target = e.target;
-        if (target instanceof Element && target.closest(".copy-value__btn")) {
-          return;
-        }
-        setCollapsed(!isCollapsed);
-      });
-      chipEl?.addEventListener("keydown", (e: KeyboardEvent) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          setCollapsed(!isCollapsed);
-        }
-      });
     };
 
     const truncateNpub = (npub: string) => {
@@ -286,16 +236,22 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
     const applyView = (view: PanelViewModel) => {
       const identityEl = root.querySelector("[data-panel-identity]");
+      const rootEl = root as HTMLElement;
 
       setText(titleEl, view.title);
       setText(msgEl, view.message);
       setText(identityEl, view.identityText);
       setPill(view.statusLabel, view.statusMode);
       updatePillLabel(view.chipLabel);
-
-      if (copyBtn && view.copyValue) {
-        copyBtn.setAttribute("data-copy-value", view.copyValue);
-      }
+      rootEl.dataset.signerDotState = view.signedDot;
+      document.dispatchEvent(
+        new CustomEvent<SignerViewChangeDetail>("openprints-signer-view-change", {
+          detail: {
+            chipLabel: view.chipLabel,
+            signedDot: view.signedDot,
+          },
+        }),
+      );
 
       if (view.showHint) {
         hintRow?.classList.remove("hidden");
@@ -303,18 +259,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       } else {
         hintRow?.classList.add("hidden");
         reloadBtn?.classList.add("hidden");
-      }
-
-      if (signedDotEl) {
-        signedDotEl.classList.remove("nostr-status-dot--blinking");
-        if (view.signedDot === "hidden") {
-          signedDotEl.classList.add("hidden");
-        } else if (view.signedDot === "blinking") {
-          signedDotEl.classList.remove("hidden");
-          signedDotEl.classList.add("nostr-status-dot--blinking");
-        } else {
-          signedDotEl.classList.remove("hidden");
-        }
       }
     };
 
@@ -390,9 +334,41 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           console.debug("[nostr-signer] identity exists", {
             hasDisplayName: !!identity?.display_name_resolved,
           });
+          const identityStatus = (identity?.status ?? "").toLowerCase();
+          const identityConfirmed = identityStatus !== "failed";
+          const lnurl =
+            identity?.lnurl ??
+            identity?.lud16 ??
+            identity?.lud06 ??
+            null;
+
+          const w = window as unknown as { __openprintsSignerState?: SharedSignerState };
+          if (!w.__openprintsSignerState) {
+            w.__openprintsSignerState = {};
+          }
+          w.__openprintsSignerState.lnurl = lnurl;
+
+          document.dispatchEvent(
+            new CustomEvent<IdentityMetadataDetail>("openprints-identity-metadata", {
+              detail: { pubkey, lnurl },
+            }),
+          );
           const displayName = identity?.display_name_resolved;
 
-          if (displayName) {
+          if (!identityConfirmed) {
+            applyView({
+              title: "Signer ready.",
+              message:
+                "This identity is known to OpenPrints, but we have not seen its profile on relays yet. You can still continue publishing.",
+              identityText: displayName || shortNpub,
+              chipLabel: displayName || shortNpub,
+              statusLabel: "Identity not yet seen on relays",
+              statusMode: "ready",
+              signedDot: "hidden",
+              showHint: true,
+              copyValue: fullNpub,
+            });
+          } else if (displayName) {
             applyView({
               title: `Welcome back, ${displayName}.`,
               message: "You're ready to publish with this identity.",
@@ -504,9 +480,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     console.debug("[nostr-signer] listener attached for nostr-signer-ready");
     document.addEventListener("nostr-signer-pubkey-timeout", renderSignerTimeout);
     console.debug("[nostr-signer] listener attached for nostr-signer-pubkey-timeout");
-
-    setupCollapseToggle();
-    console.debug("[nostr-signer] collapse toggle wired up");
 
     const signerState = (
       window as unknown as { __openprintsSignerState?: SharedSignerState }
