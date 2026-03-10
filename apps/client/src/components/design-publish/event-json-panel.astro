@@ -1,0 +1,67 @@
+---
+import CopyValue from "~/components/copy-value.astro";
+
+type Props = {
+  sectionTitle: string;
+  sectionDescription: string;
+  copyAction: string;
+  textareaId: string;
+  outputName: string;
+  headerLabel: string;
+  headerValue: string;
+  headerValueClass?: string;
+};
+
+const {
+  sectionTitle,
+  sectionDescription,
+  copyAction,
+  textareaId,
+  outputName,
+  headerLabel,
+  headerValue,
+  headerValueClass = "text-offset/55",
+} = Astro.props as Props;
+---
+
+<div class="space-y-2">
+  <div class="flex items-center justify-between gap-2">
+    <div class="space-y-0.5">
+      <label for={textareaId} class="text-[11px] font-semibold uppercase tracking-[0.14em] text-offset/80">
+        {sectionTitle}
+      </label>
+      <p class="text-[11px] text-offset/70">
+        {sectionDescription}
+      </p>
+    </div>
+
+    <CopyValue
+      sourceSelector={`#${textareaId}`}
+      action={copyAction}
+      disabled={true}
+      showLabel={true}
+      label="Copy"
+      title="Copy"
+      buttonClass="h-auto w-auto rounded-md border border-default/70 bg-default/[0.03] px-2.5 py-1.5 text-[11px] text-offset hover:bg-default/30 hover:text-default focus-visible:ring-2 focus-visible:ring-emerald-300/60"
+    />
+  </div>
+
+  <div class="overflow-hidden rounded-md border border-default/60 bg-default/[0.035]">
+    <div class="flex items-center justify-between border-b border-default/50 px-3 py-1.5">
+      <span class="text-[10px] font-medium uppercase tracking-[0.12em] text-offset/65">
+        {headerLabel}
+      </span>
+      <span class={`font-mono text-[10px] ${headerValueClass}`.trim()}>
+        {headerValue}
+      </span>
+    </div>
+
+    <textarea
+      id={textareaId}
+      rows="7"
+      readonly
+      class="min-h-[180px] w-full resize-y border-0 bg-transparent px-3 py-2 font-mono text-[11px] leading-relaxed text-default focus:outline-none focus:ring-0"
+      data-output={outputName}
+    ></textarea>
+  </div>
+</div>

@@ -174,22 +174,18 @@ const {
     color: rgb(var(--offset-color) / 0.76);
   }
 
-  /* much softer empty rail */
   [data-step-panel][data-validation-state="empty"] {
     border-left-color: rgb(148 163 184 / 0.28);
   }
 
-  /* subtle emerald for completed */
   [data-step-panel][data-validation-state="valid"] {
     border-left-color: rgb(16 185 129 / 0.72);
   }
 
-  /* warm warning */
   [data-step-panel][data-validation-state="invalid"] {
     border-left-color: rgb(251 191 36 / 0.28);
   }
 
-  /* switch from number to check when valid */
   [data-step-panel][data-validation-state="valid"] [data-step-check] {
     display: inline-flex;
   }

@@ -1,7 +1,9 @@
 ---
 import { Icon } from "astro-icon/components";
 import NostrSignerDetected from "~/components/nostr-signer-detected.astro";
-import DesignPublishStepPanel from "~/components/design-publish-step-panel.astro";
+import DesignPublishStepPanel from "~/components/design-publish/step-panel.astro";
+import DesignPublishEventJsonPanel from "~/components/design-publish/event-json-panel.astro";
+import DesignPublishInfoPanel from "~/components/design-publish/info-panel.astro";
 
 const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
 const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
@@ -13,7 +15,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
   data-api-base={apiBase}
   aria-live="polite"
 >
-  <p class="px-1 text-[11px] text-offset/85">Complete one step at a time. Each step unlocks the next.</p>
 
   <form class="space-y-0" data-publish-form novalidate>
     <DesignPublishStepPanel
@@ -38,15 +39,80 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       </div>
     </DesignPublishStepPanel>
 
-    <DesignPublishStepPanel stepId="name" stepNumber={2} title="Name" summary="Add a clear design name">
+<DesignPublishStepPanel stepId="file" stepNumber={2} title="Design File" summary="Add a file URL and optional digest">
+  <div class="space-y-4">
+    <div class="space-y-1">
+      <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-offset/80">
+        File source
+      </p>
+      <p class="text-[11px] leading-relaxed text-offset/75">
+        Provide the HTTPS location of the design file. You can optionally add a SHA-256 digest for integrity verification.
+      </p>
+    </div>
+
+    <div class="space-y-1.5">
+      <label for="design-url" class="text-xs font-medium text-default">
+        File URL <span class="text-red-400">*</span>
+      </label>
+      <input
+        id="design-url"
+        name="url"
+        type="url"
+        required
+        autocomplete="off"
+        placeholder="https://example.com/designs/phone-stand.stl"
+        class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs text-default placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60"
+        data-field="url"
+      />
+      <p class="text-[11px] text-offset/70">
+        Paste a direct <span class="font-mono">https://</span> link to the hosted design file.
+      </p>
+    </div>
+
+    <div class="space-y-1.5">
+      <label for="design-sha256" class="text-xs font-medium text-default">
+        SHA-256 <span class="text-offset/70">(optional)</span>
+      </label>
+      <input
+        id="design-sha256"
+        name="sha256"
+        type="text"
+        autocomplete="off"
+        placeholder="64-char lowercase hex digest"
+        class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs font-mono text-default placeholder:font-sans placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60"
+        data-field="sha256"
+      />
+      <p class="text-[11px] text-offset/70">
+        Used to verify that the hosted file hasn’t changed. Recommended if you control the file host.
+      </p>
+    </div>
+
+    <div class="space-y-2 border-t border-default/40 pt-3">
+      <DesignPublishInfoPanel
+        icon="mdi:tray-arrow-up"
+        title="Built-in upload is coming"
+        description="For now, host your design file somewhere public and paste the HTTPS URL above."
+        panelClass="border-default/30 bg-default/[0.03]"
+      />
+
+      <DesignPublishInfoPanel
+        icon="mdi:tray-arrow-down"
+        title="Platform import is planned"
+        description="You’ll later be able to import designs directly from popular 3D model platforms."
+      />
+    </div>
+  </div>
+</DesignPublishStepPanel>
+
+    <DesignPublishStepPanel stepId="name" stepNumber={3} title="Design Name" summary="Name your design">
       <div class="space-y-1.5">
-        <label for="design-name" class="text-xs font-medium text-default">Name <span class="text-red-400">*</span></label>
+        <label for="design-name" class="text-xs font-medium text-default">Design Name <span class="text-red-400">*</span></label>
         <input id="design-name" name="name" type="text" maxlength="140" required autocomplete="off" placeholder="Phone Stand" class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs text-default placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-field="name" />
-        <p class="text-[11px] text-offset">1-120 chars after normalization and trim.</p>
       </div>
     </DesignPublishStepPanel>
 
-    <DesignPublishStepPanel stepId="format" stepNumber={3} title="Format and MIME type" summary="Choose the primary format">
+
+    <DesignPublishStepPanel stepId="format" stepNumber={4} title="Format and MIME type" summary="Choose the primary format">
       <div class="grid gap-3 sm:grid-cols-2">
         <div class="space-y-1.5">
           <label for="design-format" class="text-xs font-medium text-default">Format <span class="text-red-400">*</span></label>
@@ -60,24 +126,23 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           </select>
         </div>
         <div class="space-y-1.5">
-          <label for="design-mime" class="text-xs font-medium text-default">MIME type <span class="text-offset/70">(optional)</span></label>
+          <div class="flex items-center justify-between gap-2">
+            <label for="design-mime" class="text-xs font-medium text-default">
+              MIME type <span class="text-offset/70">(optional)</span>
+            </label>
+            <button
+              type="button"
+              class="hidden mr-6 text-xs font-medium text-offset/70 underline-offset-2 hover:text-offset/90 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-300/60"
+              data-action="infer-mime"
+            >
+              Infer from format
+            </button>
+          </div>
           <input id="design-mime" name="m" type="text" autocomplete="off" placeholder="model/stl" class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs text-default placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-field="mime" />
         </div>
       </div>
     </DesignPublishStepPanel>
 
-    <DesignPublishStepPanel stepId="file" stepNumber={4} title="File URL and SHA-256" summary="Add a file URL and optional digest">
-      <div class="space-y-3">
-        <div class="space-y-1.5">
-          <label for="design-url" class="text-xs font-medium text-default">File URL <span class="text-red-400">*</span></label>
-          <input id="design-url" name="url" type="url" required autocomplete="off" placeholder="https://example.com/designs/phone-stand.stl" class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs text-default placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-field="url" />
-        </div>
-        <div class="space-y-1.5">
-          <label for="design-sha256" class="text-xs font-medium text-default">SHA-256 <span class="text-offset/70">(optional in V1)</span></label>
-          <input id="design-sha256" name="sha256" type="text" autocomplete="off" placeholder="64-char lowercase hex digest" class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs font-mono text-default placeholder:font-sans placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-field="sha256" />
-        </div>
-      </div>
-    </DesignPublishStepPanel>
 
     <DesignPublishStepPanel stepId="description" stepNumber={5} title="Description" summary="Optional description">
       <div class="space-y-1.5">
@@ -86,15 +151,43 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       </div>
     </DesignPublishStepPanel>
 
-    <DesignPublishStepPanel stepId="advanced" stepNumber={6} title="Advanced" summary="Optional metadata" showNext={false}>
+    <DesignPublishStepPanel stepId="design-images" stepNumber={6} title="Images" summary="Optional preview URLs">
+      <div class="space-y-3">
+        <div class="space-y-1.5">
+          <label for="design-preview" class="text-xs font-medium text-default">Preview image URLs (one per line)</label>
+          <textarea id="design-preview" name="preview" rows="3" class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs text-default placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" placeholder="https://.../preview.png" data-field="preview"></textarea>
+          <p class="text-[11px] text-offset/75">
+            Paste one <span class="font-mono">https://</span> URL per line. We will try to render each image below.
+          </p>
+        </div>
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4" data-preview-render-list>
+          <p class="col-span-full rounded-md border border-dashed border-default/40 bg-default/[0.02] px-3 py-2 text-[11px] text-offset/75" data-preview-render-empty>
+            No preview images yet.
+          </p>
+        </div>
+      </div>
+    </DesignPublishStepPanel>
+
+    <DesignPublishStepPanel stepId="lightning-payments" stepNumber={7} title="Lightning Address" summary="Optional LNURL">
+      <div class="space-y-3">
+        <div class="space-y-1.5">
+          <label for="design-lnurl" class="text-xs font-medium text-default">LNURL pay address <span class="text-offset/70">(optional)</span></label>
+          <input id="design-lnurl" name="lnurl" type="text" autocomplete="off" placeholder="lnurlp://creator.example.com/pay" class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs text-default placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-field="lnurl" />
+          <input type="hidden" name="d" data-field="d" />
+        </div>
+        <DesignPublishInfoPanel
+          icon="mdi:lightning-bolt"
+          title="Paid models are coming soon"
+          description="Adding a Lightning address already lets people send voluntary contributions to support your work."
+        />
+      </div>
+    </DesignPublishStepPanel>
+
+    <DesignPublishStepPanel stepId="additional-data" stepNumber={8} title="Additional Data" summary="Optional metadata" showNext={false}>
       <div class="space-y-3">
         <div class="space-y-1.5">
           <label for="design-license" class="text-xs font-medium text-default">License <span class="text-offset/70">(optional)</span></label>
           <input id="design-license" name="license" type="text" autocomplete="off" placeholder="CC-BY-4.0" class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs text-default placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-field="license" />
-        </div>
-        <div class="space-y-1.5">
-          <label for="design-preview" class="text-xs font-medium text-default">Preview image URLs (one per line)</label>
-          <textarea id="design-preview" name="preview" rows="3" class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs text-default placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" placeholder="https://.../preview.png" data-field="preview"></textarea>
         </div>
         <div class="space-y-1.5">
           <label for="design-category" class="text-xs font-medium text-default">Categories (one per line)</label>
@@ -110,53 +203,84 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
             <textarea id="design-printer" name="printer" rows="3" class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs text-default placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" placeholder="Prusa MK4" data-field="printer"></textarea>
           </div>
         </div>
-        <div class="space-y-1.5">
-          <label for="design-lnurl" class="text-xs font-medium text-default">LNURL pay address <span class="text-offset/70">(optional)</span></label>
-          <input id="design-lnurl" name="lnurl" type="text" autocomplete="off" placeholder="lnurlp://creator.example.com/pay" class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs text-default placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-field="lnurl" />
-          <input type="hidden" name="d" data-field="d" />
-        </div>
       </div>
     </DesignPublishStepPanel>
 
-    <div class="mt-3 space-y-3 border-t border-default/60 px-3 pt-3">
-      <div class="flex flex-wrap items-center gap-2">
-        <button type="button" class="inline-flex items-center gap-2 rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs font-medium text-default transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-action="sign">
-          <Icon name="mdi:pen" class="size-4" />
-          Sign design event
-        </button>
-        <button type="button" class="inline-flex items-center gap-2 rounded-md border border-sky-400/40 bg-sky-400/10 px-3 py-2 text-xs font-medium text-default transition hover:bg-sky-400/20 disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/60" data-action="publish" disabled>
-          <Icon name="mdi:send" class="size-4" />
-          Publish to network
-        </button>
-        <button type="button" class="inline-flex items-center gap-2 rounded-md border border-default px-3 py-2 text-xs text-offset transition hover:bg-default/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-action="reset">
-          <Icon name="mdi:refresh" class="size-4" />
-          Reset
-        </button>
-        <button type="button" class="inline-flex items-center gap-2 rounded-md border border-default px-3 py-2 text-xs text-offset transition hover:bg-default/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-action="copy-signed" disabled>
-          <Icon name="mdi:content-copy" class="size-4" />
-          Copy signed JSON
-        </button>
-        <button type="button" class="inline-flex items-center gap-1.5 rounded-md border border-default px-2.5 py-1.5 text-[11px] font-medium text-offset transition hover:bg-default/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-action="toggle-hacker" aria-expanded="false">
-          <Icon name="mdi:code-tags" class="size-4" />
-          <span data-hacker-toggle-label>Show advanced</span>
-        </button>
-      </div>
+    <div class="mt-3 space-y-3 px-3 pt-3">
+<div class="flex flex-wrap items-center justify-between gap-3 border-t border-default/40 pt-4">
+
+  <!-- Primary actions -->
+  <div class="flex items-center gap-2">
+
+    <button
+      type="button"
+      class="inline-flex items-center gap-2 rounded-md border border-emerald-400/40 bg-emerald-400/12 px-3.5 py-2 text-xs font-semibold text-default transition hover:bg-emerald-400/22 disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60"
+      data-action="sign"
+    >
+      <Icon name="mdi:pen" class="size-4" />
+      Sign
+    </button>
+
+    <button
+      type="button"
+      class="inline-flex items-center gap-2 rounded-md border border-sky-400/40 bg-sky-400/12 px-3.5 py-2 text-xs font-semibold text-default transition hover:bg-sky-400/22 disabled:cursor-not-allowed disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/60"
+      data-action="publish"
+      disabled
+    >
+      <Icon name="mdi:send" class="size-4" />
+      Publish
+    </button>
+
+  </div>
+
+
+  <!-- Secondary actions -->
+  <div class="flex items-center gap-2">
+
+    <button
+      type="button"
+      class="inline-flex items-center gap-1.5 rounded-md border border-default/70 bg-default/[0.03] px-2.5 py-1.5 text-[11px] font-medium text-offset transition hover:bg-default/20 hover:text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60"
+      data-action="reset"
+    >
+      <Icon name="mdi:refresh" class="size-3.5" />
+      Reset Form
+    </button>
+
+    <button
+      type="button"
+      class="inline-flex items-center gap-1.5 rounded-md border border-default/70 bg-default/[0.03] px-2.5 py-1.5 text-[11px] font-medium text-offset transition hover:bg-default/20 hover:text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60"
+      data-action="toggle-hacker"
+      aria-expanded="false"
+    >
+      <Icon name="mdi:code-tags" class="size-3.5" />
+      <span data-hacker-toggle-label>Show Nostr data</span>
+    </button>
+
+  </div>
+
+</div>
       <p class="text-xs text-offset" data-sign-status>Waiting for signer pubkey...</p>
       <div class="hidden space-y-3" data-hacker-field>
-        <div class="space-y-1.5">
-          <label for="unsigned-event" class="text-xs font-medium text-default">Unsigned event preview</label>
-          <textarea id="unsigned-event" rows="10" readonly class="w-full rounded-md border border-default bg-black/15 px-3 py-2 font-mono text-[11px] text-default" data-output="unsigned"></textarea>
-        </div>
-        <div class="space-y-1.5">
-          <div class="flex items-center justify-between gap-2">
-            <label for="signed-event" class="text-xs font-medium text-default">Signed event payload</label>
-            <button type="button" class="inline-flex items-center gap-1.5 rounded-md border border-default px-2.5 py-1.5 text-[11px] text-offset transition hover:bg-default/30 disabled:cursor-not-allowed disabled:opacity-45" data-action="copy-signed-advanced" disabled>
-              <Icon name="mdi:content-copy" class="size-4" />
-              Copy
-            </button>
-          </div>
-          <textarea id="signed-event" rows="10" readonly class="w-full rounded-md border border-default bg-black/15 px-3 py-2 font-mono text-[11px] text-default" data-output="signed"></textarea>
-        </div>
+        <DesignPublishEventJsonPanel
+          sectionTitle="Unsigned event"
+          sectionDescription="Preview of the event before signing."
+          copyAction="copy-unsigned"
+          textareaId="unsigned-event"
+          outputName="unsigned"
+          headerLabel="JSON preview"
+          headerValue="kind 33301"
+          headerValueClass="text-offset/55"
+        />
+        <DesignPublishEventJsonPanel
+          sectionTitle="Signed event"
+          sectionDescription="Final event payload ready to publish."
+          copyAction="copy-signed"
+          textareaId="signed-event"
+          outputName="signed"
+          headerLabel="JSON payload"
+          headerValue="signed"
+          headerValueClass="text-emerald-300/80"
+        />
         <p class="text-[11px] text-offset" data-validation-summary>Waiting for signer and valid inputs.</p>
       </div>
     </div>
@@ -167,11 +291,13 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
   type NostrTag = [string, string];
   type StepId =
     | "signer"
+    | "file"
     | "name"
     | "format"
-    | "file"
     | "description"
-    | "advanced";
+    | "additional-data"
+    | "lightning-payments"
+    | "design-images";
 
   type UnsignedNostrEvent = {
     kind: number;
@@ -246,6 +372,17 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     signedDot?: "hidden" | "blinking" | "solid";
   };
 
+  type StepPanelNodes = {
+    panel: HTMLElement;
+    body: HTMLElement;
+    toggle: HTMLButtonElement;
+    summary: HTMLElement | null;
+    backButton: HTMLButtonElement | null;
+    nextButton: HTMLButtonElement | null;
+    caretButton: HTMLButtonElement;
+    caretIcon: HTMLElement;
+  };
+
   const root = document.querySelector<HTMLElement>("[data-design-publish-form]");
   if (!root || root.dataset.initialized === "true") {
     // no-op
@@ -267,9 +404,10 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     const signerPillText = root.querySelector<HTMLElement>("[data-step-signer-pill-text]");
     const signerPillDot = root.querySelector<HTMLElement>("[data-step-signer-dot]");
     const signerPanelHost = root.querySelector<HTMLElement>("[data-nostr-signer-panel]");
+    const previewRenderList = root.querySelector<HTMLElement>("[data-preview-render-list]");
 
+    const copyUnsignedBtn = root.querySelector<HTMLButtonElement>("[data-action='copy-unsigned']");
     const copySignedBtn = root.querySelector<HTMLButtonElement>("[data-action='copy-signed']");
-    const copySignedBtnAdv = root.querySelector<HTMLButtonElement>("[data-action='copy-signed-advanced']");
 
     if (
       !form ||
@@ -284,8 +422,8 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       hackerFields.length === 0 ||
       !signerPillText ||
       !signerPillDot ||
-      !copySignedBtn ||
-      !copySignedBtnAdv
+      !copyUnsignedBtn ||
+      !copySignedBtn
     ) {
       console.error("[design-publish-form] required DOM node missing");
     } else {
@@ -313,55 +451,75 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
       const stepOrder: StepId[] = [
         "signer",
+        "file",
         "name",
         "format",
-        "file",
         "description",
-        "advanced",
+        "design-images",
+        "lightning-payments",
+        "additional-data",
       ];
 
-      const stepPanels = new Map<
-        StepId,
-        {
-          panel: HTMLElement;
-          body: HTMLElement;
-          toggle: HTMLButtonElement;
-          summary: HTMLElement | null;
-          backButton: HTMLButtonElement | null;
-          nextButton: HTMLButtonElement | null;
-          caretButton: HTMLButtonElement;
-          caretIcon: HTMLElement;
-        }
-      >();
+      const stepIndexById = Object.fromEntries(
+        stepOrder.map((step, index) => [step, index]),
+      ) as Record<StepId, number>;
 
-      let missingStepNodes = false;
-      for (const step of stepOrder) {
-        const panel = root.querySelector<HTMLElement>(`[data-step-panel='${step}']`);
-        const body = root.querySelector<HTMLElement>(`[data-step-body='${step}']`);
-        const toggle = root.querySelector<HTMLButtonElement>(`[data-step-toggle='${step}']`);
-        const summary = root.querySelector<HTMLElement>(`[data-step-summary='${step}']`);
-        const backButton = root.querySelector<HTMLButtonElement>(`[data-step-back='${step}']`);
-        const nextButton = root.querySelector<HTMLButtonElement>(`[data-step-next='${step}']`);
-        const caretButton = root.querySelector<HTMLButtonElement>(`[data-step-caret='${step}']`);
-        const caretIcon = root.querySelector<HTMLElement>(`[data-step-caret-icon='${step}']`);
-        if (!panel || !body || !toggle || !caretButton || !caretIcon) {
-          console.error(`[design-publish-form] missing step nodes for ${step}`);
-          missingStepNodes = true;
-          continue;
-        }
-        stepPanels.set(step, {
-          panel,
-          body,
-          toggle,
-          summary,
-          backButton,
-          nextButton,
-          caretButton,
-          caretIcon,
-        });
-      }
+      const queryStepNode = <T extends HTMLElement>(attr: string, step: StepId): T | null =>
+        root.querySelector<T>(`[${attr}='${step}']`);
 
-      if (missingStepNodes) {
+      const buildStepPanels = (): Map<StepId, StepPanelNodes> | null => {
+        const panels = new Map<StepId, StepPanelNodes>();
+        let hasMissingNodes = false;
+
+        for (const step of stepOrder) {
+          const panel = queryStepNode<HTMLElement>("data-step-panel", step);
+          const body = queryStepNode<HTMLElement>("data-step-body", step);
+          const toggle = queryStepNode<HTMLButtonElement>("data-step-toggle", step);
+          const summary = queryStepNode<HTMLElement>("data-step-summary", step);
+          const backButton = queryStepNode<HTMLButtonElement>("data-step-back", step);
+          const nextButton = queryStepNode<HTMLButtonElement>("data-step-next", step);
+          const caretButton = queryStepNode<HTMLButtonElement>("data-step-caret", step);
+          const caretIcon = queryStepNode<HTMLElement>("data-step-caret-icon", step);
+
+          const missing: string[] = [];
+          if (!panel) missing.push("panel");
+          if (!body) missing.push("body");
+          if (!toggle) missing.push("toggle");
+          if (!caretButton) missing.push("caretButton");
+          if (!caretIcon) missing.push("caretIcon");
+
+          if (missing.length > 0) {
+            hasMissingNodes = true;
+            console.error(
+              `[design-publish-form] missing step nodes for ${step}: ${missing.join(", ")}`,
+            );
+            continue;
+          }
+
+          const requiredPanel = panel as HTMLElement;
+          const requiredBody = body as HTMLElement;
+          const requiredToggle = toggle as HTMLButtonElement;
+          const requiredCaretButton = caretButton as HTMLButtonElement;
+          const requiredCaretIcon = caretIcon as HTMLElement;
+
+          panels.set(step, {
+            panel: requiredPanel,
+            body: requiredBody,
+            toggle: requiredToggle,
+            summary,
+            backButton,
+            nextButton,
+            caretButton: requiredCaretButton,
+            caretIcon: requiredCaretIcon,
+          });
+        }
+
+        if (hasMissingNodes) return null;
+        return panels;
+      };
+
+      const stepPanels = buildStepPanels();
+      if (!stepPanels) {
         console.error("[design-publish-form] step panel initialization failed");
       } else {
 
@@ -382,6 +540,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       let signerIdentityText = "Signer";
       let signerChipLabel = "";
       let signerDotState: "hidden" | "blinking" | "solid" = "hidden";
+      let lastPreviewRenderSignature = "";
       const manualCompleted = new Set<StepId>();
 
       const CONTROL_OR_BIDI_RE = /[\u0000-\u001F\u007F-\u009F\u202A-\u202E\u2066-\u2069]/u;
@@ -420,7 +579,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           el.classList.toggle("hidden", !enabled);
         }
         hackerToggleButton.setAttribute("aria-expanded", String(enabled));
-        hackerToggleLabel.textContent = enabled ? "Hide advanced" : "Show advanced";
+        hackerToggleLabel.textContent = enabled ? "Hide Nostr Data" : "Show Nostr Data";
         try {
           window.localStorage.setItem(HACKER_MODE_STORAGE_KEY, enabled ? "1" : "0");
         } catch {
@@ -451,6 +610,83 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         }
       };
 
+      const renderPreviewImages = () => {
+        if (!previewRenderList) return;
+
+        const previewValues = parseLineList(fields.preview.value);
+        const signature = previewValues.join("\n");
+        if (signature === lastPreviewRenderSignature) return;
+        lastPreviewRenderSignature = signature;
+
+        previewRenderList.replaceChildren();
+        if (previewValues.length === 0) {
+          const empty = document.createElement("p");
+          empty.className =
+            "col-span-full rounded-md border border-dashed border-default/40 bg-default/[0.02] px-3 py-2 text-[11px] text-offset/75";
+          empty.textContent = "No preview images yet.";
+          previewRenderList.append(empty);
+          return;
+        }
+
+        previewValues.forEach((rawUrl, index) => {
+          const normalizedUrl = asHttpsUrl(rawUrl);
+          const card = document.createElement("article");
+          card.className = "space-y-1 rounded-md border border-default/40 bg-default/[0.02] p-1.5";
+
+          const heading = document.createElement("div");
+          heading.className = "flex items-center justify-between gap-2";
+
+          const label = document.createElement("p");
+          label.className = "truncate text-[11px] font-medium text-default/90";
+          label.textContent = `Image ${index + 1}`;
+          heading.append(label);
+
+          const status = document.createElement("span");
+          status.className = "shrink-0 text-[10px] text-offset/75";
+          heading.append(status);
+
+          const urlText = document.createElement("p");
+          urlText.className = "truncate text-[11px] text-offset/80";
+          urlText.textContent = rawUrl;
+
+          card.append(heading, urlText);
+
+          if (!normalizedUrl) {
+            status.textContent = "Invalid URL";
+            const invalidHint = document.createElement("p");
+            invalidHint.className = "text-[11px] text-red-300/90";
+            invalidHint.textContent = "Use a valid HTTPS URL to preview this image.";
+            card.append(invalidHint);
+            previewRenderList.append(card);
+            return;
+          }
+
+          status.textContent = "Loading...";
+
+          const imageWrap = document.createElement("div");
+          imageWrap.className = "aspect-[3/4] overflow-hidden rounded border border-default/30 bg-default/5";
+
+          const image = document.createElement("img");
+          image.className = "h-full w-full object-cover";
+          image.alt = `Preview image ${index + 1}`;
+          image.loading = "lazy";
+          image.decoding = "async";
+          image.src = normalizedUrl;
+
+          image.addEventListener("load", () => {
+            status.textContent = "Loaded";
+          });
+          image.addEventListener("error", () => {
+            status.textContent = "Failed to load";
+            imageWrap.classList.add("border-red-400/40");
+          });
+
+          imageWrap.append(image);
+          card.append(imageWrap);
+          previewRenderList.append(card);
+        });
+      };
+
       const collectInputs = (): Inputs => ({
         d: fields.d.value,
         name: fields.name.value,
@@ -466,6 +702,114 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         lnurl: fields.lnurl.value,
         mime: fields.mime.value,
       });
+
+      const MIME_BY_FORMAT: Record<string, string> = {
+        stl: "model/stl",
+        "3mf": "model/3mf",
+        obj: "model/obj",
+        gcode: "text/x.gcode",
+      };
+
+      const EXTENSION_TO_FORMAT: Record<string, string> = {
+        ".stl": "stl",
+        ".3mf": "3mf",
+        ".step": "step",
+        ".stp": "step",
+        ".obj": "obj",
+        ".gcode": "gcode",
+      };
+
+      let mimeTouched = false;
+      let formatTouched = false;
+      let nameTouched = false;
+      const inferMimeButton = root.querySelector<HTMLButtonElement>("[data-action='infer-mime']");
+
+      const getSuggestedMimeForCurrentFormat = (): string | undefined => {
+        const format = normalizeSingleLine(
+          (fields.format as unknown as HTMLSelectElement).value,
+        ).toLowerCase();
+        if (!format) return undefined;
+        return MIME_BY_FORMAT[format];
+      };
+
+      const refreshInferMimeVisibility = () => {
+        if (!inferMimeButton) return;
+        const suggested = getSuggestedMimeForCurrentFormat();
+        const currentMime = normalizeSingleLine(fields.mime.value).toLowerCase();
+        const shouldShow =
+          mimeTouched && !!suggested && suggested.toLowerCase() !== currentMime && currentMime.length > 0;
+        inferMimeButton.classList.toggle("hidden", !shouldShow);
+      };
+
+      const maybePrefillMimeFromFormat = () => {
+        if (mimeTouched) return;
+        const suggested = getSuggestedMimeForCurrentFormat();
+        if (!suggested) return;
+        fields.mime.value = suggested;
+        refreshInferMimeVisibility();
+      };
+
+      const getFormatFromUrl = (raw: string): string | undefined => {
+        const value = raw.trim();
+        if (!value) return undefined;
+        let path = value.toLowerCase();
+        try {
+          const url = new URL(value);
+          path = url.pathname.toLowerCase();
+        } catch {
+          // fall back to raw string
+        }
+        const match = Object.keys(EXTENSION_TO_FORMAT).find((ext) => path.endsWith(ext));
+        return match ? EXTENSION_TO_FORMAT[match] : undefined;
+      };
+
+      const getDesignNameFromUrl = (raw: string): string | undefined => {
+        const value = raw.trim();
+        if (!value) return undefined;
+        let path = value;
+        try {
+          const url = new URL(value);
+          path = url.pathname;
+        } catch {
+          // fall back to raw string
+        }
+
+        const segments = path.split("/").filter((segment) => segment.length > 0);
+        if (segments.length === 0) return undefined;
+        const file = segments[segments.length - 1];
+
+        const withoutQuery = file.split("?")[0].split("#")[0];
+        const dotIndex = withoutQuery.lastIndexOf(".");
+        const base = dotIndex > 0 ? withoutQuery.slice(0, dotIndex) : withoutQuery;
+        const cleaned = base.replace(/[-_]+/g, " ").trim();
+        if (!cleaned) return undefined;
+
+        return cleaned
+          .toLowerCase()
+          .split(" ")
+          .filter((part) => part.length > 0)
+          .map((part) => part[0]?.toUpperCase() + part.slice(1))
+          .join(" ");
+      };
+
+      const maybeInferFormatFromUrl = () => {
+        if (formatTouched) return;
+        const inferred = getFormatFromUrl(fields.url.value);
+        if (!inferred) return;
+        const select = fields.format as unknown as HTMLSelectElement;
+        if (select.value === inferred) return;
+        select.value = inferred;
+        maybePrefillMimeFromFormat();
+      };
+
+      const maybeInferNameFromUrl = () => {
+        if (nameTouched) return;
+        const current = normalizeSingleLine(fields.name.value);
+        if (current.length > 0) return;
+        const inferred = getDesignNameFromUrl(fields.url.value);
+        if (!inferred) return;
+        fields.name.value = inferred;
+      };
 
       const maybePrefillLnurl = (lnurl: string | null | undefined) => {
         const current = fields.lnurl.value;
@@ -591,7 +935,9 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         format: isFormatComplete(),
         file: isFileComplete(),
         description: manualCompleted.has("description"),
-        advanced: manualCompleted.has("advanced"),
+        "additional-data": manualCompleted.has("additional-data"),
+        "lightning-payments": manualCompleted.has("lightning-payments"),
+        "design-images": manualCompleted.has("design-images"),
       });
 
       const hydrateSignerPubkeyFromSharedState = (): boolean => {
@@ -607,7 +953,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       };
 
       const isUnlocked = (step: StepId, completion: Record<StepId, boolean>): boolean => {
-        const idx = stepOrder.indexOf(step);
+        const idx = stepIndexById[step];
         if (idx <= 0) return true;
         for (let i = 0; i < idx; i += 1) {
           if (!completion[stepOrder[i]]) return false;
@@ -619,7 +965,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         for (const step of stepOrder) {
           if (!completion[step] && isUnlocked(step, completion)) return step;
         }
-        return "advanced";
+        return "design-images";
       };
 
       const getValidationState = (
@@ -643,14 +989,20 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         if (step === "description") {
           return normalizeTextArea(fields.description.value).trim().length > 0 ? "valid" : "empty";
         }
-        if (step === "advanced") {
+        if (step === "additional-data") {
           const hasLicense = normalizeSingleLine(fields.license.value).length > 0;
-          const hasImages = parseLineList(fields.preview.value).length > 0;
           const hasCategories = parseLineList(fields.category.value).length > 0;
           const hasMaterials =
             parseLineList(fields.material.value).length > 0 || parseLineList(fields.printer.value).length > 0;
+          return hasLicense || hasCategories || hasMaterials ? "valid" : "empty";
+        }
+        if (step === "lightning-payments") {
           const hasLnurl = normalizeSingleLine(fields.lnurl.value).length > 0;
-          return hasLicense || hasImages || hasCategories || hasMaterials || hasLnurl ? "valid" : "empty";
+          return hasLnurl ? "valid" : "empty";
+        }
+        if (step === "design-images") {
+          const hasImages = parseLineList(fields.preview.value).length > 0;
+          return hasImages ? "valid" : "empty";
         }
         return "empty";
       };
@@ -661,7 +1013,13 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
             return isSignerComplete() ? "Signer ready" : "Waiting for signer";
           case "name": {
             const value = normalizeSingleLine(fields.name.value);
-            return value || "Add a clear design name";
+            return value || "Name your design";
+          }
+          case "file": {
+            const hasUrl = !!asHttpsUrl(normalizeSingleLine(fields.url.value));
+            const hasSha = normalizeSingleLine(fields.sha256.value).length > 0;
+            if (!hasUrl) return "Add a file URL";
+            return hasSha ? "URL and SHA-256 set" : "URL set, no SHA-256";
           }
           case "format": {
             const format = normalizeSingleLine((fields.format as unknown as HTMLSelectElement).value).toLowerCase();
@@ -669,30 +1027,28 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
             if (!format) return "Choose the primary format";
             return mime ? `${format} (${mime})` : format;
           }
-          case "file": {
-            const hasUrl = !!asHttpsUrl(normalizeSingleLine(fields.url.value));
-            const hasSha = normalizeSingleLine(fields.sha256.value).length > 0;
-            if (!hasUrl) return "Add a file URL and optional digest";
-            return hasSha ? "URL and SHA-256 set" : "URL set, SHA-256 optional";
-          }
           case "description": {
             const text = normalizeTextArea(fields.description.value).trim();
             return text ? `${text.length} chars` : "No description";
           }
-          case "advanced": {
+          case "additional-data": {
             const hasLicense = normalizeSingleLine(fields.license.value).length > 0;
-            const imageCount = parseLineList(fields.preview.value).length;
             const categoryCount = parseLineList(fields.category.value).length;
             const materialCount = parseLineList(fields.material.value).length;
             const printerCount = parseLineList(fields.printer.value).length;
-            const hasLnurl = normalizeSingleLine(fields.lnurl.value).length > 0;
             const selected =
               Number(hasLicense) +
-              Number(imageCount > 0) +
               Number(categoryCount > 0) +
-              Number(materialCount > 0 || printerCount > 0) +
-              Number(hasLnurl);
+              Number(materialCount > 0 || printerCount > 0);
             return selected > 0 ? `${selected} section${selected === 1 ? "" : "s"} configured` : "Optional metadata";
+          }
+          case "lightning-payments": {
+            const hasLnurl = normalizeSingleLine(fields.lnurl.value).length > 0;
+            return hasLnurl ? "LNURL configured" : "No LNURL";
+          }
+          case "design-images": {
+            const imageCount = parseLineList(fields.preview.value).length;
+            return imageCount > 0 ? `${imageCount} image URL${imageCount === 1 ? "" : "s"}` : "No preview images";
           }
         }
       };
@@ -761,14 +1117,14 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       };
 
       const moveToNextStep = (step: StepId) => {
-        const idx = stepOrder.indexOf(step);
+        const idx = stepIndexById[step];
         if (idx < 0 || idx >= stepOrder.length - 1) return;
         const next = stepOrder[idx + 1];
         openStep(next);
       };
 
       const moveToPreviousStep = (step: StepId) => {
-        const idx = stepOrder.indexOf(step);
+        const idx = stepIndexById[step];
         if (idx <= 0) return;
         const previous = stepOrder[idx - 1];
         openStep(previous);
@@ -776,12 +1132,13 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
       const maybeAutoAdvanceFromSigner = () => {
         if (isSignerComplete() && activeStep === "signer" && !autoMovedFromSigner) {
-          activeStep = "name";
+          activeStep = "file";
           autoMovedFromSigner = true;
         }
       };
 
       const refreshUnsignedPreview = () => {
+        renderPreviewImages();
         hydrateSignerPubkeyFromSharedState();
         maybeAutoAdvanceFromSigner();
         const result = buildUnsignedEvent(collectInputs(), signerPubkey);
@@ -791,6 +1148,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           setSummary("Waiting for signer and valid inputs.");
           signButton.disabled = true;
           publishButton.disabled = true;
+          copyUnsignedBtn.disabled = true;
           renderAccordion();
           return;
         }
@@ -801,9 +1159,11 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         setSummary(`Unsigned event is valid and deterministic.${warningText}`);
 
         const completion = getCompletionState();
-        const signUnlocked = stepOrder.every((step) => completion[step]);
+        const requiredForSign: StepId[] = ["signer", "file", "format", "name"];
+        const signUnlocked = requiredForSign.every((step) => completion[step]);
         signButton.disabled = isSigning || isPublishing || !signUnlocked;
         publishButton.disabled = !signedEvent || isPublishing;
+        copyUnsignedBtn.disabled = unsignedOutput.value.length === 0;
         if (!signedEvent) setStatus("Ready to sign. Click \"Sign design event\".");
 
         renderAccordion();
@@ -864,6 +1224,13 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         }
       };
 
+      const handleCopyUnsigned = async () => {
+        const text = unsignedOutput.value;
+        if (!text) return;
+        const ok = await copyText(text);
+        setStatus(ok ? "Copied unsigned event JSON to clipboard." : "Copy failed. Your browser may block clipboard access.");
+      };
+
       const handleCopySigned = async () => {
         const text = signedOutput.value;
         if (!text) return;
@@ -876,7 +1243,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         publishedSuccess = false;
         signedOutput.value = "";
         copySignedBtn.disabled = true;
-        copySignedBtnAdv.disabled = true;
         publishButton.disabled = true;
       };
 
@@ -884,7 +1250,8 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         if (isSigning || isPublishing) return;
 
         const completion = getCompletionState();
-        const signUnlocked = stepOrder.every((step) => completion[step]);
+        const requiredForSign: StepId[] = ["signer", "file", "format", "name"];
+        const signUnlocked = requiredForSign.every((step) => completion[step]);
         if (!signUnlocked) {
           setStatus("Complete the previous steps before signing.");
           return;
@@ -916,7 +1283,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           publishedSuccess = false;
           signedOutput.value = JSON.stringify(signed, null, 2);
           copySignedBtn.disabled = false;
-          copySignedBtnAdv.disabled = false;
           publishButton.disabled = false;
           setStatus("Event signed successfully. Continue to publish.");
         } catch (error) {
@@ -1002,17 +1368,27 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       const handleReset = () => {
         form.reset();
         fields.d.value = generateDesignId();
+        mimeTouched = false;
+        formatTouched = false;
+        nameTouched = false;
         manualCompleted.clear();
         clearSignedState();
         autoMovedFromSigner = false;
+        lastPreviewRenderSignature = "";
         hydrateSignerPubkeyFromSharedState();
-        activeStep = isSignerComplete() ? "name" : "signer";
+        activeStep = isSignerComplete() ? "file" : "signer";
         setStatus("Form reset. Complete each step to sign and publish.");
         refreshUnsignedPreview();
+        refreshInferMimeVisibility();
       };
 
       const handleStepNext = (step: StepId) => {
-        if (step === "description" || step === "advanced") {
+        if (
+          step === "description" ||
+          step === "additional-data" ||
+          step === "lightning-payments" ||
+          step === "design-images"
+        ) {
           manualCompleted.add(step);
           renderAccordion();
         }
@@ -1031,10 +1407,46 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         const onChange = () => {
           if (signedEvent) clearSignedState();
           refreshUnsignedPreview();
+          refreshInferMimeVisibility();
         };
         field.addEventListener("input", onChange);
         field.addEventListener("change", onChange);
       }
+
+      const mimeField = fields.mime as HTMLInputElement;
+      const formatField = fields.format as unknown as HTMLSelectElement;
+      const urlField = fields.url as HTMLInputElement;
+      const nameField = fields.name as HTMLInputElement;
+
+      mimeField.addEventListener("input", () => {
+        mimeTouched = true;
+        refreshInferMimeVisibility();
+      });
+
+      nameField.addEventListener("input", () => {
+        nameTouched = true;
+      });
+
+      formatField.addEventListener("change", () => {
+        formatTouched = true;
+        maybePrefillMimeFromFormat();
+        refreshInferMimeVisibility();
+      });
+
+      urlField.addEventListener("change", () => {
+        maybeInferFormatFromUrl();
+        maybeInferNameFromUrl();
+        refreshUnsignedPreview();
+      });
+
+      inferMimeButton?.addEventListener("click", () => {
+        const suggested = getSuggestedMimeForCurrentFormat();
+        if (!suggested) return;
+        fields.mime.value = suggested;
+        mimeTouched = false;
+        refreshUnsignedPreview();
+        refreshInferMimeVisibility();
+      });
 
       for (const step of stepOrder) {
         const nodes = stepPanels.get(step);
@@ -1054,8 +1466,8 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       publishButton.addEventListener("click", () => void handlePublish());
       resetButton.addEventListener("click", handleReset);
 
+      copyUnsignedBtn.addEventListener("click", () => void handleCopyUnsigned());
       copySignedBtn.addEventListener("click", () => void handleCopySigned());
-      copySignedBtnAdv.addEventListener("click", () => void handleCopySigned());
 
       hackerToggleButton.addEventListener("click", () => setHackerMode(!isHackerMode));
 
@@ -1069,14 +1481,14 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         setHackerMode(false);
       }
 
-        activeStep = isSignerComplete() ? "name" : "signer";
-        refreshUnsignedPreview();
-        if (signerPubkey) {
-          setStatus("Signer detected. Continue with the next step.");
-        } else {
-          setStatus("Waiting for signer pubkey...");
-        }
-        renderAccordion();
+      activeStep = isSignerComplete() ? "file" : "signer";
+      refreshUnsignedPreview();
+      if (signerPubkey) {
+        setStatus("Signer detected. Continue with the next step.");
+      } else {
+        setStatus("Waiting for signer pubkey...");
+      }
+      renderAccordion();
       }
     }
   }
