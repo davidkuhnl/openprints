@@ -3,7 +3,6 @@ import { Icon } from "astro-icon/components";
 ---
 
 <div class="relative flex flex-col gap-4 rounded-xl border border-default bg-offset/30 p-5 overflow-hidden" data-nostr-signer-required>
-  {/* subtle animated shimmer/scan in the background */}
   <div class="pointer-events-none absolute inset-0 opacity-35">
     <div class="nostr-scan absolute -inset-x-24 top-0 h-full" />
   </div>
@@ -11,7 +10,6 @@ import { Icon } from "astro-icon/components";
   <header class="relative space-y-2 pb-4">
     <h1 class="flex items-center gap-3 text-xl font-semibold tracking-tight sm:text-2xl">
       <span class="relative inline-flex items-center justify-center">
-        {/* soft pulsing halo behind icon */}
         <span class="absolute inset-0 rounded-full bg-emerald-400/15 nostr-pulse" />
         <span class="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-400">
           <Icon name="mdi:key" class="size-4" aria-hidden="true" />
@@ -48,7 +46,6 @@ import { Icon } from "astro-icon/components";
     </a>
   </div>
 
-  {/* status moved below actions (no competition with headline) */}
 <div class="flex flex-col gap-3 border-t border-default pt-3">
   <p class="nostr-signer-timeout-note relative hidden text-xs text-offset">
     Still waiting for a NIP-07 signer. If you just installed one, try reloading this page.
@@ -96,7 +93,6 @@ import { Icon } from "astro-icon/components";
 </script>
 
 <style>
-  /* Soft moving “scan” band in the background */
   .nostr-scan {
     background: linear-gradient(
       90deg,
@@ -113,7 +109,6 @@ import { Icon } from "astro-icon/components";
     100% { transform: translateX(-35%); }
   }
 
-  /* Subtle halo pulse behind the key icon */
   .nostr-pulse {
     animation: nostrPulse 1.8s ease-in-out infinite;
   }
@@ -122,7 +117,6 @@ import { Icon } from "astro-icon/components";
     50%      { opacity: 0.70; transform: scale(1.05); }
   }
 
-  /* 3-dot “listening” loader */
   .nostr-dots .dot {
     width: 4px;
     height: 4px;
@@ -140,7 +134,6 @@ import { Icon } from "astro-icon/components";
     40%           { transform: translateY(-3px); opacity: 1; }
   }
 
-  /* Respect reduced-motion */
   @media (prefers-reduced-motion: reduce) {
     .nostr-scan, .nostr-pulse, .nostr-dots .dot { animation: none !important; }
   }
