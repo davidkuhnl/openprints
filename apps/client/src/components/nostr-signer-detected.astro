@@ -26,7 +26,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     </header>
 
     <div class="space-y-3 mt-2">
-      <!-- Primary identity pills (npub + signed-in location) -->
       <div class="flex flex-wrap items-center gap-2 text-[11px] text-offset/80">
         <span class="inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1">
           <Icon name="mdi:account" class="size-3.5 shrink-0" aria-hidden="true" />
@@ -50,7 +49,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         </span>
       </div>
 
-      <!-- Identity fetch status text -->
       <div class="space-y-2 mt-3">
         <p class="text-[13px] font-medium text-default" data-panel-message>
           Waiting for your signer to share an identity so we can look it up in OpenPrints.
@@ -217,7 +215,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
       if (statusLabelEl) statusLabelEl.textContent = label;
 
-      // keep dots only while checking
       if (mode === "checking") {
         statusDotsEl?.classList.remove("hidden");
         if (statusIconEl) {
@@ -306,7 +303,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       });
 
       try {
-        // show npub immediately, so UI feels responsive
         let npub = pubkey;
         try {
           npub = nip19.npubEncode(pubkey);
@@ -399,7 +395,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           return;
         }
 
-        // identity not in DB yet, or API unavailable
         if (error === "no-api") {
           console.debug("[nostr-signer] no apiBase, skipping identity lookup");
           applyView({
