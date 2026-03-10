@@ -1,4 +1,4 @@
-.PHONY: help setup setup-fast format lint lint-fix test check relay-up relay-down relay-down-wipe relay-logs relay-test-up relay-test-ws relay-check test-drive cli cli-build-design cli-build-identity cli-sign cli-publish-design cli-publish-identity cli-subscribe cli-index cli-serve cli-db-stats cli-db-wipe cli-hash cli-hash-stdin cli-keygen api client-deploy
+.PHONY: help setup setup-fast format lint lint-fix test check relay-up relay-down relay-down-wipe relay-logs relay-test-up relay-test-ws relay-check test-drive cli cli-build-design cli-build-identity cli-sign cli-publish-design cli-publish-identity cli-subscribe cli-index cli-index-kill cli-serve cli-serve-kill cli-db-stats cli-db-wipe cli-hash cli-hash-stdin cli-keygen api client-deploy
 
 INDEXER_DIR := apps/indexer
 CLIENT_DIR := apps/client
@@ -55,7 +55,9 @@ help:
 	@echo "  make cli-publish-identity - run openprints-cli publish identity to RELAY=\$$RELAY with timeout/retry vars"
 	@echo "  make cli-subscribe  - run openprints-cli subscribe on RELAY=\$$RELAY"
 	@echo "  make cli-index      - run openprints-cli index (INDEX_CONFIG, INDEX_RELAY/RELAYS, DESIGN_*)"
+	@echo "  make cli-index-kill - kill running openprints-cli index process(es)"
 	@echo "  make cli-serve      - run OpenPrints HTTP API (INDEX_CONFIG, OPENPRINTS_API_PORT default 8080)"
+	@echo "  make cli-serve-kill - kill running openprints-cli serve process(es)"
 	@echo "  make api            - same as cli-serve (alias)"
 	@echo "  make cli-db-stats   - print indexer DB stats and latest designs (INDEX_CONFIG)"
 	@echo "  make cli-db-wipe    - wipe indexer SQLite database (requires --force; use INDEX_CONFIG for config path)"
@@ -133,8 +135,24 @@ cli-subscribe:
 cli-index:
 	@cd $(INDEXER_DIR) && CMD="uv run openprints-cli index" ; if [ -n "$(INDEX_CONFIG)" ]; then CMD="$$CMD --config \"$(INDEX_CONFIG)\""; fi ; if [ -n "$(RELAYS)" ]; then IFS=','; for relay in $(RELAYS); do CMD="$$CMD --relay $$relay"; done; elif [ -n "$(INDEX_RELAY)" ]; then CMD="$$CMD --relay \"$(INDEX_RELAY)\""; fi ; if [ -n "$(DESIGN_KIND)" ]; then CMD="$$CMD --design-kind \"$(DESIGN_KIND)\""; fi ; if [ -n "$(DESIGN_QUEUE_MAXSIZE)" ]; then CMD="$$CMD --design-queue-maxsize \"$(DESIGN_QUEUE_MAXSIZE)\""; fi ; if [ -n "$(DESIGN_TIMEOUT_S)" ]; then CMD="$$CMD --design-timeout-s \"$(DESIGN_TIMEOUT_S)\""; fi ; if [ -n "$(DESIGN_MAX_RETRIES)" ]; then CMD="$$CMD --design-max-retries \"$(DESIGN_MAX_RETRIES)\""; fi ; if [ -n "$(DESIGN_DURATION_S)" ]; then CMD="$$CMD --design-duration-s \"$(DESIGN_DURATION_S)\""; fi ; eval "$$CMD"
 
+cli-index-kill:
+	@if pgrep -f "openprints-cli index" >/dev/null; then \
+		pgrep -f "openprints-cli index" | xargs kill; \
+		echo "Killed openprints-cli index process(es)."; \
+	else \
+		echo "No openprints-cli index process is running."; \
+	fi
+
 cli-serve:
 	@cd $(INDEXER_DIR) && CMD="uv run openprints-cli serve" ; if [ -n "$(INDEX_CONFIG)" ]; then CMD="$$CMD --config \"$(INDEX_CONFIG)\""; fi ; if [ -n "$(API_PORT)" ]; then CMD="$$CMD --port \"$(API_PORT)\""; fi ; eval "$$CMD"
+
+cli-serve-kill:
+	@if pgrep -f "openprints-cli serve" >/dev/null; then \
+		pgrep -f "openprints-cli serve" | xargs kill; \
+		echo "Killed openprints-cli serve process(es)."; \
+	else \
+		echo "No openprints-cli serve process is running."; \
+	fi
 
 api: cli-serve
 
