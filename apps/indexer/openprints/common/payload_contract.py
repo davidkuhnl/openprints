@@ -16,6 +16,7 @@ from openprints.common.errors import (
     missing_required_field,
     missing_required_tag,
 )
+from openprints.common.event_utils import tag_values
 
 ARTIFACT_VERSION = 1
 SUPPORTED_ARTIFACT_VERSIONS = {ARTIFACT_VERSION}
@@ -35,10 +36,6 @@ def _is_tag_list(value: Any) -> bool:
         if not all(isinstance(part, str) for part in tag):
             return False
     return True
-
-
-def _collect_tag_values(tags: list[list[str]], key: str) -> list[str]:
-    return [tag[1] for tag in tags if len(tag) >= 2 and tag[0] == key]
 
 
 def validate_payload(payload: Any) -> list[dict[str, str]]:
@@ -149,7 +146,7 @@ def validate_payload(payload: Any) -> list[dict[str, str]]:
                 if not any(len(tag) >= 2 and tag[0] == tag_name for tag in tags):
                     errors.append(missing_required_tag(tag_name))
 
-            name_values = _collect_tag_values(tags, "name")
+            name_values = tag_values(tags, "name")
             if name_values:
                 normalized_name = " ".join(name_values[0].strip().split())
                 if not (1 <= len(normalized_name) <= 120):

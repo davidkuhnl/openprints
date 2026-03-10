@@ -51,3 +51,22 @@ def check_relays(relay_urls: list[str]) -> str | None:
         except OSError as e:
             errors.append(f"{url}: {e}")
     return "; ".join(errors) if errors else None
+
+
+def ready_checks(db_path: str | None, relay_urls: list[str]) -> dict[str, str]:
+    """Compute readiness checks for database and relays."""
+    db_result: str
+    if db_path:
+        db_err = check_db(db_path)
+        db_result = "ok" if db_err is None else db_err
+    else:
+        db_result = "not_configured"
+
+    relay_result: str
+    if relay_urls:
+        relay_err = check_relays(relay_urls)
+        relay_result = "ok" if relay_err is None else relay_err
+    else:
+        relay_result = "not_configured"
+
+    return {"database": db_result, "relays": relay_result}

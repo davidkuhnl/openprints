@@ -10,6 +10,7 @@ from openprints.api.routes import identity as identity_route
 from openprints.common.design_id import api_id_encode
 from openprints.common.identity_utils import identity_api_id_from_pubkey, truncate_middle
 from openprints.indexer.store import DesignCurrentRow
+from tests.test_helpers import valid_signed_payload
 
 client = TestClient(app)
 
@@ -322,3 +323,94 @@ def test_identity_by_id_returns_full_identity(monkeypatch) -> None:
     assert payload["display_name"] == "Alice"
     assert payload["about"] == "maker"
     assert payload["nip05"] == "alice@example.com"
+
+
+def test_publish_design_returns_202_when_at_least_one_relay_accepts(monkeypatch) -> None:
+    payload = valid_signed_payload()["event"]
+
+    monkeypatch.setattr(
+        designs_route,
+        "get_ready_context",
+        lambda: (None, ["ws://relay-one", "ws://relay-two"]),
+    )
+
+    async def _publish(*args, **kwargs):
+        return [
+            {
+                "relay": "ws://relay-one",
+                "event_id": payload["id"],
+                "accepted": True,
+                "duplicate": False,
+                "message": "ok",
+            },
+            {
+                "relay": "ws://relay-two",
+                "event_id": payload["id"],
+                "accepted": False,
+                "duplicate": False,
+                "message": "failed",
+            },
+        ]
+
+    monkeypatch.setattr(designs_route, "publish_event_to_relays", _publish)
+    r = client.post("/designs/publish", json=payload)
+    assert r.status_code == 202
+    data = r.json()
+    assert data["ok"] is True
+    assert data["accepted_relay_count"] == 1
+    assert data["rejected_relay_count"] == 1
+    assert data["event_id"] == payload["id"]
+
+
+def test_publish_design_returns_400_for_invalid_signature(monkeypatch) -> None:
+    payload = valid_signed_payload()["event"]
+    payload["id"] = "f" * 64
+    monkeypatch.setattr(designs_route, "get_ready_context", lambda: (None, ["ws://relay-one"]))
+    r = client.post("/designs/publish", json=payload)
+    assert r.status_code == 400
+    data = r.json()
+    assert data["ok"] is False
+    assert "errors" in data
+    assert data["errors"][0]["path"] == "event"
+
+
+def test_publish_design_returns_502_when_all_relays_fail(monkeypatch) -> None:
+    payload = valid_signed_payload()["event"]
+    monkeypatch.setattr(
+        designs_route,
+        "get_ready_context",
+        lambda: (None, ["ws://relay-one", "ws://relay-two"]),
+    )
+
+    async def _publish(*args, **kwargs):
+        return [
+            {
+                "relay": "ws://relay-one",
+                "event_id": payload["id"],
+                "accepted": False,
+                "duplicate": False,
+                "message": "timeout",
+            },
+            {
+                "relay": "ws://relay-two",
+                "event_id": payload["id"],
+                "accepted": False,
+                "duplicate": False,
+                "message": "blocked",
+            },
+        ]
+
+    monkeypatch.setattr(designs_route, "publish_event_to_relays", _publish)
+    r = client.post("/designs/publish", json=payload)
+    assert r.status_code == 502
+    data = r.json()
+    assert data["ok"] is False
+    assert data["accepted_relay_count"] == 0
+    assert data["rejected_relay_count"] == 2
+
+
+def test_publish_design_returns_503_when_relays_not_configured(monkeypatch) -> None:
+    payload = valid_signed_payload()["event"]
+    monkeypatch.setattr(designs_route, "get_ready_context", lambda: (None, []))
+    r = client.post("/designs/publish", json=payload)
+    assert r.status_code == 503

@@ -1,0 +1,140 @@
+---
+import { Icon } from "astro-icon/components";
+---
+
+<div class="relative flex flex-col gap-4 rounded-xl border border-default bg-offset/30 p-5 overflow-hidden" data-nostr-signer-required>
+  <div class="pointer-events-none absolute inset-0 opacity-35">
+    <div class="nostr-scan absolute -inset-x-24 top-0 h-full" />
+  </div>
+
+  <header class="relative space-y-2 pb-4">
+    <h1 class="flex items-center gap-3 text-xl font-semibold tracking-tight sm:text-2xl">
+      <span class="relative inline-flex items-center justify-center">
+        <span class="absolute inset-0 rounded-full bg-emerald-400/15 nostr-pulse" />
+        <span class="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-400">
+          <Icon name="mdi:key" class="size-4" aria-hidden="true" />
+        </span>
+      </span>
+      Sign designs with your Nostr identity
+    </h1>
+
+    <p class="max-w-2xl text-xs leading-relaxed text-offset">
+      OpenPrints uses your Nostr key to sign designs so they stay linked to your
+      identity. To continue, install a NIP-07 signer extension.
+    </p>
+  </header>
+
+  <div class="relative flex flex-wrap items-center gap-2">
+    <a
+      href="https://getalby.com"
+      target="_blank"
+      rel="noreferrer"
+      class="inline-flex items-center gap-2 rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs font-medium text-default transition hover:bg-emerald-400/20 hover:text-emerald-400"
+    >
+      <Icon name="mdi:download" class="size-4" aria-hidden="true" />
+      Get Alby
+    </a>
+
+    <a
+      href="https://github.com/fiatjaf/nos2x"
+      target="_blank"
+      rel="noreferrer"
+      class="inline-flex items-center gap-2 rounded-md border border-default px-3 py-2 text-xs font-medium text-default transition hover:bg-default/30"
+    >
+      <Icon name="mdi:github" class="size-4" aria-hidden="true" />
+      Get nos2x
+    </a>
+  </div>
+
+<div class="flex flex-col gap-3 border-t border-default pt-3">
+  <p class="nostr-signer-timeout-note relative hidden text-xs text-offset">
+    Still waiting for a NIP-07 signer. If you just installed one, try reloading this page.
+  </p>
+  <div class="flex items-center gap-4">
+    <span class="inline-flex items-center gap-1.5 rounded-full border border-default/60 bg-default/20 px-2 py-1 text-[11px] text-offset">
+      <span class="nostr-dots inline-flex items-center">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </span>
+      Waiting for Nostr signer
+    </span>
+
+    <button
+      type="button"
+      class="inline-flex items-center gap-1 text-[11px] text-offset/70 transition hover:text-default"
+      onclick="location.reload()"
+    >
+    <Icon name="mdi:refresh" class="size-4" aria-hidden="true" />
+    Reload
+  </button>
+  </div>
+</div>
+
+</div>
+
+<script>
+  (function () {
+    const root = document.querySelector("[data-nostr-signer-required]");
+    if (!root) return;
+    const timeoutNoteEl = root.querySelector(".nostr-signer-timeout-note");
+
+    const showTimeoutNote = () => {
+      if (timeoutNoteEl) timeoutNoteEl.classList.remove("hidden");
+    };
+
+    document.addEventListener("nostr-signer-timeout", showTimeoutNote);
+
+    const state = (window as Window & { __openprintsSignerState?: { timedOut?: boolean } }).__openprintsSignerState;
+    if (state?.timedOut) {
+      showTimeoutNote();
+    }
+  })();
+</script>
+
+<style>
+  .nostr-scan {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(52, 211, 153, 0.10),
+      transparent
+    );
+    transform: translateX(-30%);
+    animation: nostrScan 2.6s ease-in-out infinite;
+  }
+  @keyframes nostrScan {
+    0%   { transform: translateX(-35%); }
+    50%  { transform: translateX(35%); }
+    100% { transform: translateX(-35%); }
+  }
+
+  .nostr-pulse {
+    animation: nostrPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes nostrPulse {
+    0%, 100% { opacity: 0.35; transform: scale(0.98); }
+    50%      { opacity: 0.70; transform: scale(1.05); }
+  }
+
+  .nostr-dots .dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(52, 211, 153, 0.8);
+    display: inline-block;
+    margin-right: 4px;
+    animation: nostrDot 1.2s infinite ease-in-out;
+  }
+  .nostr-dots .dot:nth-child(2) { animation-delay: 0.15s; opacity: 0.75; }
+  .nostr-dots .dot:nth-child(3) { animation-delay: 0.30s; opacity: 0.55; margin-right: 0; }
+
+  @keyframes nostrDot {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
+    40%           { transform: translateY(-3px); opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nostr-scan, .nostr-pulse, .nostr-dots .dot { animation: none !important; }
+  }
+</style>

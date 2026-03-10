@@ -1,0 +1,29 @@
+---
+import { Icon } from "astro-icon/components";
+
+type Props = {
+  icon: string;
+  title: string;
+  description: string;
+  panelClass?: string;
+  iconClass?: string;
+};
+
+const {
+  icon,
+  title,
+  description,
+  panelClass = "border-default/25 bg-default/[0.02]",
+  iconClass = "text-offset/75",
+} = Astro.props as Props;
+---
+
+<div class:list={["flex items-stretch gap-2 rounded-md border px-3 py-2", panelClass]}>
+  <div class="flex shrink-0 items-center">
+    <Icon name={icon} class:list={["size-3.5", iconClass]} />
+  </div>
+  <div class="space-y-0.5">
+    <p class="text-[11px] font-medium text-default/90">{title}</p>
+    <p class="text-[11px] leading-snug text-offset/75">{description}</p>
+  </div>
+</div>

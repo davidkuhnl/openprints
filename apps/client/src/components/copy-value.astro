@@ -2,19 +2,37 @@
 import { Icon } from "astro-icon/components";
 
 interface Props {
-  value: string;
+  value?: string;
+  sourceSelector?: string;
+  action?: string;
+  disabled?: boolean;
+  buttonClass?: string;
+  showLabel?: boolean;
+  label?: string;
   title?: string;
 }
 
-const { value, title = "Copy" } = Astro.props;
+const {
+  value = "",
+  sourceSelector,
+  action,
+  disabled = false,
+  buttonClass = "",
+  showLabel = false,
+  label = "Copy",
+  title = "Copy",
+} = Astro.props as Props;
 ---
 
 <button
   type="button"
-  class="copy-value__btn inline-flex size-5 shrink-0 items-center justify-center rounded text-offset transition-colors hover:text-default focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+  class={`copy-value__btn inline-flex size-5 shrink-0 items-center justify-center rounded text-offset transition-colors hover:text-default focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 ${buttonClass}`.trim()}
   data-copy-value={value}
+  data-copy-source={sourceSelector}
+  data-action={action}
   aria-label={title}
   title={title}
+  disabled={disabled}
 >
   <span class="copy-value__icon-copy" aria-hidden="true">
     <Icon name="mdi:content-copy" class="size-3.5" aria-hidden="true" />
@@ -22,6 +40,11 @@ const { value, title = "Copy" } = Astro.props;
   <span class="copy-value__icon-check" aria-hidden="true">
     <Icon name="mdi:check" class="size-3.5" aria-hidden="true" />
   </span>
+  {
+    showLabel ? (
+      <span class="copy-value__label ml-1.5">{label}</span>
+    ) : null
+  }
 </button>
 
 <style is:global>
@@ -46,8 +69,21 @@ const { value, title = "Copy" } = Astro.props;
       const target = e.target instanceof Element ? e.target : null;
       const btn = target?.closest(`.${CLS_BTN}`) ?? null;
       if (!btn) return;
-      const value = btn.getAttribute("data-copy-value");
-      if (value == null) return;
+      if (btn instanceof HTMLButtonElement && btn.disabled) return;
+      let value = btn.getAttribute("data-copy-value");
+      if (value == null) value = "";
+      if (!value) {
+        const sourceSelector = btn.getAttribute("data-copy-source");
+        if (sourceSelector) {
+          const sourceNode = document.querySelector(sourceSelector);
+          if (sourceNode instanceof HTMLInputElement || sourceNode instanceof HTMLTextAreaElement) {
+            value = sourceNode.value;
+          } else if (sourceNode) {
+            value = sourceNode.textContent ?? "";
+          }
+        }
+      }
+      if (!value) return;
       const prevLabel = btn.getAttribute("aria-label") || "Copy";
       navigator.clipboard.writeText(value).then(() => {
         btn.classList.add(COPIED_CLASS);

@@ -1,0 +1,147 @@
+---
+import AppLayout from "~/layouts/app-layout.astro";
+import NostrSignerRequired from "~/components/nostr-signer-required.astro";
+import DesignPublishForm from "~/components/design-publish/form.astro";
+
+export const prerender = false;
+---
+
+<AppLayout title="OpenPrints – New design">
+  <div class="mx-auto flex max-w-5xl flex-col gap-3">
+    <a
+      href="/app/designs"
+      class="inline-flex w-fit items-center gap-1 text-[10px] text-offset underline-offset-2 hover:underline focus:outline-none focus-visible:outline-none"
+    >
+      <span>←</span>
+      <span>Back to designs</span>
+    </a>
+
+    <section id="nostr-missing" aria-live="polite">
+      <NostrSignerRequired />
+    </section>
+    <section
+      id="nostr-ok"
+      class="relative hidden flex flex-col overflow-hidden rounded-xl border border-default bg-offset/30"
+      aria-live="polite"
+    >
+      <header class="space-y-1.5 border-b border-default p-4 pb-4 pr-36 sm:p-5 sm:pb-5 sm:pr-40">
+        <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
+          Publish
+        </p>
+        <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">
+          Add a new design
+        </h1>
+        <p class="max-w-2xl text-xs leading-relaxed text-offset">
+          Publish a 3D-printable design to the network. Fill in metadata, inspect
+          the unsigned event, sign it with your Nostr identity, then send it to
+          the indexer API to broadcast across configured relays.
+        </p>
+      </header>
+      <DesignPublishForm />
+    </section>
+  </div>
+
+  <script is:inline>
+    (function () {
+      const missingEl = document.getElementById("nostr-missing");
+      const okEl = document.getElementById("nostr-ok");
+      if (!missingEl || !okEl) return;
+
+      const w = /** @type {Window & { __openprintsSignerState?: any }} */ (window);
+      const state =
+        w.__openprintsSignerState ??
+        {
+          initialized: true,
+          signerAvailable: false,
+          pubkey: null,
+          timedOut: false,
+          pubkeyTimedOut: false,
+          pubkeyPromise: null,
+          signerPollStarted: false,
+        };
+      w.__openprintsSignerState = state;
+
+      const showWizard = () => {
+        missingEl.classList.add("hidden");
+        okEl.classList.remove("hidden");
+      };
+
+      const emit = (name, detail = {}) => {
+        document.dispatchEvent(new CustomEvent(name, { detail }));
+      };
+
+      const isSignerAvailable = () =>
+        !!(
+          window.nostr &&
+          typeof window.nostr.getPublicKey === "function" &&
+          typeof window.nostr.signEvent === "function"
+        );
+
+      const getPubkeyWithTimeout = (timeoutMs = 10000) =>
+        Promise.race([
+          window.nostr.getPublicKey(),
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("Timed out waiting for signer pubkey")), timeoutMs);
+          }),
+        ]);
+
+      const resolvePubkeyOnce = () => {
+        if (state.pubkeyPromise) return state.pubkeyPromise;
+        state.pubkeyPromise = getPubkeyWithTimeout()
+          .then((pubkey) => {
+            if (typeof pubkey === "string" && pubkey.length > 0) {
+              state.pubkey = pubkey;
+              emit("nostr-signer-ready", { pubkey });
+              return pubkey;
+            }
+            emit("nostr-signer-ready", { pubkey: null });
+            return null;
+          })
+          .catch((error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            if (message.includes("Timed out waiting for signer pubkey")) {
+              state.pubkeyTimedOut = true;
+              emit("nostr-signer-pubkey-timeout", { error });
+            }
+            emit("nostr-signer-ready", { pubkey: null, error });
+            return null;
+          });
+        return state.pubkeyPromise;
+      };
+
+      const markSignerAvailable = () => {
+        showWizard();
+        if (!state.signerAvailable) {
+          state.signerAvailable = true;
+          emit("nostr-signer-available");
+        }
+        void resolvePubkeyOnce();
+      };
+
+      const waitForSigner = ({ timeoutMs = 60000, intervalMs = 750 } = {}) => {
+        if (state.signerPollStarted) return;
+        state.signerPollStarted = true;
+        const started = Date.now();
+        const tick = () => {
+          if (isSignerAvailable()) {
+            markSignerAvailable();
+            return;
+          }
+          if (Date.now() - started > timeoutMs) {
+            state.timedOut = true;
+            emit("nostr-signer-timeout");
+            return;
+          }
+          setTimeout(tick, intervalMs);
+        };
+        tick();
+      };
+
+      if (isSignerAvailable()) {
+        markSignerAvailable();
+      } else {
+        waitForSigner();
+      }
+    })();
+  </script>
+</AppLayout>
