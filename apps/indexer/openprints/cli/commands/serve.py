@@ -12,7 +12,7 @@ from openprints.common.utils.output import print_json
 
 def run_serve(args) -> int:
     """Start the API server. Config and port from args/env.
-    Uses project logging (OPENPRINTS_LOG_LEVEL, OPENPRINTS_LOG_FORMAT)."""
+    Uses API logging settings (OPENPRINTS_API_LOG_* and OPENPRINTS_LOG_FORMAT)."""
     cli = CliOverrides(
         config_path=getattr(args, "config", None),
         port=getattr(args, "port", None),
@@ -27,7 +27,13 @@ def run_serve(args) -> int:
         print_json({"ok": False, "errors": [{"message": "failed to load settings"}]})
         return 1
 
-    os.environ["OPENPRINTS_LOG_LEVEL"] = settings.log_level
+    os.environ["OPENPRINTS_LOG_LEVEL"] = settings.api_log_level
+    if settings.api_log_folder and settings.api_log_base_name:
+        os.environ["OPENPRINTS_LOG_FOLDER"] = settings.api_log_folder
+        os.environ["OPENPRINTS_LOG_BASE_NAME"] = settings.api_log_base_name
+    else:
+        os.environ.pop("OPENPRINTS_LOG_FOLDER", None)
+        os.environ.pop("OPENPRINTS_LOG_BASE_NAME", None)
     configure_logging()
 
     # Route uvicorn loggers through our root handler (no duplicate format)
@@ -48,9 +54,9 @@ def run_serve(args) -> int:
         "disable_existing_loggers": False,
         "incremental": True,
         "loggers": {
-            "uvicorn": {"level": settings.log_level, "propagate": True},
-            "uvicorn.error": {"level": settings.log_level, "propagate": True},
-            "uvicorn.access": {"level": settings.log_level, "propagate": True},
+            "uvicorn": {"level": settings.api_log_level, "propagate": True},
+            "uvicorn.error": {"level": settings.api_log_level, "propagate": True},
+            "uvicorn.access": {"level": settings.api_log_level, "propagate": True},
         },
     }
 

@@ -159,6 +159,29 @@ def test_index_config_log_level_applies_when_env_missing(tmp_path, monkeypatch) 
     assert index_cmd.os.environ.get("OPENPRINTS_LOG_LEVEL") == "INFO"
 
 
+def test_index_config_log_file_target_applies_when_env_missing(tmp_path, monkeypatch) -> None:
+    config_path = tmp_path / "openprints.toml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "[indexer]",
+                f"log_folder = '{tmp_path.as_posix()}'",
+                "log_base_name = 'indexer'",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.delenv("OPENPRINTS_LOG_FOLDER", raising=False)
+    monkeypatch.delenv("OPENPRINTS_LOG_BASE_NAME", raising=False)
+    _patch_runtime(monkeypatch)
+
+    result = index_cmd.run_index(_args(config=str(config_path), design_duration_s=0.01))
+
+    assert result == 0
+    assert index_cmd.os.environ.get("OPENPRINTS_LOG_FOLDER") == tmp_path.as_posix()
+    assert index_cmd.os.environ.get("OPENPRINTS_LOG_BASE_NAME") == "indexer"
+
+
 def test_index_returns_1_when_config_file_not_found(capsys) -> None:
     result = index_cmd.run_index(_args(config="/nonexistent/config.toml"))
     assert result == 1

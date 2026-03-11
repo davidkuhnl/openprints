@@ -51,6 +51,8 @@ class IndexerConfig(BaseModel):
     design_max_retries: StrictInt = 12
     design_duration_s: StrictFloat = 0.0
     log_level: _LOG_LEVEL = "WARNING"
+    log_folder: str | None = None
+    log_base_name: str | None = None
     # Identity indexer: kind-0 profile fetch batch and refresh cadence
     identity_batch_size: StrictInt = 100
     identity_stale_after_s: StrictInt = 24 * 60 * 60
@@ -65,6 +67,16 @@ class IndexerConfig(BaseModel):
         if isinstance(v, str):
             return v.strip().upper()
         raise ValueError("log_level must be a string")
+
+    @field_validator("log_folder", "log_base_name", mode="before")
+    @classmethod
+    def normalize_optional_string(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            value = v.strip()
+            return value or None
+        raise ValueError("value must be a string")
 
     @field_validator("relays", mode="before")
     @classmethod
@@ -86,6 +98,28 @@ class ApiConfig(BaseModel):
     """API server settings."""
 
     api_port: StrictInt = 8080
+    log_level: _LOG_LEVEL = "WARNING"
+    log_folder: str | None = None
+    log_base_name: str | None = None
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def uppercase_log_level(cls, v: object) -> str:
+        if v is None:
+            return "WARNING"
+        if isinstance(v, str):
+            return v.strip().upper()
+        raise ValueError("log_level must be a string")
+
+    @field_validator("log_folder", "log_base_name", mode="before")
+    @classmethod
+    def normalize_optional_string(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            value = v.strip()
+            return value or None
+        raise ValueError("value must be a string")
 
 
 class AppConfig(BaseModel):

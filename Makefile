@@ -1,4 +1,4 @@
-.PHONY: help setup setup-fast format lint lint-fix test check relay-up relay-down relay-down-wipe relay-logs relay-test-up relay-test-ws relay-check test-drive cli cli-build-design cli-build-identity cli-sign cli-publish-design cli-publish-identity cli-subscribe cli-index cli-index-kill cli-serve cli-serve-kill cli-db-stats cli-db-wipe cli-hash cli-hash-stdin cli-keygen api client-deploy
+.PHONY: help setup setup-fast format lint lint-fix test check relay-up relay-down relay-down-wipe relay-logs relay-test-up relay-test-ws relay-check test-drive cli cli-build-design cli-build-identity cli-sign cli-publish-design cli-publish-identity cli-subscribe cli-index cli-index-kill cli-serve cli-serve-kill cli-watchdog-index cli-watchdog-serve cli-db-stats cli-db-wipe cli-hash cli-hash-stdin cli-keygen api client-deploy
 
 INDEXER_DIR := apps/indexer
 CLIENT_DIR := apps/client
@@ -29,6 +29,12 @@ DESIGN_QUEUE_MAXSIZE ?=
 DESIGN_TIMEOUT_S ?=
 DESIGN_MAX_RETRIES ?=
 DESIGN_DURATION_S ?=
+WATCHDOG_MAX_RESTARTS ?= 5
+WATCHDOG_BACKOFF_INITIAL_S ?= 1.0
+WATCHDOG_BACKOFF_MAX_S ?= 30.0
+WATCHDOG_POLL_INTERVAL_S ?= 1.0
+WATCHDOG_LOG_LEVEL ?= INFO
+WATCHDOG_CHILD_ARGS ?=
 
 help:
 	@echo "Available targets:"
@@ -58,6 +64,8 @@ help:
 	@echo "  make cli-index-kill - kill running openprints-cli index process(es)"
 	@echo "  make cli-serve      - run OpenPrints HTTP API (INDEX_CONFIG, OPENPRINTS_API_PORT default 8080)"
 	@echo "  make cli-serve-kill - kill running openprints-cli serve process(es)"
+	@echo "  make cli-watchdog-index - supervise openprints-cli index with restart/backoff"
+	@echo "  make cli-watchdog-serve - supervise openprints-cli serve with restart/backoff"
 	@echo "  make api            - same as cli-serve (alias)"
 	@echo "  make cli-db-stats   - print indexer DB stats and latest designs (INDEX_CONFIG)"
 	@echo "  make cli-db-wipe    - wipe indexer SQLite database (requires --force; use INDEX_CONFIG for config path)"
@@ -153,6 +161,12 @@ cli-serve-kill:
 	else \
 		echo "No openprints-cli serve process is running."; \
 	fi
+
+cli-watchdog-index:
+	@cd $(INDEXER_DIR) && CMD="uv run openprints-cli watchdog --mode index --max-restarts \"$(WATCHDOG_MAX_RESTARTS)\" --backoff-initial-s \"$(WATCHDOG_BACKOFF_INITIAL_S)\" --backoff-max-s \"$(WATCHDOG_BACKOFF_MAX_S)\" --poll-interval-s \"$(WATCHDOG_POLL_INTERVAL_S)\" --log-level \"$(WATCHDOG_LOG_LEVEL)\"" ; if [ -n "$(INDEX_CONFIG)" ]; then CMD="$$CMD --config \"$(INDEX_CONFIG)\""; fi ; if [ -n "$(WATCHDOG_CHILD_ARGS)" ]; then CMD="$$CMD -- $(WATCHDOG_CHILD_ARGS)"; fi ; eval "$$CMD"
+
+cli-watchdog-serve:
+	@cd $(INDEXER_DIR) && CMD="uv run openprints-cli watchdog --mode serve --max-restarts \"$(WATCHDOG_MAX_RESTARTS)\" --backoff-initial-s \"$(WATCHDOG_BACKOFF_INITIAL_S)\" --backoff-max-s \"$(WATCHDOG_BACKOFF_MAX_S)\" --poll-interval-s \"$(WATCHDOG_POLL_INTERVAL_S)\" --log-level \"$(WATCHDOG_LOG_LEVEL)\"" ; if [ -n "$(INDEX_CONFIG)" ]; then CMD="$$CMD --config \"$(INDEX_CONFIG)\""; fi ; if [ -n "$(WATCHDOG_CHILD_ARGS)" ]; then CMD="$$CMD -- $(WATCHDOG_CHILD_ARGS)"; fi ; eval "$$CMD"
 
 api: cli-serve
 

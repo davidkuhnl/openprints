@@ -11,6 +11,7 @@ from .commands.publish import run_publish
 from .commands.serve import run_serve
 from .commands.sign import run_sign
 from .commands.subscribe import run_subscribe
+from .commands.watchdog_runner import run_watchdog
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -277,8 +278,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     serve_parser.add_argument(
         "--log-level",
-        default="info",
-        help="Uvicorn log level (default: info).",
+        default=None,
+        help="API log level override (falls back to env/config/default).",
     )
     serve_parser.set_defaults(func=run_serve)
 
@@ -339,6 +340,61 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Environment variable name used with --env output.",
     )
     keygen_parser.set_defaults(func=run_keygen)
+
+    watchdog_parser = subparsers.add_parser(
+        "watchdog",
+        help="Run index or serve as a supervised child with restart/backoff.",
+    )
+    watchdog_parser.add_argument(
+        "--mode",
+        choices=("index", "serve"),
+        required=True,
+        help="Child process mode to supervise.",
+    )
+    watchdog_parser.add_argument(
+        "--config",
+        default=None,
+        help="Optional path to OpenPrints TOML config passed to the child process.",
+    )
+    watchdog_parser.add_argument(
+        "--max-restarts",
+        type=int,
+        default=5,
+        dest="max_restarts",
+        help="Maximum restart attempts after child exits (default: 5).",
+    )
+    watchdog_parser.add_argument(
+        "--backoff-initial-s",
+        type=float,
+        default=1.0,
+        dest="backoff_initial_s",
+        help="Initial restart backoff seconds (default: 1.0).",
+    )
+    watchdog_parser.add_argument(
+        "--backoff-max-s",
+        type=float,
+        default=30.0,
+        dest="backoff_max_s",
+        help="Maximum restart backoff seconds (default: 30.0).",
+    )
+    watchdog_parser.add_argument(
+        "--poll-interval-s",
+        type=float,
+        default=1.0,
+        dest="poll_interval_s",
+        help="PID check interval in seconds (default: 1.0).",
+    )
+    watchdog_parser.add_argument(
+        "--log-level",
+        default="INFO",
+        help="Watchdog console log level (default: INFO).",
+    )
+    watchdog_parser.add_argument(
+        "child_args",
+        nargs=argparse.REMAINDER,
+        help="Additional arguments for child command (use `--` before child args).",
+    )
+    watchdog_parser.set_defaults(func=run_watchdog)
 
     return parser
 

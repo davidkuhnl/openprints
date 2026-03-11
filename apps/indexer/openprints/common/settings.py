@@ -13,6 +13,11 @@ ENV_DATABASE_PATH = "OPENPRINTS_INDEX_DATABASE_PATH"
 ENV_RELAY_URLS = "OPENPRINTS_RELAY_URLS"
 ENV_API_PORT = "OPENPRINTS_API_PORT"
 ENV_LOG_LEVEL = "OPENPRINTS_LOG_LEVEL"
+ENV_LOG_FOLDER = "OPENPRINTS_LOG_FOLDER"
+ENV_LOG_BASE_NAME = "OPENPRINTS_LOG_BASE_NAME"
+ENV_API_LOG_LEVEL = "OPENPRINTS_API_LOG_LEVEL"
+ENV_API_LOG_FOLDER = "OPENPRINTS_API_LOG_FOLDER"
+ENV_API_LOG_BASE_NAME = "OPENPRINTS_API_LOG_BASE_NAME"
 ENV_DESIGN_KIND = "OPENPRINTS_DESIGN_KIND"
 ENV_DESIGN_QUEUE_MAXSIZE = "OPENPRINTS_DESIGN_QUEUE_MAXSIZE"
 ENV_DESIGN_TIMEOUT_S = "OPENPRINTS_DESIGN_TIMEOUT_S"
@@ -37,6 +42,11 @@ class RuntimeSettings:
     api_port: int
     api_host: str
     log_level: str
+    log_folder: str | None
+    log_base_name: str | None
+    api_log_level: str
+    api_log_folder: str | None
+    api_log_base_name: str | None
     design_kind: int
     design_queue_maxsize: int
     design_timeout_s: float
@@ -91,7 +101,28 @@ def build_runtime_settings(
 
     api_port = _resolve_api_port(cli, env, config)
     api_host = _resolve_api_host(cli)
-    log_level = _resolve_log_level(cli, env, config)
+    log_level = _resolve_indexer_log_level(cli, env, config)
+    log_folder, log_base_name, log_target_error = _resolve_log_target(
+        env,
+        folder_env_name=ENV_LOG_FOLDER,
+        base_name_env_name=ENV_LOG_BASE_NAME,
+        folder_config_value=config.indexer.log_folder,
+        base_name_config_value=config.indexer.log_base_name,
+        path="indexer.log_target",
+    )
+    if log_target_error is not None:
+        return None, [log_target_error], None
+    api_log_level = _resolve_api_log_level(cli, env, config)
+    api_log_folder, api_log_base_name, api_log_target_error = _resolve_log_target(
+        env,
+        folder_env_name=ENV_API_LOG_FOLDER,
+        base_name_env_name=ENV_API_LOG_BASE_NAME,
+        folder_config_value=config.api.log_folder,
+        base_name_config_value=config.api.log_base_name,
+        path="api.log_target",
+    )
+    if api_log_target_error is not None:
+        return None, [api_log_target_error], None
 
     design_kind, kind_err = _resolve_int(
         cli.design_kind, ENV_DESIGN_KIND, config.indexer.design_kind, 33301, env, "design_kind"
@@ -154,6 +185,11 @@ def build_runtime_settings(
         api_port=api_port,
         api_host=api_host,
         log_level=log_level,
+        log_folder=log_folder,
+        log_base_name=log_base_name,
+        api_log_level=api_log_level,
+        api_log_folder=api_log_folder,
+        api_log_base_name=api_log_base_name,
         design_kind=design_kind,
         design_queue_maxsize=design_queue_maxsize,
         design_timeout_s=design_timeout_s,
@@ -222,13 +258,54 @@ def _resolve_api_host(cli: CliOverrides) -> str:
     return "0.0.0.0"
 
 
-def _resolve_log_level(cli: CliOverrides, env: Mapping[str, str], config: AppConfig) -> str:
+def _resolve_indexer_log_level(cli: CliOverrides, env: Mapping[str, str], config: AppConfig) -> str:
     if cli.log_level is not None and cli.log_level.strip():
         return cli.log_level.strip().upper()
     raw = env.get(ENV_LOG_LEVEL, "").strip()
     if raw:
         return raw.upper()
     return (config.indexer.log_level or "WARNING").upper()
+
+
+def _resolve_api_log_level(cli: CliOverrides, env: Mapping[str, str], config: AppConfig) -> str:
+    if cli.log_level is not None and cli.log_level.strip():
+        return cli.log_level.strip().upper()
+    raw_api = env.get(ENV_API_LOG_LEVEL, "").strip()
+    if raw_api:
+        return raw_api.upper()
+    raw_global = env.get(ENV_LOG_LEVEL, "").strip()
+    if raw_global:
+        return raw_global.upper()
+    if config.api.log_level:
+        return config.api.log_level.upper()
+    # Fallback to indexer log level when API-specific level is not configured.
+    return (config.indexer.log_level or "WARNING").upper()
+
+
+def _resolve_log_target(
+    env: Mapping[str, str],
+    *,
+    folder_env_name: str,
+    base_name_env_name: str,
+    folder_config_value: str | None,
+    base_name_config_value: str | None,
+    path: str,
+) -> tuple[str | None, str | None, dict[str, str] | None]:
+    folder = (env.get(folder_env_name, "").strip() or folder_config_value or "").strip() or None
+    base_name = (
+        env.get(base_name_env_name, "").strip() or base_name_config_value or ""
+    ).strip() or None
+
+    if (folder and not base_name) or (base_name and not folder):
+        return (
+            None,
+            None,
+            invalid_value(
+                path,
+                f"set both {folder_env_name} and {base_name_env_name} (or both config values)",
+            ),
+        )
+    return folder, base_name, None
 
 
 def _resolve_int(
