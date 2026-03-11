@@ -6,20 +6,190 @@ import signal
 import subprocess
 import sys
 import time
-import urllib.parse
-import urllib.request
 from argparse import Namespace
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 from openprints.common.errors import invalid_value
 from openprints.common.utils.logging import configure_logging
 from openprints.common.utils.output import print_json
+from openprints.watchdog import notifier as _telegram_notifier
+from openprints.watchdog.notifier import TelegramNotifier, build_telegram_notifier
 
 logger = logging.getLogger(__name__)
-_TELEGRAM_BOT_TOKEN = "OPENPRINTS_WATCHDOG_TELEGRAM_BOT_TOKEN"
-_TELEGRAM_CHAT_ID = "OPENPRINTS_WATCHDOG_TELEGRAM_CHAT_ID"
 _WATCHDOG_ENV_FILE = ".env.watchdog"
+
+# Backward-compatible aliases for older tests/imports.
+_TelegramNotifier = TelegramNotifier
+_build_telegram_notifier = build_telegram_notifier
+_load_env_file = _telegram_notifier._load_env_file
+_format_telegram_message = _telegram_notifier._format_telegram_message
+urllib = _telegram_notifier.urllib
+
+
+@dataclass
+class _WatchdogConfig:
+    mode: str
+    child_cmd: list[str]
+    max_restarts: int
+    backoff_initial_s: float
+    backoff_max_s: float
+    poll_interval_s: float
+    telegram: TelegramNotifier
+
+
+class _WatchdogRunner:
+    def __init__(self, config: _WatchdogConfig) -> None:
+        self._config = config
+        self._restart_attempt = 0
+        self._child: subprocess.Popen[bytes] | None = None
+        self._stop_requested = False
+        self._stop_signal: int | None = None
+        self._prev_sigint = None
+        self._prev_sigterm = None
+
+    def run(self) -> int:
+        self._prev_sigint = signal.signal(signal.SIGINT, self._on_signal)
+        self._prev_sigterm = signal.signal(signal.SIGTERM, self._on_signal)
+        try:
+            while True:
+                if self._stop_requested:
+                    return _shutdown_child(self._child)
+
+                self._start_child_process()
+                result = self._watch_child_process()
+                if result is not None:
+                    return result
+        finally:
+            signal.signal(signal.SIGINT, self._prev_sigint)
+            signal.signal(signal.SIGTERM, self._prev_sigterm)
+
+    def _on_signal(self, signum, _frame) -> None:
+        self._stop_requested = True
+        self._stop_signal = signum
+        if self._child is not None and self._child.poll() is None:
+            logger.info(
+                "watchdog_forward_signal", extra={"signal": signum, "child_pid": self._child.pid}
+            )
+            self._config.telegram.send(
+                "watchdog_forward_signal",
+                {"mode": self._config.mode, "child_pid": self._child.pid, "signal": signum},
+            )
+            self._child.terminate()
+
+    def _start_child_process(self) -> None:
+        self._child = subprocess.Popen(self._config.child_cmd)
+        logger.info(
+            "watchdog_child_started",
+            extra={
+                "mode": self._config.mode,
+                "child_pid": self._child.pid,
+                "restart_attempt": self._restart_attempt,
+                "max_restarts": self._config.max_restarts,
+            },
+        )
+        self._config.telegram.send(
+            "watchdog_child_started",
+            {
+                "mode": self._config.mode,
+                "child_pid": self._child.pid,
+                "restart_attempt": self._restart_attempt,
+                "max_restarts": self._config.max_restarts,
+            },
+        )
+
+    def _watch_child_process(self) -> int | None:
+        while True:
+            # Child is guaranteed to exist after _start_child_process in run().
+            if self._child is None:
+                return 1
+
+            exit_code = self._child.poll()
+            if exit_code is None:
+                if self._stop_requested:
+                    return _shutdown_child(self._child)
+                time.sleep(self._config.poll_interval_s)
+                continue
+
+            if self._stop_requested:
+                logger.info(
+                    "watchdog_child_stopped",
+                    extra={
+                        "mode": self._config.mode,
+                        "child_pid": self._child.pid,
+                        "exit_code": exit_code,
+                        "signal": self._stop_signal,
+                    },
+                )
+                self._config.telegram.send(
+                    "watchdog_child_stopped",
+                    {
+                        "mode": self._config.mode,
+                        "child_pid": self._child.pid,
+                        "exit_code": exit_code,
+                        "signal": self._stop_signal,
+                    },
+                )
+                return 0
+
+            level_fn = logger.info if exit_code == 0 else logger.warning
+            level_fn(
+                "watchdog_child_exited",
+                extra={
+                    "mode": self._config.mode,
+                    "child_pid": self._child.pid,
+                    "exit_code": exit_code,
+                },
+            )
+            self._config.telegram.send(
+                "watchdog_child_exited",
+                {"mode": self._config.mode, "child_pid": self._child.pid, "exit_code": exit_code},
+            )
+
+            if self._restart_attempt >= self._config.max_restarts:
+                logger.error(
+                    "watchdog_restart_limit_reached",
+                    extra={
+                        "mode": self._config.mode,
+                        "restart_attempt": self._restart_attempt,
+                        "max_restarts": self._config.max_restarts,
+                    },
+                )
+                self._config.telegram.send(
+                    "watchdog_restart_limit_reached",
+                    {
+                        "mode": self._config.mode,
+                        "restart_attempt": self._restart_attempt,
+                        "max_restarts": self._config.max_restarts,
+                    },
+                )
+                return 1
+
+            delay_s = min(
+                self._config.backoff_initial_s * (2**self._restart_attempt),
+                self._config.backoff_max_s,
+            )
+            self._restart_attempt += 1
+            logger.info(
+                "watchdog_restart_scheduled",
+                extra={
+                    "mode": self._config.mode,
+                    "restart_attempt": self._restart_attempt,
+                    "backoff_s": delay_s,
+                },
+            )
+            self._config.telegram.send(
+                "watchdog_restart_scheduled",
+                {
+                    "mode": self._config.mode,
+                    "restart_attempt": self._restart_attempt,
+                    "backoff_s": delay_s,
+                },
+            )
+            if not _sleep_with_stop(delay_s, lambda: self._stop_requested):
+                return _shutdown_child(self._child)
+            return None
 
 
 def run_watchdog(args: Namespace) -> int:
@@ -60,7 +230,7 @@ def run_watchdog(args: Namespace) -> int:
     os.environ.pop("OPENPRINTS_LOG_FOLDER", None)
     os.environ.pop("OPENPRINTS_LOG_BASE_NAME", None)
     configure_logging()
-    telegram = _build_telegram_notifier(Path.cwd() / _WATCHDOG_ENV_FILE)
+    telegram = build_telegram_notifier(Path.cwd() / _WATCHDOG_ENV_FILE)
 
     child_cmd = [sys.executable, "-m", "openprints", mode]
     config = str(getattr(args, "config", "") or "").strip()
@@ -71,127 +241,16 @@ def run_watchdog(args: Namespace) -> int:
         child_args = child_args[1:]
     child_cmd.extend(child_args)
 
-    restart_attempt = 0
-    child: subprocess.Popen[bytes] | None = None
-    stop_requested = False
-    stop_signal: int | None = None
-
-    def _on_signal(signum, _frame) -> None:
-        nonlocal stop_requested, stop_signal
-        stop_requested = True
-        stop_signal = signum
-        if child is not None and child.poll() is None:
-            logger.info("watchdog_forward_signal", extra={"signal": signum, "child_pid": child.pid})
-            telegram.send(
-                "watchdog_forward_signal",
-                {"mode": mode, "child_pid": child.pid, "signal": signum},
-            )
-            child.terminate()
-
-    prev_sigint = signal.signal(signal.SIGINT, _on_signal)
-    prev_sigterm = signal.signal(signal.SIGTERM, _on_signal)
-
-    try:
-        while True:
-            if stop_requested:
-                return _shutdown_child(child)
-
-            child = subprocess.Popen(child_cmd)
-            logger.info(
-                "watchdog_child_started",
-                extra={
-                    "mode": mode,
-                    "child_pid": child.pid,
-                    "restart_attempt": restart_attempt,
-                    "max_restarts": max_restarts,
-                },
-            )
-            telegram.send(
-                "watchdog_child_started",
-                {
-                    "mode": mode,
-                    "child_pid": child.pid,
-                    "restart_attempt": restart_attempt,
-                    "max_restarts": max_restarts,
-                },
-            )
-
-            while True:
-                exit_code = child.poll()
-                if exit_code is None:
-                    if stop_requested:
-                        return _shutdown_child(child)
-                    time.sleep(poll_interval_s)
-                    continue
-
-                if stop_requested:
-                    logger.info(
-                        "watchdog_child_stopped",
-                        extra={
-                            "mode": mode,
-                            "child_pid": child.pid,
-                            "exit_code": exit_code,
-                            "signal": stop_signal,
-                        },
-                    )
-                    telegram.send(
-                        "watchdog_child_stopped",
-                        {
-                            "mode": mode,
-                            "child_pid": child.pid,
-                            "exit_code": exit_code,
-                            "signal": stop_signal,
-                        },
-                    )
-                    return 0
-                level_fn = logger.info if exit_code == 0 else logger.warning
-                level_fn(
-                    "watchdog_child_exited",
-                    extra={"mode": mode, "child_pid": child.pid, "exit_code": exit_code},
-                )
-                telegram.send(
-                    "watchdog_child_exited",
-                    {"mode": mode, "child_pid": child.pid, "exit_code": exit_code},
-                )
-                if restart_attempt >= max_restarts:
-                    logger.error(
-                        "watchdog_restart_limit_reached",
-                        extra={
-                            "mode": mode,
-                            "restart_attempt": restart_attempt,
-                            "max_restarts": max_restarts,
-                        },
-                    )
-                    telegram.send(
-                        "watchdog_restart_limit_reached",
-                        {
-                            "mode": mode,
-                            "restart_attempt": restart_attempt,
-                            "max_restarts": max_restarts,
-                        },
-                    )
-                    return 1
-
-                delay_s = min(backoff_initial_s * (2**restart_attempt), backoff_max_s)
-                restart_attempt += 1
-                logger.info(
-                    "watchdog_restart_scheduled",
-                    extra={
-                        "mode": mode,
-                        "restart_attempt": restart_attempt,
-                        "backoff_s": delay_s,
-                    },
-                )
-                telegram.send(
-                    "watchdog_restart_scheduled",
-                    {"mode": mode, "restart_attempt": restart_attempt, "backoff_s": delay_s},
-                )
-                if not _sleep_with_stop(delay_s, lambda: stop_requested):
-                    return _shutdown_child(child)
-                break
-    finally:
-        signal.signal(signal.SIGINT, prev_sigint)
-        signal.signal(signal.SIGTERM, prev_sigterm)
+    config_obj = _WatchdogConfig(
+        mode=mode,
+        child_cmd=child_cmd,
+        max_restarts=max_restarts,
+        backoff_initial_s=backoff_initial_s,
+        backoff_max_s=backoff_max_s,
+        poll_interval_s=poll_interval_s,
+        telegram=telegram,
+    )
+    return _WatchdogRunner(config_obj).run()
 
 
 def _sleep_with_stop(duration_s: float, stop_requested: Callable[[], bool]) -> bool:
@@ -213,64 +272,3 @@ def _shutdown_child(child: subprocess.Popen[bytes] | None) -> int:
         child.kill()
         child.wait(timeout=5.0)
     return 0
-
-
-class _TelegramNotifier:
-    def __init__(self, token: str | None, chat_id: str | None) -> None:
-        self._token = (token or "").strip()
-        self._chat_id = (chat_id or "").strip()
-
-    @property
-    def enabled(self) -> bool:
-        return bool(self._token and self._chat_id)
-
-    def send(self, event: str, fields: dict[str, object]) -> None:
-        if not self.enabled:
-            return
-        text = _format_telegram_message(event, fields)
-        body = urllib.parse.urlencode({"chat_id": self._chat_id, "text": text}).encode("utf-8")
-        url = f"https://api.telegram.org/bot{self._token}/sendMessage"
-        request = urllib.request.Request(url=url, data=body, method="POST")
-        try:
-            with urllib.request.urlopen(request, timeout=5):
-                return
-        except Exception as exc:
-            logger.warning(
-                "watchdog_telegram_send_failed", extra={"error": str(exc), "event": event}
-            )
-
-
-def _build_telegram_notifier(env_path: Path) -> _TelegramNotifier:
-    env_file_values = _load_env_file(env_path)
-    token = env_file_values.get(_TELEGRAM_BOT_TOKEN) or os.environ.get(_TELEGRAM_BOT_TOKEN)
-    chat_id = env_file_values.get(_TELEGRAM_CHAT_ID) or os.environ.get(_TELEGRAM_CHAT_ID)
-    notifier = _TelegramNotifier(token=token, chat_id=chat_id)
-    if notifier.enabled:
-        logger.info("watchdog_telegram_enabled", extra={"env_file": str(env_path)})
-    else:
-        logger.info(
-            "watchdog_telegram_disabled",
-            extra={"env_file": str(env_path), "reason": "missing_token_or_chat_id"},
-        )
-    return notifier
-
-
-def _load_env_file(path: Path) -> dict[str, str]:
-    if not path.exists():
-        return {}
-    values: dict[str, str] = {}
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        key = key.strip()
-        if not key:
-            continue
-        values[key] = value.strip().strip("'").strip('"')
-    return values
-
-
-def _format_telegram_message(event: str, fields: dict[str, object]) -> str:
-    details = " ".join(f"{key}={value}" for key, value in sorted(fields.items()))
-    return f"openprints_watchdog {event} {details}".strip()
