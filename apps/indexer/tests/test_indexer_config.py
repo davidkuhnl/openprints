@@ -104,7 +104,7 @@ def test_load_app_config_database_and_api_sections(tmp_path) -> None:
     config_file.write_text(
         '[database]\ndatabase_path = "openprints.db"\n'
         '[indexer]\nrelays = ["ws://r:7447"]\ndesign_kind = 33301\n'
-        "[api]\napi_port = 9000\n",
+        '[api]\napi_port = 9000\nlog_level = "INFO"\n',
         encoding="utf-8",
     )
     config, errors, path = load_app_config(str(config_file))
@@ -113,6 +113,7 @@ def test_load_app_config_database_and_api_sections(tmp_path) -> None:
     assert config.database.database_path == "openprints.db"
     assert config.indexer.relays == ["ws://r:7447"]
     assert config.api.api_port == 9000
+    assert config.api.log_level == "INFO"
     assert path is not None
 
 
@@ -145,3 +146,67 @@ def test_resolve_database_path_log_none(monkeypatch, tmp_path) -> None:
     assert errors == []
     assert settings is not None
     assert settings.database_path is None
+
+
+def test_resolve_log_target_from_config(monkeypatch, tmp_path) -> None:
+    monkeypatch.delenv("OPENPRINTS_LOG_FOLDER", raising=False)
+    monkeypatch.delenv("OPENPRINTS_LOG_BASE_NAME", raising=False)
+    config_file = tmp_path / "logs.toml"
+    config_file.write_text(
+        '[indexer]\nlog_folder = "logs"\nlog_base_name = "indexer"\n',
+        encoding="utf-8",
+    )
+    settings, errors, _ = build_runtime_settings(config_path=str(config_file))
+    assert errors == []
+    assert settings is not None
+    assert settings.log_folder == "logs"
+    assert settings.log_base_name == "indexer"
+
+
+def test_resolve_log_target_from_env(monkeypatch, tmp_path) -> None:
+    config_file = tmp_path / "logs.toml"
+    config_file.write_text("[indexer]\n", encoding="utf-8")
+    monkeypatch.setenv("OPENPRINTS_LOG_FOLDER", "env-logs")
+    monkeypatch.setenv("OPENPRINTS_LOG_BASE_NAME", "env-indexer")
+    settings, errors, _ = build_runtime_settings(config_path=str(config_file))
+    assert errors == []
+    assert settings is not None
+    assert settings.log_folder == "env-logs"
+    assert settings.log_base_name == "env-indexer"
+
+
+def test_resolve_log_target_requires_both_values(monkeypatch, tmp_path) -> None:
+    config_file = tmp_path / "logs.toml"
+    config_file.write_text('[indexer]\nlog_folder = "logs"\n', encoding="utf-8")
+    monkeypatch.delenv("OPENPRINTS_LOG_FOLDER", raising=False)
+    monkeypatch.delenv("OPENPRINTS_LOG_BASE_NAME", raising=False)
+    settings, errors, _ = build_runtime_settings(config_path=str(config_file))
+    assert settings is None
+    assert len(errors) == 1
+    assert "OPENPRINTS_LOG_FOLDER" in errors[0].get("message", "")
+
+
+def test_resolve_api_log_target_from_config(monkeypatch, tmp_path) -> None:
+    monkeypatch.delenv("OPENPRINTS_API_LOG_FOLDER", raising=False)
+    monkeypatch.delenv("OPENPRINTS_API_LOG_BASE_NAME", raising=False)
+    config_file = tmp_path / "logs.toml"
+    config_file.write_text(
+        '[api]\nlog_folder = "api-logs"\nlog_base_name = "api"\n',
+        encoding="utf-8",
+    )
+    settings, errors, _ = build_runtime_settings(config_path=str(config_file))
+    assert errors == []
+    assert settings is not None
+    assert settings.api_log_folder == "api-logs"
+    assert settings.api_log_base_name == "api"
+
+
+def test_resolve_api_log_target_requires_both_values(monkeypatch, tmp_path) -> None:
+    config_file = tmp_path / "logs.toml"
+    config_file.write_text('[api]\nlog_folder = "api-logs"\n', encoding="utf-8")
+    monkeypatch.delenv("OPENPRINTS_API_LOG_FOLDER", raising=False)
+    monkeypatch.delenv("OPENPRINTS_API_LOG_BASE_NAME", raising=False)
+    settings, errors, _ = build_runtime_settings(config_path=str(config_file))
+    assert settings is None
+    assert len(errors) == 1
+    assert "OPENPRINTS_API_LOG_FOLDER" in errors[0].get("message", "")

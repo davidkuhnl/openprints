@@ -57,6 +57,12 @@ def run_index(args: Namespace) -> int:
         return 1
 
     os.environ["OPENPRINTS_LOG_LEVEL"] = settings.log_level
+    if settings.log_folder and settings.log_base_name:
+        os.environ["OPENPRINTS_LOG_FOLDER"] = settings.log_folder
+        os.environ["OPENPRINTS_LOG_BASE_NAME"] = settings.log_base_name
+    else:
+        os.environ.pop("OPENPRINTS_LOG_FOLDER", None)
+        os.environ.pop("OPENPRINTS_LOG_BASE_NAME", None)
     configure_logging()
 
     database_path = settings.database_path

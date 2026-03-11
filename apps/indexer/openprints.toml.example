@@ -16,6 +16,10 @@ design_timeout_s = 8.0
 design_max_retries = 12
 design_duration_s = 0.0
 log_level = "WARNING"
+# Optional file logging (set both values to enable):
+# When enabled, logs go to file (not console).
+# log_folder = "logs"
+# log_base_name = "indexer"
 
 # Identity indexer (kind-0 profile fetch). Omit to use defaults.
 # identity_batch_size = 100
@@ -27,3 +31,8 @@ log_level = "WARNING"
 [api]
 # Optional API port for `openprints serve` (default 8080). Env: OPENPRINTS_API_PORT
 # api_port = 8080
+# Optional API logging (independent from [indexer]):
+# When enabled, logs go to file (not console).
+# log_level = "INFO"
+# log_folder = "logs"
+# log_base_name = "api"

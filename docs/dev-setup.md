@@ -229,6 +229,9 @@ Indexer pipeline (multi-relay, SQLite optional):
   - `INDEX_CONFIG` (optional config path; defaults to `apps/indexer/openprints.toml`)
   - Design indexer: `DESIGN_KIND` (default `33301`), `DESIGN_QUEUE_MAXSIZE` (default `1000`), `DESIGN_TIMEOUT_S` (seconds, default `8.0`), `DESIGN_MAX_RETRIES` (default `12`, use `0` for infinite retry loop), `DESIGN_DURATION_S` in seconds (default `0`, run until interrupted). Env equivalents: `OPENPRINTS_DESIGN_KIND`, `OPENPRINTS_DESIGN_QUEUE_MAXSIZE`, `OPENPRINTS_DESIGN_TIMEOUT_S`, `OPENPRINTS_DESIGN_MAX_RETRIES`, `OPENPRINTS_DESIGN_DURATION_S`.
   - `log_level` in config (`CRITICAL|ERROR|WARNING|INFO|DEBUG`)
+  - Optional indexer file logging: set both `indexer.log_folder` and `indexer.log_base_name` in config (or `OPENPRINTS_LOG_FOLDER` and `OPENPRINTS_LOG_BASE_NAME` in env). Files rotate at the top of each hour and are named `<base>-<pid>-<from-hour>-<to-hour>.log`. When file logging is enabled, indexer logs do not go to console.
+  - API (`openprints serve`) logging is independent: use `api.log_level`, `api.log_folder`, `api.log_base_name` (or env `OPENPRINTS_API_LOG_LEVEL`, `OPENPRINTS_API_LOG_FOLDER`, `OPENPRINTS_API_LOG_BASE_NAME`). When API file logging is enabled, API logs do not go to console.
+  - Watchdog Telegram reporting: create `apps/indexer/.env.watchdog` from `apps/indexer/.env.watchdog.example` and set `OPENPRINTS_WATCHDOG_TELEGRAM_BOT_TOKEN` + `OPENPRINTS_WATCHDOG_TELEGRAM_CHAT_ID`. Watchdog sends lifecycle/restart events to Telegram when both are present.
 - Precedence for each setting: CLI flag/Make variable -> env var -> config file -> built-in default.
 - Logging level precedence: `OPENPRINTS_LOG_LEVEL` env var overrides config `log_level`.
 
