@@ -25,11 +25,13 @@ type IdentityCacheEntry = {
 };
 
 type CacheSource = "none" | "memory" | "storage" | "backend";
+type SignerStatus = "checking" | "confirmed" | "timed_out";
 
 export type IdentitySnapshot = {
   pubkey: string | null;
   identity: IdentityRecord | null;
   authoritative: boolean;
+  signerStatus: SignerStatus;
   source: CacheSource;
   refreshing: boolean;
   updatedAt: number | null;
@@ -62,6 +64,7 @@ const STORAGE_LAST_PUBKEY_KEY = "openprints:lastPubkey";
 const MEMORY_TTL_MS = 45_000;
 const STORAGE_TTL_MS = 4 * 60_000;
 const SIGNER_TIMEOUT_MS = 1_800;
+const SIGNER_GIVE_UP_MS = 10_000;
 const MIN_RECONCILE_GAP_MS = 1_200;
 const SIGNER_RECONCILE_INTERVAL_MS = 5_000;
 
@@ -76,6 +79,8 @@ let lastReconcileAt = 0;
 let activePubkey: string | null = null;
 let activeAuthoritative = false;
 let activeRefreshing = false;
+let signerStatus: SignerStatus = "checking";
+let signerWaitStartedAt: number | null = null;
 
 const normalizePubkey = (value: string | null | undefined): string =>
   typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -102,6 +107,7 @@ const getSnapshotForPubkey = (pubkey: string | null): IdentitySnapshot => {
       pubkey: null,
       identity: null,
       authoritative: false,
+      signerStatus,
       source: "none",
       refreshing: activeRefreshing,
       updatedAt: null,
@@ -113,6 +119,7 @@ const getSnapshotForPubkey = (pubkey: string | null): IdentitySnapshot => {
     pubkey,
     identity: memoryEntry?.notFound ? null : (memoryEntry?.identity ?? null),
     authoritative: activeAuthoritative && activePubkey === pubkey,
+    signerStatus,
     source: memoryEntry?.source ?? "none",
     refreshing: activeRefreshing,
     updatedAt: memoryEntry?.fetchedAt ?? null,
@@ -140,6 +147,14 @@ const emitCurrentIdentityEvent = (snapshot: IdentitySnapshot) => {
       detail: snapshot,
     }),
   );
+};
+
+const setSignerStatus = (nextStatus: SignerStatus) => {
+  if (signerStatus === nextStatus) return;
+  signerStatus = nextStatus;
+  const snapshot = getSnapshotForPubkey(activePubkey);
+  emitSnapshot(activePubkey);
+  emitCurrentIdentityEvent(snapshot);
 };
 
 const readLastPubkeyFromStorage = (): string | null => {
@@ -220,6 +235,13 @@ const writeMemoryIdentity = (
 const setActivePubkey = (pubkey: string | null, authoritative: boolean) => {
   activePubkey = pubkey;
   activeAuthoritative = authoritative && Boolean(pubkey);
+  if (activeAuthoritative) {
+    signerWaitStartedAt = null;
+    signerStatus = "confirmed";
+  } else if (!activePubkey) {
+    signerWaitStartedAt = null;
+    signerStatus = "checking";
+  }
   const snapshot = getSnapshotForPubkey(activePubkey);
   emitSnapshot(activePubkey);
   emitCurrentIdentityEvent(snapshot);
@@ -371,6 +393,20 @@ const reconcileWithSigner = async (
     const signerPubkey = await resolveSignerPubkey();
 
     if (!signerPubkey) {
+      if (activePubkey && !activeAuthoritative) {
+        if (signerWaitStartedAt === null) {
+          signerWaitStartedAt = Date.now();
+        }
+        const elapsed = Date.now() - signerWaitStartedAt;
+        if (elapsed >= SIGNER_GIVE_UP_MS) {
+          setSignerStatus("timed_out");
+        } else {
+          setSignerStatus("checking");
+        }
+      } else {
+        setSignerStatus("checking");
+      }
+
       // Keep cached bootstrap state when signer is temporarily unavailable.
       // This avoids visual thrash from pubkey-seeded fallback -> unknown fallback.
       if (neutralOnMissingSigner && !activePubkey) {
@@ -382,6 +418,7 @@ const reconcileWithSigner = async (
     const switchedPubkey = signerPubkey !== activePubkey;
     writeLastPubkeyToStorage(signerPubkey);
     setActivePubkey(signerPubkey, true);
+    setSignerStatus("confirmed");
     ensureCachedIdentityForPubkey(signerPubkey);
     emitSnapshot(signerPubkey);
     emitCurrentIdentityEvent(getSnapshotForPubkey(signerPubkey));

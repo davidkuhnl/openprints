@@ -26,6 +26,7 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
   data-default-fallback={defaultFallbackSrc}
   data-loading="false"
   data-booting="true"
+  data-timeout="false"
 >
   <span class="profile-avatar-shell relative inline-flex h-8 w-8 box-border items-center justify-center rounded-full border border-default/60 bg-default p-px">
     <span class="relative inline-flex h-full w-full overflow-hidden rounded-full">
@@ -196,6 +197,7 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
       pubkey: string | null,
       identity: IdentityRecord | null,
       authoritative: boolean,
+      signerStatus: IdentitySnapshot["signerStatus"],
     ) => {
       if (!pubkey) {
         root.href = "/app/profile";
@@ -210,18 +212,36 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
         identity?.display_name ||
         identity?.name ||
         "Profile";
-      root.title = authoritative ? displayName : `${displayName} (checking signer)`;
+      if (authoritative) {
+        root.title = displayName;
+      } else if (signerStatus === "timed_out") {
+        root.title = `${displayName} (signer timeout - click to open profile)`;
+      } else {
+        root.title = `${displayName} (checking signer)`;
+      }
       root.setAttribute(
         "aria-label",
         authoritative
           ? `Open profile (${displayName})`
-          : `Open profile (${displayName}, checking signer)`,
+          : signerStatus === "timed_out"
+            ? `Open profile (${displayName}, signer timeout)`
+            : `Open profile (${displayName}, checking signer)`,
       );
     };
 
     const applySnapshot = (snapshot: IdentitySnapshot, requestId: number) => {
-      applyIdentity(snapshot.pubkey, snapshot.identity, snapshot.authoritative);
-      const shouldPulse = Boolean(snapshot.pubkey) && (!snapshot.authoritative || snapshot.refreshing);
+      applyIdentity(
+        snapshot.pubkey,
+        snapshot.identity,
+        snapshot.authoritative,
+        snapshot.signerStatus,
+      );
+      const isProvisional = Boolean(snapshot.pubkey) && !snapshot.authoritative;
+      const shouldPulse =
+        snapshot.refreshing ||
+        (isProvisional && snapshot.signerStatus === "checking");
+      const showTimeoutHalo = isProvisional && snapshot.signerStatus === "timed_out";
+      root.setAttribute("data-timeout", showTimeoutHalo ? "true" : "false");
 
       if (!snapshot.pubkey) {
         showFallbackWithSeed("");
@@ -294,6 +314,12 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
 
   [data-app-profile-link][data-loading="true"] .profile-avatar-shell::after {
     opacity: 1;
+  }
+
+  [data-app-profile-link][data-timeout="true"] .profile-avatar-shell::after {
+    opacity: 1;
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.42);
   }
 
   @keyframes profileAvatarPulseHalo {
