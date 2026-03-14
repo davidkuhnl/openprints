@@ -42,7 +42,11 @@ export const prerender = false;
   </div>
 
   <script>
-    import { initializeNostrSignerFlow } from "~/lib/nostr-signer-flow";
+    import {
+      startIdentityStore,
+      subscribeToCurrentIdentity,
+      type IdentitySnapshot,
+    } from "~/lib/identity-store";
 
     (function () {
       const missingEl = document.getElementById("nostr-missing");
@@ -54,9 +58,27 @@ export const prerender = false;
         okEl.classList.remove("hidden");
       };
 
-      initializeNostrSignerFlow({
-        onSignerAvailable: showWizard,
+      const showMissing = () => {
+        missingEl.classList.remove("hidden");
+        okEl.classList.add("hidden");
+      };
+
+      startIdentityStore();
+      const unsubscribe = subscribeToCurrentIdentity((snapshot: IdentitySnapshot) => {
+        if (snapshot.pubkey && snapshot.authoritative) {
+          showWizard();
+          return;
+        }
+        showMissing();
       });
+
+      window.addEventListener(
+        "beforeunload",
+        () => {
+          unsubscribe();
+        },
+        { once: true },
+      );
     })();
   </script>
 </AppLayout>

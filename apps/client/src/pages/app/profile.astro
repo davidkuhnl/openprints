@@ -127,7 +127,11 @@ if (profileIdentityId) {
   </div>
 
   <script>
-    import { initializeNostrSignerFlow } from "~/lib/nostr-signer-flow";
+    import {
+      startIdentityStore,
+      subscribeToCurrentIdentity,
+      type IdentitySnapshot,
+    } from "~/lib/identity-store";
 
     (function () {
       const missingEl = document.getElementById("nostr-missing");
@@ -162,13 +166,22 @@ if (profileIdentityId) {
 
       showMissing();
 
-      initializeNostrSignerFlow({
-        useCachedPubkey: true,
-        onSignerAvailable: showProfile,
-        onSignerMissingTimeout: showMissing,
-        onPubkeyResolved: routeToProfileIdentity,
-        onPubkeyUnavailable: showMissing,
+      startIdentityStore();
+      const unsubscribe = subscribeToCurrentIdentity((snapshot: IdentitySnapshot) => {
+        if (!snapshot.pubkey || !snapshot.authoritative) {
+          showMissing();
+          return;
+        }
+        routeToProfileIdentity(snapshot.pubkey);
       });
+
+      window.addEventListener(
+        "beforeunload",
+        () => {
+          unsubscribe();
+        },
+        { once: true },
+      );
     })();
   </script>
 </AppLayout>

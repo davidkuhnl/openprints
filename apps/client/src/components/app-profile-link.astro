@@ -50,26 +50,15 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
 </a>
 
 <script>
-  import { initializeNostrSignerFlow } from "~/lib/nostr-signer-flow";
+  import {
+    getCurrentIdentity,
+    startIdentityStore,
+    subscribeToCurrentIdentity,
+    type IdentityRecord,
+    type IdentitySnapshot,
+  } from "~/lib/identity-store";
   import { createAvatar } from "@dicebear/core";
   import { rings } from "@dicebear/collection";
-
-  type IdentityResponse = {
-    display_name_resolved?: string | null;
-    display_name?: string | null;
-    name?: string | null;
-    picture?: string | null;
-  };
-
-  type CachedProfileIdentity = {
-    pubkey: string;
-    display_name_resolved?: string | null;
-    display_name?: string | null;
-    name?: string | null;
-    picture?: string | null;
-    not_found?: boolean;
-    cached_at: number;
-  };
 
   type AvatarMode = "fallback" | "picture";
 
@@ -79,65 +68,31 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
   } else {
     root.dataset.initialized = "true";
 
-    const apiBase = (root.getAttribute("data-api-base") ?? "").trim();
     const defaultFallback = root.getAttribute("data-default-fallback") ?? "";
     const fallbackEl = root.querySelector<HTMLImageElement>("[data-profile-fallback]");
     const pictureEl = root.querySelector<HTMLImageElement>("[data-profile-picture]");
 
-    const CACHE_LAST_PUBKEY_KEY = "openprints:profile-link:last-pubkey";
-    const CACHE_IDENTITY_PREFIX = "openprints:profile-link:identity:";
-    const SIGNER_DIRECT_TIMEOUT_MS = 1800;
-    const CACHE_REVALIDATE_MS = 45000;
-    const RECONCILE_MIN_GAP_MS = 1500;
-    const LOG_PREFIX = "[app-profile-link]";
-
-    let activePubkey = "";
     let activeRequestId = 0;
     let activePictureUrl = "";
     let activeFallbackSrc = "";
     let currentMode: AvatarMode | null = null;
     let hasRevealedInitialState = false;
-    let reconcileInFlight = false;
-    let lastReconcileAt = 0;
-    let directSignerAttempted = false;
-    let flowResolvedOnce = false;
-
-    const debug = (message: string, data?: unknown) => {
-      if (typeof data === "undefined") {
-        console.debug(LOG_PREFIX, message);
-      } else {
-        console.debug(LOG_PREFIX, message, data);
-      }
-    };
-
-    const warn = (message: string, data?: unknown) => {
-      if (typeof data === "undefined") {
-        console.warn(LOG_PREFIX, message);
-      } else {
-        console.warn(LOG_PREFIX, message, data);
-      }
-    };
-
-    const normalizePubkey = (value: string): string => value.trim().toLowerCase();
 
     const setLoading = (isLoading: boolean) => {
       const next = isLoading ? "true" : "false";
       if (root.getAttribute("data-loading") === next) return;
       root.setAttribute("data-loading", next);
-      debug("setLoading", { isLoading });
     };
 
     const setBooting = (isBooting: boolean) => {
       const next = isBooting ? "true" : "false";
       if (root.getAttribute("data-booting") === next) return;
       root.setAttribute("data-booting", next);
-      debug("setBooting", { isBooting });
     };
 
     const revealOnce = () => {
       if (hasRevealedInitialState) return;
       hasRevealedInitialState = true;
-      debug("revealOnce");
       setBooting(false);
     };
 
@@ -186,10 +141,6 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
       if (pictureEl && pictureEl.src) {
         pictureEl.src = "";
       }
-      debug("showFallbackWithSeed", {
-        hasSeed: Boolean(seed),
-        seedPreview: seed ? `${seed.slice(0, 8)}...${seed.slice(-6)}` : null,
-      });
       transitionToMode("fallback");
       setLoading(false);
     };
@@ -205,10 +156,6 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
 
     const showPicture = async (pictureUrl: string, requestId: number, fallbackSeed: string) => {
       if (!pictureEl) return;
-      debug("showPicture preload start", {
-        requestId,
-        pictureUrlPreview: pictureUrl.slice(0, 48),
-      });
 
       try {
         await preloadImage(pictureUrl);
@@ -220,10 +167,8 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
         ensureFallbackSrc(fallbackSeed ? fallbackAvatarSrc(fallbackSeed) : defaultFallback);
         transitionToMode("picture");
         setLoading(false);
-        debug("showPicture preload success", { requestId });
       } catch {
         if (requestId !== activeRequestId) return;
-        warn("showPicture preload failed", { requestId });
         showFallbackWithSeed(fallbackSeed);
       }
     };
@@ -234,431 +179,77 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
       ensureFallbackSrc(fallbackSeed ? fallbackAvatarSrc(fallbackSeed) : defaultFallback);
       transitionToMode("picture");
       setLoading(false);
-      debug("showPictureImmediateIfAlreadyActive");
       return true;
     };
 
-    const applyIdentity = (pubkey: string, identity: IdentityResponse | null) => {
-      activePubkey = pubkey;
+    const applyIdentity = (
+      pubkey: string | null,
+      identity: IdentityRecord | null,
+      authoritative: boolean,
+    ) => {
+      if (!pubkey) {
+        root.href = "/app/profile";
+        root.title = "Profile";
+        root.setAttribute("aria-label", "Open profile");
+        return;
+      }
+
       root.href = `/app/profile?id=${encodeURIComponent(pubkey)}`;
       const displayName =
         identity?.display_name_resolved ||
         identity?.display_name ||
         identity?.name ||
         "Profile";
-      root.title = displayName;
-      root.setAttribute("aria-label", `Open profile (${displayName})`);
-      debug("applyIdentity", {
-        pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
-        displayName,
-        hasPicture: Boolean(identity?.picture),
-      });
+      root.title = authoritative ? displayName : `${displayName} (checking signer)`;
+      root.setAttribute(
+        "aria-label",
+        authoritative
+          ? `Open profile (${displayName})`
+          : `Open profile (${displayName}, checking signer)`,
+      );
     };
 
-    const readCachedEntry = (pubkey: string): CachedProfileIdentity | null => {
-      try {
-        const raw = window.sessionStorage.getItem(`${CACHE_IDENTITY_PREFIX}${pubkey}`);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw) as CachedProfileIdentity;
-        if (!parsed || parsed.pubkey !== pubkey) return null;
-        debug("readCachedEntry hit", {
-          pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
-          notFound: Boolean(parsed.not_found),
-          hasPicture: Boolean(parsed.picture),
-          cachedAt: parsed.cached_at,
-        });
-        return parsed;
-      } catch {
-        warn("readCachedEntry parse failed");
-        return null;
-      }
-    };
+    const applySnapshot = (snapshot: IdentitySnapshot, requestId: number) => {
+      applyIdentity(snapshot.pubkey, snapshot.identity, snapshot.authoritative);
 
-    const writeCachedIdentity = (pubkey: string, identity: IdentityResponse) => {
-      try {
-        const payload: CachedProfileIdentity = {
-          pubkey,
-          display_name_resolved: identity.display_name_resolved ?? null,
-          display_name: identity.display_name ?? null,
-          name: identity.name ?? null,
-          picture: identity.picture ?? null,
-          not_found: false,
-          cached_at: Date.now(),
-        };
-        window.sessionStorage.setItem(
-          `${CACHE_IDENTITY_PREFIX}${pubkey}`,
-          JSON.stringify(payload),
-        );
-        debug("writeCachedIdentity", {
-          pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
-          hasPicture: Boolean(identity.picture),
-        });
-      } catch {
-        // no-op
-      }
-    };
-
-    const writeCachedNotFound = (pubkey: string) => {
-      try {
-        const payload: CachedProfileIdentity = {
-          pubkey,
-          display_name_resolved: null,
-          display_name: null,
-          name: null,
-          picture: null,
-          not_found: true,
-          cached_at: Date.now(),
-        };
-        window.sessionStorage.setItem(
-          `${CACHE_IDENTITY_PREFIX}${pubkey}`,
-          JSON.stringify(payload),
-        );
-        debug("writeCachedNotFound", {
-          pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
-        });
-      } catch {
-        // no-op
-      }
-    };
-
-    const isCacheFresh = (entry: CachedProfileIdentity | null): boolean => {
-      if (!entry || typeof entry.cached_at !== "number") return false;
-      return Date.now() - entry.cached_at < CACHE_REVALIDATE_MS;
-    };
-
-    const readLastPubkey = (): string | null => {
-      try {
-        const raw = window.sessionStorage.getItem(CACHE_LAST_PUBKEY_KEY);
-        if (!raw) return null;
-        const normalized = normalizePubkey(raw);
-        debug("readLastPubkey", {
-          hasValue: normalized.length > 0,
-          pubkeyPreview:
-            normalized.length > 0
-              ? `${normalized.slice(0, 8)}...${normalized.slice(-6)}`
-              : null,
-        });
-        return normalized.length > 0 ? normalized : null;
-      } catch {
-        warn("readLastPubkey failed");
-        return null;
-      }
-    };
-
-    const writeLastPubkey = (pubkey: string) => {
-      try {
-        window.sessionStorage.setItem(CACHE_LAST_PUBKEY_KEY, pubkey);
-        debug("writeLastPubkey", {
-          pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
-        });
-      } catch {
-        // no-op
-      }
-    };
-
-    const canQuerySignerDirectly = (): boolean => {
-      const signer = (window as Window & { nostr?: { getPublicKey?: () => Promise<string> } }).nostr;
-      return !!(signer && typeof signer.getPublicKey === "function");
-    };
-
-    const getSignerPubkeyDirect = async (): Promise<string | null> => {
-      if (!canQuerySignerDirectly()) return null;
-      const signer = (window as Window & { nostr?: { getPublicKey: () => Promise<string> } }).nostr;
-      if (!signer) return null;
-      debug("getSignerPubkeyDirect start");
-      try {
-        const pubkey = await Promise.race([
-          signer.getPublicKey(),
-          new Promise<string>((_, reject) =>
-            window.setTimeout(() => reject(new Error("signer pubkey timeout")), SIGNER_DIRECT_TIMEOUT_MS),
-          ),
-        ]);
-        const normalized = normalizePubkey(pubkey);
-        debug("getSignerPubkeyDirect success", {
-          pubkeyPreview:
-            normalized.length > 0
-              ? `${normalized.slice(0, 8)}...${normalized.slice(-6)}`
-              : null,
-        });
-        return normalized.length > 0 ? normalized : null;
-      } catch {
-        warn("getSignerPubkeyDirect failed or timed out");
-        return null;
-      }
-    };
-
-    const fetchIdentity = async (pubkey: string): Promise<IdentityResponse | null> => {
-      if (!apiBase) return null;
-      debug("fetchIdentity start", {
-        pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
-      });
-      try {
-        const res = await fetch(`${apiBase}/identity/${encodeURIComponent(pubkey)}`, {
-          headers: { accept: "application/json" },
-        });
-        if (!res.ok) {
-          debug("fetchIdentity non-ok", { status: res.status });
-          return null;
-        }
-        const payload = (await res.json()) as IdentityResponse;
-        debug("fetchIdentity success", { hasPicture: Boolean(payload?.picture) });
-        return payload;
-      } catch {
-        warn("fetchIdentity network failure");
-        return null;
-      }
-    };
-
-    const syncIdentityForPubkey = (rawPubkey: string) => {
-      const pubkey = normalizePubkey(rawPubkey);
-      debug("syncIdentityForPubkey", {
-        rawPubkeyPreview:
-          rawPubkey && rawPubkey.length > 12
-            ? `${rawPubkey.slice(0, 8)}...${rawPubkey.slice(-6)}`
-            : rawPubkey || null,
-        normalizedPubkeyPreview:
-          pubkey && pubkey.length > 12
-            ? `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`
-            : pubkey || null,
-        activePubkeyPreview:
-          activePubkey && activePubkey.length > 12
-            ? `${activePubkey.slice(0, 8)}...${activePubkey.slice(-6)}`
-            : activePubkey || null,
-      });
-
-      if (!pubkey) {
-        setLoading(false);
-        if (!hasRevealedInitialState) {
-          showFallbackWithSeed("");
-        }
-        return;
-      }
-
-      if (pubkey === activePubkey) {
+      if (!snapshot.pubkey) {
+        showFallbackWithSeed("");
         setLoading(false);
         revealOnce();
         return;
       }
 
+      const picture = snapshot.identity?.picture?.trim();
+      if (picture) {
+        if (!showPictureImmediateIfAlreadyActive(picture, snapshot.pubkey)) {
+          void showPicture(picture, requestId, snapshot.pubkey);
+        } else {
+          setLoading(snapshot.refreshing);
+          revealOnce();
+        }
+      } else {
+        showFallbackWithSeed(snapshot.pubkey);
+        setLoading(snapshot.refreshing);
+        revealOnce();
+      }
+    };
+
+    setLoading(true);
+    startIdentityStore();
+    void getCurrentIdentity({ allowCache: true });
+
+    const unsubscribe = subscribeToCurrentIdentity((snapshot) => {
       activeRequestId += 1;
-      const requestId = activeRequestId;
-      writeLastPubkey(pubkey);
-
-      const cachedEntry = readCachedEntry(pubkey);
-      const cachedIdentity: IdentityResponse | null =
-        cachedEntry && !cachedEntry.not_found
-          ? {
-              display_name_resolved: cachedEntry.display_name_resolved ?? null,
-              display_name: cachedEntry.display_name ?? null,
-              name: cachedEntry.name ?? null,
-              picture: cachedEntry.picture ?? null,
-            }
-          : null;
-
-      applyIdentity(pubkey, cachedIdentity);
-
-      if (cachedEntry) {
-        const cachedPicture = cachedIdentity?.picture?.trim();
-        if (cachedPicture) {
-          if (!showPictureImmediateIfAlreadyActive(cachedPicture, pubkey)) {
-            void showPicture(cachedPicture, requestId, pubkey);
-          }
-        } else {
-          showFallbackWithSeed(pubkey);
-        }
-      } else {
-        setLoading(true);
-      }
-
-      const shouldRevalidate = !cachedEntry || !isCacheFresh(cachedEntry);
-      if (!shouldRevalidate) {
-        debug("syncIdentityForPubkey: cache fresh, skipping revalidate", {
-          requestId,
-          pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
-        });
-        setLoading(false);
-        revealOnce();
-        return;
-      }
-
-      setLoading(true);
-
-      void fetchIdentity(pubkey)
-        .then((identity) => {
-          if (requestId !== activeRequestId) return;
-
-          if (!identity) {
-            debug("syncIdentityForPubkey: no identity from API", { requestId });
-            writeCachedNotFound(pubkey);
-            if (!cachedEntry) {
-              showFallbackWithSeed(pubkey);
-            } else {
-              setLoading(false);
-              revealOnce();
-            }
-            return;
-          }
-
-          applyIdentity(pubkey, identity);
-          writeCachedIdentity(pubkey, identity);
-
-          const picture = identity.picture?.trim();
-          if (picture) {
-            if (!showPictureImmediateIfAlreadyActive(picture, pubkey)) {
-              void showPicture(picture, requestId, pubkey);
-            } else {
-              setLoading(false);
-              revealOnce();
-            }
-          } else {
-            showFallbackWithSeed(pubkey);
-          }
-        })
-        .catch(() => {
-          if (requestId !== activeRequestId) return;
-          warn("syncIdentityForPubkey: fetch identity failed", { requestId });
-          if (!cachedEntry) {
-            showFallbackWithSeed(pubkey);
-          } else {
-            setLoading(false);
-            revealOnce();
-          }
-        });
-    };
-
-    const handleResolvedPubkey = (rawPubkey: string) => {
-      flowResolvedOnce = true;
-      const normalized = normalizePubkey(rawPubkey);
-      if (!normalized) {
-        setLoading(false);
-        if (!hasRevealedInitialState) {
-          showFallbackWithSeed("");
-        }
-        return;
-      }
-      if (normalized === activePubkey) {
-        writeLastPubkey(normalized);
-        setLoading(false);
-        debug("handleResolvedPubkey skipped (already active)");
-        revealOnce();
-        return;
-      }
-      syncIdentityForPubkey(normalized);
-    };
-
-    const reconcileWithSigner = async () => {
-      const now = Date.now();
-      if (reconcileInFlight) {
-        debug("reconcileWithSigner skipped (in flight)");
-        return;
-      }
-      if (now - lastReconcileAt < RECONCILE_MIN_GAP_MS) {
-        debug("reconcileWithSigner skipped (throttled)");
-        return;
-      }
-      reconcileInFlight = true;
-      lastReconcileAt = now;
-      debug("reconcileWithSigner start");
-      try {
-        const signerPubkey = await getSignerPubkeyDirect();
-        directSignerAttempted = true;
-        if (!signerPubkey) {
-          if (!flowResolvedOnce && !activePubkey && !hasRevealedInitialState) {
-            showFallbackWithSeed("");
-          }
-          return;
-        }
-        if (signerPubkey !== activePubkey) {
-          debug("reconcileWithSigner pubkey changed", {
-            oldPubkeyPreview:
-              activePubkey && activePubkey.length > 12
-                ? `${activePubkey.slice(0, 8)}...${activePubkey.slice(-6)}`
-                : activePubkey || null,
-            newPubkeyPreview: `${signerPubkey.slice(0, 8)}...${signerPubkey.slice(-6)}`,
-          });
-          syncIdentityForPubkey(signerPubkey);
-        } else {
-          writeLastPubkey(signerPubkey);
-          setLoading(false);
-          debug("reconcileWithSigner pubkey unchanged");
-          revealOnce();
-        }
-      } finally {
-        reconcileInFlight = false;
-      }
-    };
-
-    // Bootstrap strategy:
-    // 1) try shared signer state
-    // 2) else try cached pubkey
-    // 3) else stay hidden and let signer flow / direct signer decide first paint
-    const state = (
-      window as Window & {
-        __openprintsSignerState?: { pubkey?: string | null };
-      }
-    ).__openprintsSignerState;
-
-    if (typeof state?.pubkey === "string" && state.pubkey.length > 0) {
-      debug("bootstrap from shared signer state");
-      syncIdentityForPubkey(state.pubkey);
-    } else {
-      const cachedPubkey = readLastPubkey();
-      if (cachedPubkey) {
-        debug("bootstrap from cached pubkey");
-        syncIdentityForPubkey(cachedPubkey);
-      } else {
-        debug("bootstrap with no signer and no cache; waiting for signer flow");
-        setLoading(true);
-      }
-    }
-
-    document.addEventListener("nostr-signer-ready", (event) => {
-      const customEvent = event as CustomEvent<{ pubkey?: string | null }>;
-      const eventPubkey = customEvent.detail?.pubkey;
-      if (typeof eventPubkey === "string" && eventPubkey.length > 0) {
-        handleResolvedPubkey(eventPubkey);
-      }
+      applySnapshot(snapshot, activeRequestId);
     });
 
-    window.addEventListener("focus", () => {
-      void reconcileWithSigner();
-    });
-    window.addEventListener("pageshow", () => {
-      void reconcileWithSigner();
-    });
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        void reconcileWithSigner();
-      }
-    });
-
-    initializeNostrSignerFlow({
-      useCachedPubkey: true,
-      onSignerMissingTimeout: () => {
-        flowResolvedOnce = true;
-        if (activePubkey) {
-          setLoading(false);
-          revealOnce();
-          return;
-        }
-        showFallbackWithSeed("");
+    window.addEventListener(
+      "beforeunload",
+      () => {
+        unsubscribe();
       },
-      onPubkeyUnavailable: () => {
-        flowResolvedOnce = true;
-        if (activePubkey) {
-          setLoading(false);
-          revealOnce();
-          return;
-        }
-        showFallbackWithSeed("");
-      },
-      onPubkeyResolved: handleResolvedPubkey,
-    });
-
-    debug("initializeNostrSignerFlow attached");
-
-    // Keep reconciliation, but after bootstrap. It may resolve faster than the flow.
-    void reconcileWithSigner();
+      { once: true },
+    );
   }
 </script>
 
