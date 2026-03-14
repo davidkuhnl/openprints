@@ -9,6 +9,8 @@ const {
   errorMessage: providedErrorMessage = null,
   emptyMessage = "No designs yet.",
   identityId = null,
+  emptyActionHref = null,
+  emptyActionLabel = null,
 } = Astro.props;
 
 const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
@@ -58,6 +60,20 @@ if (!Array.isArray(providedItems)) {
   {!errorMessage && items.length === 0 && (
     <article class="col-span-full rounded-xl border border-default bg-offset/30 p-4 text-center">
       <p class="text-xs text-offset">{emptyMessage}</p>
+      {typeof emptyActionHref === "string" &&
+        emptyActionHref.length > 0 &&
+        typeof emptyActionLabel === "string" &&
+        emptyActionLabel.length > 0 && (
+          <div class="mt-3">
+            <a
+              href={emptyActionHref}
+              class="inline-flex items-center gap-1.5 rounded-md border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-[11px] font-medium text-default transition hover:bg-emerald-400/20 hover:text-emerald-400"
+            >
+              {emptyActionLabel}
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        )}
     </article>
   )}
 

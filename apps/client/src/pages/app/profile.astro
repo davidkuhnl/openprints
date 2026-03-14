@@ -1,0 +1,174 @@
+---
+import AppLayout from "~/layouts/app-layout.astro";
+import NostrSignerRequired from "~/components/nostr-signer-required.astro";
+import IdentityDetailCard from "~/components/identity-detail-card.astro";
+import { nip19 } from "nostr-tools";
+
+export const prerender = false;
+
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
+const profileIdentityId = (Astro.url.searchParams.get("id") ?? "").trim();
+
+const designsPreviewLimit = 6;
+
+let identity: any = null;
+let errorTitle: string | null = null;
+let errorMessage: string | null = null;
+let totalDesignsForIdentity: number | null = null;
+let totalVersionsForIdentity: number | null = null;
+
+const buildOnboardingIdentity = (pubkey: string) => {
+  let npub = "";
+  try {
+    npub = nip19.npubEncode(pubkey);
+  } catch {
+    npub = "";
+  }
+
+  const displayFromNpub =
+    npub.length > 18 ? `${npub.slice(0, 10)}...${npub.slice(-6)}` : npub;
+
+  return {
+    id: pubkey,
+    pubkey,
+    npub,
+    display_name_resolved: displayFromNpub || "New identity",
+    about:
+      "Welcome to OpenPrints. We are still fetching your full profile from Nostr, but you can already continue and publish your first design.",
+    status: null,
+  };
+};
+
+if (profileIdentityId) {
+  if (!base) {
+    errorTitle = "Identity not available";
+    errorMessage =
+      "API base URL is not configured. Check PUBLIC_OPENPRINTS_API_URL.";
+  } else {
+    const identityUrl = `${base}/identity/${encodeURIComponent(profileIdentityId)}`;
+
+    try {
+      const res = await fetch(identityUrl);
+
+      if (res.status === 404) {
+        identity = buildOnboardingIdentity(profileIdentityId);
+      } else if (!res.ok) {
+        errorTitle = "Identity not found";
+        errorMessage = `API responded with ${res.status} ${res.statusText} for this identity.`;
+      } else {
+        identity = await res.json();
+      }
+    } catch {
+      errorTitle = "Identity not found";
+      errorMessage =
+        "We couldn't load this identity due to a network or server error.";
+    }
+
+    if (!errorMessage && identity) {
+      const statsUrl = `${base}/designs/stats?identity_id=${encodeURIComponent(
+        profileIdentityId,
+      )}`;
+      try {
+        const statsRes = await fetch(statsUrl);
+        if (statsRes.ok) {
+          const stats = await statsRes.json();
+          totalDesignsForIdentity =
+            typeof stats?.designs === "number" ? stats.designs : null;
+          totalVersionsForIdentity =
+            typeof stats?.versions === "number" ? stats.versions : null;
+        }
+      } catch {
+        // Keep null stats on network errors; page still renders.
+      }
+    }
+  }
+}
+---
+
+<AppLayout title="OpenPrints – Profile">
+  <div class="mx-auto flex max-w-5xl flex-col gap-3">
+    <section id="nostr-missing" aria-live="polite">
+      <NostrSignerRequired context="profile" />
+    </section>
+
+    <section
+      id="nostr-ok"
+      class="hidden"
+      aria-live="polite"
+      data-profile-id={profileIdentityId}
+    >
+      {profileIdentityId ? (
+        <IdentityDetailCard
+          identity={identity}
+          errorTitle={errorTitle}
+          errorMessage={errorMessage}
+          identityId={profileIdentityId}
+          totalDesignsForIdentity={totalDesignsForIdentity}
+          totalVersionsForIdentity={totalVersionsForIdentity}
+          designsPreviewLimit={designsPreviewLimit}
+          showPublishActions={true}
+          publishHref="/app/designs/new"
+        />
+      ) : (
+        <article class="mx-auto flex max-w-5xl flex-col gap-2.5 rounded-xl border border-default bg-offset/30 p-4 sm:p-5">
+          <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
+            Profile
+          </p>
+          <h1 class="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">
+            Opening your profile...
+          </h1>
+          <p class="mt-2 max-w-2xl text-xs leading-relaxed text-offset">
+            We found your signer and are loading your identity details.
+          </p>
+        </article>
+      )}
+    </section>
+  </div>
+
+  <script>
+    import { initializeNostrSignerFlow } from "~/lib/nostr-signer-flow";
+
+    (function () {
+      const missingEl = document.getElementById("nostr-missing");
+      const okEl = document.getElementById("nostr-ok");
+      if (!missingEl || !okEl) return;
+
+      const currentId = (okEl.getAttribute("data-profile-id") ?? "").trim();
+
+      const showMissing = () => {
+        missingEl.classList.remove("hidden");
+        okEl.classList.add("hidden");
+      };
+
+      const showProfile = () => {
+        missingEl.classList.add("hidden");
+        okEl.classList.remove("hidden");
+      };
+
+      const normalize = (value: string | null | undefined): string =>
+        typeof value === "string" ? value.trim().toLowerCase() : "";
+
+      const routeToProfileIdentity = (pubkey: string) => {
+        if (typeof pubkey !== "string" || pubkey.length === 0) return;
+        const normalizedPubkey = normalize(pubkey);
+        if (normalize(currentId) === normalizedPubkey) {
+          showProfile();
+          return;
+        }
+        const target = `/app/profile?id=${encodeURIComponent(pubkey)}`;
+        window.location.assign(target);
+      };
+
+      showMissing();
+
+      initializeNostrSignerFlow({
+        useCachedPubkey: true,
+        onSignerAvailable: showProfile,
+        onSignerMissingTimeout: showMissing,
+        onPubkeyResolved: routeToProfileIdentity,
+        onPubkeyUnavailable: showMissing,
+      });
+    })();
+  </script>
+</AppLayout>

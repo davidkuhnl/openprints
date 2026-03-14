@@ -1,6 +1,7 @@
 ---
 import { Icon } from "astro-icon/components";
 import Logo from "~/components/Logo.astro";
+import AppProfileLink from "~/components/app-profile-link.astro";
 import ThemeSwitcher from "~/components/theme-switcher.astro";
 ---
 
@@ -18,6 +19,7 @@ import ThemeSwitcher from "~/components/theme-switcher.astro";
       </span>
     </a>
     <div class="flex items-center gap-1.5 sm:gap-2">
+      <AppProfileLink />
       <a
         href="/"
         class="inline-flex h-8 items-center gap-1.5 rounded-md border border-default px-2.5 text-[10px] font-medium text-offset hover:text-default"
