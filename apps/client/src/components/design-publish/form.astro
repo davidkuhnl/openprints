@@ -288,6 +288,13 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 </section>
 
 <script>
+  import {
+    signWithCurrentSigner,
+    startIdentityStore,
+    subscribeToCurrentIdentity,
+    type IdentitySnapshot,
+  } from "~/lib/identity-store";
+
   type NostrTag = [string, string];
   type StepId =
     | "signer"
@@ -328,16 +335,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     duplicate_relay_count?: number;
     rejected_relay_count?: number;
     errors?: Array<{ message?: string }>;
-  };
-
-  type NostrSigner = {
-    signEvent: (event: UnsignedNostrEvent) => Promise<SignedNostrEvent>;
-  };
-
-  type SharedSignerState = {
-    pubkey?: string | null;
-    signerAvailable?: boolean;
-    lnurl?: string | null;
   };
 
   type BuildResult =
@@ -403,7 +400,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     const signerPill = root.querySelector<HTMLElement>("[data-step-signer-pill]");
     const signerPillText = root.querySelector<HTMLElement>("[data-step-signer-pill-text]");
     const signerPillDot = root.querySelector<HTMLElement>("[data-step-signer-dot]");
-    const signerPanelHost = root.querySelector<HTMLElement>("[data-nostr-signer-panel]");
+    const signerPanelHost = root.querySelector<HTMLElement>("[data-signer-panel]");
     const previewRenderList = root.querySelector<HTMLElement>("[data-preview-render-list]");
 
     const copyUnsignedBtn = root.querySelector<HTMLButtonElement>("[data-action='copy-unsigned']");
@@ -523,13 +520,9 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         console.error("[design-publish-form] step panel initialization failed");
       } else {
 
-      const sharedState = (window as Window & { __openprintsSignerState?: SharedSignerState })
-        .__openprintsSignerState;
-
       const HACKER_MODE_STORAGE_KEY = "openprints:design-publish:hacker-mode";
       const apiBase = (root.getAttribute("data-api-base") ?? "").trim().replace(/\/$/, "");
-      let signerPubkey = typeof sharedState?.pubkey === "string" ? sharedState.pubkey : "";
-      const initialLnurl = sharedState?.lnurl ?? null;
+      let signerPubkey = "";
       let isSigning = false;
       let isPublishing = false;
       let isHackerMode = false;
@@ -940,18 +933,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         "design-images": manualCompleted.has("design-images"),
       });
 
-      const hydrateSignerPubkeyFromSharedState = (): boolean => {
-        if (isSignerComplete()) return true;
-        const sharedPubkey = (
-          window as Window & { __openprintsSignerState?: SharedSignerState }
-        ).__openprintsSignerState?.pubkey;
-        if (typeof sharedPubkey === "string" && HEX_64_RE.test(sharedPubkey.toLowerCase())) {
-          signerPubkey = sharedPubkey;
-          return true;
-        }
-        return false;
-      };
-
       const isUnlocked = (step: StepId, completion: Record<StepId, boolean>): boolean => {
         const idx = stepIndexById[step];
         if (idx <= 0) return true;
@@ -1072,10 +1053,10 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
         const dotState =
           signerDotState || (signerPanelHost?.dataset.signerDotState as "hidden" | "blinking" | "solid" | undefined) || "hidden";
-        signerPillDot.classList.remove("nostr-status-dot--blinking");
+        signerPillDot.classList.remove("signer-status-dot--blinking");
         if (dotState === "blinking") {
           signerPillDot.classList.remove("hidden");
-          signerPillDot.classList.add("nostr-status-dot--blinking");
+          signerPillDot.classList.add("signer-status-dot--blinking");
         } else if (dotState === "solid") {
           signerPillDot.classList.remove("hidden");
         } else {
@@ -1139,7 +1120,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
       const refreshUnsignedPreview = () => {
         renderPreviewImages();
-        hydrateSignerPubkeyFromSharedState();
         maybeAutoAdvanceFromSigner();
         const result = buildUnsignedEvent(collectInputs(), signerPubkey);
         if (!result.ok) {
@@ -1169,16 +1149,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         renderAccordion();
       };
 
-      const onSignerReady = (event: Event) => {
-        const customEvent = event as CustomEvent<{ pubkey?: string | null }>;
-        const pubkey = customEvent?.detail?.pubkey;
-        if (typeof pubkey === "string" && pubkey.length > 0) {
-          signerPubkey = pubkey;
-          maybeAutoAdvanceFromSigner();
-          refreshUnsignedPreview();
-        }
-      };
-
       const onIdentityMetadata = (event: Event) => {
         const customEvent = event as CustomEvent<IdentityMetadataDetail>;
         const detail = customEvent.detail;
@@ -1196,7 +1166,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         if (detail.signedDot === "hidden" || detail.signedDot === "blinking" || detail.signedDot === "solid") {
           signerDotState = detail.signedDot;
         }
-        hydrateSignerPubkeyFromSharedState();
         maybeAutoAdvanceFromSigner();
         refreshSignerIdentityText();
       };
@@ -1264,19 +1233,14 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           return;
         }
 
-        const signer = (window as Window & { nostr?: NostrSigner }).nostr;
-        if (!signer || typeof signer.signEvent !== "function") {
-          setStatus("Nostr signer is unavailable.");
-          signButton.disabled = true;
-          return;
-        }
-
         isSigning = true;
         signButton.disabled = true;
         setStatus("Waiting for signer confirmation...");
 
         try {
-          const signed = await signer.signEvent(result.event);
+          const signed = await signWithCurrentSigner<SignedNostrEvent>(result.event, {
+            requirePubkeyMatch: true,
+          });
           if (!validateSignedEvent(signed)) throw new Error("Signer returned an invalid event shape.");
 
           signedEvent = signed;
@@ -1375,7 +1339,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         clearSignedState();
         autoMovedFromSigner = false;
         lastPreviewRenderSignature = "";
-        hydrateSignerPubkeyFromSharedState();
         activeStep = isSignerComplete() ? "file" : "signer";
         setStatus("Form reset. Complete each step to sign and publish.");
         refreshUnsignedPreview();
@@ -1398,7 +1361,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
       // init
       fields.d.value = generateDesignId();
-      if (initialLnurl) maybePrefillLnurl(initialLnurl);
 
       const allWatchFields: (HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)[] =
         Object.values(fields).filter((field) => field !== fields.d) as any;
@@ -1471,9 +1433,18 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
       hackerToggleButton.addEventListener("click", () => setHackerMode(!isHackerMode));
 
-      document.addEventListener("nostr-signer-ready", onSignerReady);
       document.addEventListener("openprints-identity-metadata", onIdentityMetadata);
       document.addEventListener("openprints-signer-view-change", onSignerViewChange);
+
+      startIdentityStore();
+      const unsubscribeIdentityStore = subscribeToCurrentIdentity(
+        (snapshot: IdentitySnapshot) => {
+          signerPubkey = snapshot.pubkey && snapshot.authoritative ? snapshot.pubkey : "";
+          maybePrefillLnurl(snapshot.identity?.lnurl ?? snapshot.identity?.lud16 ?? snapshot.identity?.lud06 ?? null);
+          maybeAutoAdvanceFromSigner();
+          refreshUnsignedPreview();
+        },
+      );
 
       try {
         setHackerMode(window.localStorage.getItem(HACKER_MODE_STORAGE_KEY) === "1");
@@ -1489,17 +1460,25 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         setStatus("Waiting for signer pubkey...");
       }
       renderAccordion();
+
+      window.addEventListener(
+        "beforeunload",
+        () => {
+          unsubscribeIdentityStore();
+        },
+        { once: true },
+      );
       }
     }
   }
 </script>
 
 <style>
-  .nostr-status-dot--blinking {
-    animation: nostrStatusBlink 1.2s infinite ease-in-out;
+  .signer-status-dot--blinking {
+    animation: signerStatusBlink 1.2s infinite ease-in-out;
   }
 
-  @keyframes nostrStatusBlink {
+  @keyframes signerStatusBlink {
     0%,
     100% {
       opacity: 0.35;

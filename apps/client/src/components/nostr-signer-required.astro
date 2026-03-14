@@ -16,26 +16,26 @@ const content =
         description:
           "OpenPrints needs your signer to detect your identity and load your profile page.",
         timeoutHint:
-          "Still waiting for a NIP-07 signer. If you just enabled one, try reloading this page.",
+          "We couldn’t connect to your signer. Make sure ist installed and enabled. Reload the page to try again.",
       }
     : {
         title: "Sign designs with your Nostr identity",
         description:
           "OpenPrints uses your Nostr key to sign designs so they stay linked to your identity. To continue, install a NIP-07 signer extension.",
         timeoutHint:
-          "Still waiting for a NIP-07 signer. If you just installed one, try reloading this page.",
+          "We couldn’t connect to your signer. Make sure ist installed and enabled. Reload the page to try again.",
       };
 ---
 
 <div class="relative flex flex-col gap-4 rounded-xl border border-default bg-offset/30 p-5 overflow-hidden" data-nostr-signer-required>
   <div class="pointer-events-none absolute inset-0 opacity-35">
-    <div class="nostr-scan absolute -inset-x-24 top-0 h-full" />
+    <div class="signer-scan absolute -inset-x-24 top-0 h-full" />
   </div>
 
   <header class="relative space-y-2 pb-4">
     <h1 class="flex items-center gap-3 text-xl font-semibold tracking-tight sm:text-2xl">
       <span class="relative inline-flex items-center justify-center">
-        <span class="absolute inset-0 rounded-full bg-emerald-400/15 nostr-pulse" />
+        <span class="absolute inset-0 rounded-full bg-emerald-400/15 signer-pulse" />
         <span class="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-400">
           <Icon name="mdi:key" class="size-4" aria-hidden="true" />
         </span>
@@ -71,12 +71,15 @@ const content =
   </div>
 
 <div class="flex flex-col gap-3 border-t border-default pt-3">
-  <p class="nostr-signer-timeout-note relative hidden text-xs text-offset">
+  <p class="signer-hint relative hidden text-xs text-offset" data-timeout-hint>
     {content.timeoutHint}
   </p>
   <div class="flex items-center gap-4">
-    <span class="inline-flex items-center gap-1.5 rounded-full border border-default/60 bg-default/20 px-2 py-1 text-[11px] text-offset">
-      <span class="nostr-dots inline-flex items-center">
+    <span
+      class="inline-flex items-center gap-1.5 rounded-full border border-default/60 bg-default/20 px-2 py-1 text-[11px] text-offset"
+      data-waiting-pill
+    >
+      <span class="signer-dots inline-flex items-center">
         <span class="dot"></span>
         <span class="dot"></span>
         <span class="dot"></span>
@@ -98,26 +101,40 @@ const content =
 </div>
 
 <script>
-  (function () {
-    const root = document.querySelector("[data-nostr-signer-required]");
-    if (!root) return;
-    const timeoutNoteEl = root.querySelector(".nostr-signer-timeout-note");
+  import {
+    startIdentityStore,
+    subscribeToCurrentIdentity,
+    type IdentitySnapshot,
+  } from "~/lib/identity-store";
 
-    const showTimeoutNote = () => {
-      if (timeoutNoteEl) timeoutNoteEl.classList.remove("hidden");
-    };
+  const root = document.querySelector<HTMLElement>("[data-nostr-signer-required]");
+  if (!root || root.dataset.initialized === "true") {
+    // no-op
+  } else {
+    root.dataset.initialized = "true";
+    const timeoutHint = root.querySelector<HTMLElement>("[data-timeout-hint]");
+    const waitingPill = root.querySelector<HTMLElement>("[data-waiting-pill]");
+    if (timeoutHint && waitingPill) {
+      startIdentityStore();
+      const unsubscribe = subscribeToCurrentIdentity((snapshot: IdentitySnapshot) => {
+        const isTimedOut = snapshot.signerStatus === "timed_out";
+        timeoutHint.classList.toggle("hidden", !isTimedOut);
+        waitingPill.classList.toggle("hidden", isTimedOut);
+      });
 
-    document.addEventListener("nostr-signer-timeout", showTimeoutNote);
-
-    const state = (window as Window & { __openprintsSignerState?: { timedOut?: boolean } }).__openprintsSignerState;
-    if (state?.timedOut) {
-      showTimeoutNote();
+      window.addEventListener(
+        "beforeunload",
+        () => {
+          unsubscribe();
+        },
+        { once: true },
+      );
     }
-  })();
+  }
 </script>
 
 <style>
-  .nostr-scan {
+  .signer-scan {
     background: linear-gradient(
       90deg,
       transparent,
@@ -125,40 +142,40 @@ const content =
       transparent
     );
     transform: translateX(-30%);
-    animation: nostrScan 2.6s ease-in-out infinite;
+    animation: signerScan 2.6s ease-in-out infinite;
   }
-  @keyframes nostrScan {
+  @keyframes signerScan {
     0%   { transform: translateX(-35%); }
     50%  { transform: translateX(35%); }
     100% { transform: translateX(-35%); }
   }
 
-  .nostr-pulse {
-    animation: nostrPulse 1.8s ease-in-out infinite;
+  .signer-pulse {
+    animation: signerPulse 1.8s ease-in-out infinite;
   }
-  @keyframes nostrPulse {
+  @keyframes signerPulse {
     0%, 100% { opacity: 0.35; transform: scale(0.98); }
     50%      { opacity: 0.70; transform: scale(1.05); }
   }
 
-  .nostr-dots .dot {
+  .signer-dots .dot {
     width: 4px;
     height: 4px;
     border-radius: 999px;
     background: rgba(52, 211, 153, 0.8);
     display: inline-block;
     margin-right: 4px;
-    animation: nostrDot 1.2s infinite ease-in-out;
+    animation: signerDot 1.2s infinite ease-in-out;
   }
-  .nostr-dots .dot:nth-child(2) { animation-delay: 0.15s; opacity: 0.75; }
-  .nostr-dots .dot:nth-child(3) { animation-delay: 0.30s; opacity: 0.55; margin-right: 0; }
+  .signer-dots .dot:nth-child(2) { animation-delay: 0.15s; opacity: 0.75; }
+  .signer-dots .dot:nth-child(3) { animation-delay: 0.30s; opacity: 0.55; margin-right: 0; }
 
-  @keyframes nostrDot {
+  @keyframes signerDot {
     0%, 80%, 100% { transform: translateY(0); opacity: 0.45; }
     40%           { transform: translateY(-3px); opacity: 1; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .nostr-scan, .nostr-pulse, .nostr-dots .dot { animation: none !important; }
+    .signer-scan, .signer-pulse, .signer-dots .dot { animation: none !important; }
   }
 </style>
