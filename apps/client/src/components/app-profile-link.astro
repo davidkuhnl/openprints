@@ -18,7 +18,7 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
 
 <a
   href="/app/profile"
-  class="inline-flex h-8 w-8 items-center justify-center rounded-full text-offset transition hover:opacity-90 focus-visible:opacity-90 mr-1 sm:mr-1.5"
+  class="inline-flex h-8 w-8 items-center justify-center rounded-full text-offset transition opacity-90 hover:opacity-100 focus-visible:opacity-100 mr-1 sm:mr-1.5"
   aria-label="Open profile"
   title="Profile"
   data-app-profile-link
@@ -154,7 +154,12 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
         img.src = url;
       });
 
-    const showPicture = async (pictureUrl: string, requestId: number, fallbackSeed: string) => {
+    const showPicture = async (
+      pictureUrl: string,
+      requestId: number,
+      fallbackSeed: string,
+      keepPulsing: boolean,
+    ) => {
       if (!pictureEl) return;
 
       try {
@@ -166,19 +171,24 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
         }
         ensureFallbackSrc(fallbackSeed ? fallbackAvatarSrc(fallbackSeed) : defaultFallback);
         transitionToMode("picture");
-        setLoading(false);
+        setLoading(keepPulsing);
       } catch {
         if (requestId !== activeRequestId) return;
         showFallbackWithSeed(fallbackSeed);
+        setLoading(keepPulsing);
       }
     };
 
-    const showPictureImmediateIfAlreadyActive = (pictureUrl: string, fallbackSeed: string) => {
+    const showPictureImmediateIfAlreadyActive = (
+      pictureUrl: string,
+      fallbackSeed: string,
+      keepPulsing: boolean,
+    ) => {
       if (!pictureEl) return false;
       if (activePictureUrl !== pictureUrl || !pictureEl.src) return false;
       ensureFallbackSrc(fallbackSeed ? fallbackAvatarSrc(fallbackSeed) : defaultFallback);
       transitionToMode("picture");
-      setLoading(false);
+      setLoading(keepPulsing);
       return true;
     };
 
@@ -211,6 +221,7 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
 
     const applySnapshot = (snapshot: IdentitySnapshot, requestId: number) => {
       applyIdentity(snapshot.pubkey, snapshot.identity, snapshot.authoritative);
+      const shouldPulse = Boolean(snapshot.pubkey) && (!snapshot.authoritative || snapshot.refreshing);
 
       if (!snapshot.pubkey) {
         showFallbackWithSeed("");
@@ -221,15 +232,15 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
 
       const picture = snapshot.identity?.picture?.trim();
       if (picture) {
-        if (!showPictureImmediateIfAlreadyActive(picture, snapshot.pubkey)) {
-          void showPicture(picture, requestId, snapshot.pubkey);
+        if (!showPictureImmediateIfAlreadyActive(picture, snapshot.pubkey, shouldPulse)) {
+          void showPicture(picture, requestId, snapshot.pubkey, shouldPulse);
         } else {
-          setLoading(snapshot.refreshing);
+          setLoading(shouldPulse);
           revealOnce();
         }
       } else {
         showFallbackWithSeed(snapshot.pubkey);
-        setLoading(snapshot.refreshing);
+        setLoading(shouldPulse);
         revealOnce();
       }
     };
@@ -269,27 +280,38 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
     transition: opacity 140ms ease;
   }
 
-  [data-app-profile-link][data-loading="true"] .profile-avatar-shell {
-    animation: profileAvatarPulse 1.6s ease-in-out infinite;
+  .profile-avatar-shell::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 9999px;
+    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+    opacity: 0;
+    pointer-events: none;
+    animation: profileAvatarPulseHalo 1.6s ease-in-out infinite;
+    transition: opacity 220ms ease-out;
   }
 
-  @keyframes profileAvatarPulse {
+  [data-app-profile-link][data-loading="true"] .profile-avatar-shell::after {
+    opacity: 1;
+  }
+
+  @keyframes profileAvatarPulseHalo {
     0%,
     100% {
-      opacity: 0.95;
       box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
     }
     50% {
-      opacity: 1;
       box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.18);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    [data-app-profile-link][data-loading="true"] .profile-avatar-shell,
+    [data-app-profile-link][data-loading="true"] .profile-avatar-shell::after,
     .profile-avatar-fallback,
     .profile-avatar-picture,
-    .profile-avatar-shell {
+    .profile-avatar-shell,
+    .profile-avatar-shell::after {
       animation: none;
       transition: none;
     }

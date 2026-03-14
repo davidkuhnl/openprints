@@ -371,7 +371,9 @@ const reconcileWithSigner = async (
     const signerPubkey = await resolveSignerPubkey();
 
     if (!signerPubkey) {
-      if (neutralOnMissingSigner) {
+      // Keep cached bootstrap state when signer is temporarily unavailable.
+      // This avoids visual thrash from pubkey-seeded fallback -> unknown fallback.
+      if (neutralOnMissingSigner && !activePubkey) {
         setActivePubkey(null, false);
       }
       return;
