@@ -1,5 +1,30 @@
 ---
 import { Icon } from "astro-icon/components";
+
+type SignerRequiredContext = "publish" | "profile";
+
+interface Props {
+  context: SignerRequiredContext;
+}
+
+const { context } = Astro.props as Props;
+
+const content =
+  context === "profile"
+    ? {
+        title: "Connect your Nostr signer to view your profile",
+        description:
+          "OpenPrints needs your signer to detect your identity and load your profile page.",
+        timeoutHint:
+          "Still waiting for a NIP-07 signer. If you just enabled one, try reloading this page.",
+      }
+    : {
+        title: "Sign designs with your Nostr identity",
+        description:
+          "OpenPrints uses your Nostr key to sign designs so they stay linked to your identity. To continue, install a NIP-07 signer extension.",
+        timeoutHint:
+          "Still waiting for a NIP-07 signer. If you just installed one, try reloading this page.",
+      };
 ---
 
 <div class="relative flex flex-col gap-4 rounded-xl border border-default bg-offset/30 p-5 overflow-hidden" data-nostr-signer-required>
@@ -15,12 +40,11 @@ import { Icon } from "astro-icon/components";
           <Icon name="mdi:key" class="size-4" aria-hidden="true" />
         </span>
       </span>
-      Sign designs with your Nostr identity
+      {content.title}
     </h1>
 
     <p class="max-w-2xl text-xs leading-relaxed text-offset">
-      OpenPrints uses your Nostr key to sign designs so they stay linked to your
-      identity. To continue, install a NIP-07 signer extension.
+      {content.description}
     </p>
   </header>
 
@@ -48,7 +72,7 @@ import { Icon } from "astro-icon/components";
 
 <div class="flex flex-col gap-3 border-t border-default pt-3">
   <p class="nostr-signer-timeout-note relative hidden text-xs text-offset">
-    Still waiting for a NIP-07 signer. If you just installed one, try reloading this page.
+    {content.timeoutHint}
   </p>
   <div class="flex items-center gap-4">
     <span class="inline-flex items-center gap-1.5 rounded-full border border-default/60 bg-default/20 px-2 py-1 text-[11px] text-offset">

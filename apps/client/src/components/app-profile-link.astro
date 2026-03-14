@@ -1,0 +1,706 @@
+---
+import { createAvatar } from "@dicebear/core";
+import { rings } from "@dicebear/collection";
+
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
+
+const defaultAvatar = createAvatar(rings, {
+  seed: "unknown",
+  size: 128,
+  radius: 50,
+  backgroundColor: ["transparent"],
+  ringFive: ["full"],
+  ringColor: ["60a5fa", "34d399", "f472b6", "a78bfa", "fb923c"],
+});
+const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(defaultAvatar.toString())}`;
+---
+
+<a
+  href="/app/profile"
+  class="inline-flex h-8 w-8 items-center justify-center rounded-full text-offset transition hover:opacity-90 focus-visible:opacity-90 mr-1 sm:mr-1.5"
+  aria-label="Open profile"
+  title="Profile"
+  data-app-profile-link
+  data-api-base={apiBase}
+  data-default-fallback={defaultFallbackSrc}
+  data-loading="false"
+  data-booting="true"
+>
+  <span class="profile-avatar-shell relative inline-flex h-8 w-8 box-border items-center justify-center rounded-full border border-default/60 bg-default p-px">
+    <span class="relative inline-flex h-full w-full overflow-hidden rounded-full">
+      <img
+        src=""
+        alt="Your profile avatar"
+        loading="eager"
+        decoding="async"
+        class="profile-avatar-fallback absolute inset-0 block h-full w-full object-cover opacity-0 transition-opacity duration-200 ease-out"
+        data-profile-fallback
+      />
+      <img
+        src=""
+        alt="Your profile avatar"
+        loading="eager"
+        decoding="async"
+        class="profile-avatar-picture absolute inset-0 block h-full w-full object-cover opacity-0 transition-opacity duration-200 ease-out"
+        data-profile-picture
+      />
+    </span>
+  </span>
+</a>
+
+<script>
+  import { initializeNostrSignerFlow } from "~/lib/nostr-signer-flow";
+  import { createAvatar } from "@dicebear/core";
+  import { rings } from "@dicebear/collection";
+
+  type IdentityResponse = {
+    display_name_resolved?: string | null;
+    display_name?: string | null;
+    name?: string | null;
+    picture?: string | null;
+  };
+
+  type CachedProfileIdentity = {
+    pubkey: string;
+    display_name_resolved?: string | null;
+    display_name?: string | null;
+    name?: string | null;
+    picture?: string | null;
+    not_found?: boolean;
+    cached_at: number;
+  };
+
+  type AvatarMode = "fallback" | "picture";
+
+  const root = document.querySelector<HTMLAnchorElement>("[data-app-profile-link]");
+  if (!root || root.dataset.initialized === "true") {
+    // no-op
+  } else {
+    root.dataset.initialized = "true";
+
+    const apiBase = (root.getAttribute("data-api-base") ?? "").trim();
+    const defaultFallback = root.getAttribute("data-default-fallback") ?? "";
+    const fallbackEl = root.querySelector<HTMLImageElement>("[data-profile-fallback]");
+    const pictureEl = root.querySelector<HTMLImageElement>("[data-profile-picture]");
+
+    const CACHE_LAST_PUBKEY_KEY = "openprints:profile-link:last-pubkey";
+    const CACHE_IDENTITY_PREFIX = "openprints:profile-link:identity:";
+    const SIGNER_DIRECT_TIMEOUT_MS = 1800;
+    const CACHE_REVALIDATE_MS = 45000;
+    const RECONCILE_MIN_GAP_MS = 1500;
+    const LOG_PREFIX = "[app-profile-link]";
+
+    let activePubkey = "";
+    let activeRequestId = 0;
+    let activePictureUrl = "";
+    let activeFallbackSrc = "";
+    let currentMode: AvatarMode | null = null;
+    let hasRevealedInitialState = false;
+    let reconcileInFlight = false;
+    let lastReconcileAt = 0;
+    let directSignerAttempted = false;
+    let flowResolvedOnce = false;
+
+    const debug = (message: string, data?: unknown) => {
+      if (typeof data === "undefined") {
+        console.debug(LOG_PREFIX, message);
+      } else {
+        console.debug(LOG_PREFIX, message, data);
+      }
+    };
+
+    const warn = (message: string, data?: unknown) => {
+      if (typeof data === "undefined") {
+        console.warn(LOG_PREFIX, message);
+      } else {
+        console.warn(LOG_PREFIX, message, data);
+      }
+    };
+
+    const normalizePubkey = (value: string): string => value.trim().toLowerCase();
+
+    const setLoading = (isLoading: boolean) => {
+      const next = isLoading ? "true" : "false";
+      if (root.getAttribute("data-loading") === next) return;
+      root.setAttribute("data-loading", next);
+      debug("setLoading", { isLoading });
+    };
+
+    const setBooting = (isBooting: boolean) => {
+      const next = isBooting ? "true" : "false";
+      if (root.getAttribute("data-booting") === next) return;
+      root.setAttribute("data-booting", next);
+      debug("setBooting", { isBooting });
+    };
+
+    const revealOnce = () => {
+      if (hasRevealedInitialState) return;
+      hasRevealedInitialState = true;
+      debug("revealOnce");
+      setBooting(false);
+    };
+
+    const fallbackAvatarSrc = (seed: string): string => {
+      const avatar = createAvatar(rings, {
+        seed: seed || "unknown",
+        size: 128,
+        radius: 50,
+        backgroundColor: ["transparent"],
+        ringFive: ["full"],
+        ringColor: ["60a5fa", "34d399", "f472b6", "a78bfa", "fb923c"],
+      });
+      return `data:image/svg+xml;utf8,${encodeURIComponent(avatar.toString())}`;
+    };
+
+    const ensureFallbackSrc = (src: string) => {
+      if (!fallbackEl) return;
+      if (activeFallbackSrc === src && fallbackEl.src === src) return;
+      activeFallbackSrc = src;
+      fallbackEl.src = src;
+    };
+
+    const transitionToMode = (mode: AvatarMode) => {
+      if (!fallbackEl || !pictureEl) return;
+      if (currentMode === mode && hasRevealedInitialState) return;
+
+      if (mode === "fallback") {
+        fallbackEl.classList.remove("opacity-0");
+        fallbackEl.classList.add("opacity-100");
+        pictureEl.classList.remove("opacity-100");
+        pictureEl.classList.add("opacity-0");
+      } else {
+        pictureEl.classList.remove("opacity-0");
+        pictureEl.classList.add("opacity-100");
+        fallbackEl.classList.remove("opacity-100");
+        fallbackEl.classList.add("opacity-0");
+      }
+
+      currentMode = mode;
+      revealOnce();
+    };
+
+    const showFallbackWithSeed = (seed: string) => {
+      ensureFallbackSrc(seed ? fallbackAvatarSrc(seed) : defaultFallback);
+      activePictureUrl = "";
+      if (pictureEl && pictureEl.src) {
+        pictureEl.src = "";
+      }
+      debug("showFallbackWithSeed", {
+        hasSeed: Boolean(seed),
+        seedPreview: seed ? `${seed.slice(0, 8)}...${seed.slice(-6)}` : null,
+      });
+      transitionToMode("fallback");
+      setLoading(false);
+    };
+
+    const preloadImage = (url: string): Promise<void> =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.decoding = "async";
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("image preload failed"));
+        img.src = url;
+      });
+
+    const showPicture = async (pictureUrl: string, requestId: number, fallbackSeed: string) => {
+      if (!pictureEl) return;
+      debug("showPicture preload start", {
+        requestId,
+        pictureUrlPreview: pictureUrl.slice(0, 48),
+      });
+
+      try {
+        await preloadImage(pictureUrl);
+        if (requestId !== activeRequestId) return;
+        if (activePictureUrl !== pictureUrl) {
+          activePictureUrl = pictureUrl;
+          pictureEl.src = pictureUrl;
+        }
+        ensureFallbackSrc(fallbackSeed ? fallbackAvatarSrc(fallbackSeed) : defaultFallback);
+        transitionToMode("picture");
+        setLoading(false);
+        debug("showPicture preload success", { requestId });
+      } catch {
+        if (requestId !== activeRequestId) return;
+        warn("showPicture preload failed", { requestId });
+        showFallbackWithSeed(fallbackSeed);
+      }
+    };
+
+    const showPictureImmediateIfAlreadyActive = (pictureUrl: string, fallbackSeed: string) => {
+      if (!pictureEl) return false;
+      if (activePictureUrl !== pictureUrl || !pictureEl.src) return false;
+      ensureFallbackSrc(fallbackSeed ? fallbackAvatarSrc(fallbackSeed) : defaultFallback);
+      transitionToMode("picture");
+      setLoading(false);
+      debug("showPictureImmediateIfAlreadyActive");
+      return true;
+    };
+
+    const applyIdentity = (pubkey: string, identity: IdentityResponse | null) => {
+      activePubkey = pubkey;
+      root.href = `/app/profile?id=${encodeURIComponent(pubkey)}`;
+      const displayName =
+        identity?.display_name_resolved ||
+        identity?.display_name ||
+        identity?.name ||
+        "Profile";
+      root.title = displayName;
+      root.setAttribute("aria-label", `Open profile (${displayName})`);
+      debug("applyIdentity", {
+        pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
+        displayName,
+        hasPicture: Boolean(identity?.picture),
+      });
+    };
+
+    const readCachedEntry = (pubkey: string): CachedProfileIdentity | null => {
+      try {
+        const raw = window.sessionStorage.getItem(`${CACHE_IDENTITY_PREFIX}${pubkey}`);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as CachedProfileIdentity;
+        if (!parsed || parsed.pubkey !== pubkey) return null;
+        debug("readCachedEntry hit", {
+          pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
+          notFound: Boolean(parsed.not_found),
+          hasPicture: Boolean(parsed.picture),
+          cachedAt: parsed.cached_at,
+        });
+        return parsed;
+      } catch {
+        warn("readCachedEntry parse failed");
+        return null;
+      }
+    };
+
+    const writeCachedIdentity = (pubkey: string, identity: IdentityResponse) => {
+      try {
+        const payload: CachedProfileIdentity = {
+          pubkey,
+          display_name_resolved: identity.display_name_resolved ?? null,
+          display_name: identity.display_name ?? null,
+          name: identity.name ?? null,
+          picture: identity.picture ?? null,
+          not_found: false,
+          cached_at: Date.now(),
+        };
+        window.sessionStorage.setItem(
+          `${CACHE_IDENTITY_PREFIX}${pubkey}`,
+          JSON.stringify(payload),
+        );
+        debug("writeCachedIdentity", {
+          pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
+          hasPicture: Boolean(identity.picture),
+        });
+      } catch {
+        // no-op
+      }
+    };
+
+    const writeCachedNotFound = (pubkey: string) => {
+      try {
+        const payload: CachedProfileIdentity = {
+          pubkey,
+          display_name_resolved: null,
+          display_name: null,
+          name: null,
+          picture: null,
+          not_found: true,
+          cached_at: Date.now(),
+        };
+        window.sessionStorage.setItem(
+          `${CACHE_IDENTITY_PREFIX}${pubkey}`,
+          JSON.stringify(payload),
+        );
+        debug("writeCachedNotFound", {
+          pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
+        });
+      } catch {
+        // no-op
+      }
+    };
+
+    const isCacheFresh = (entry: CachedProfileIdentity | null): boolean => {
+      if (!entry || typeof entry.cached_at !== "number") return false;
+      return Date.now() - entry.cached_at < CACHE_REVALIDATE_MS;
+    };
+
+    const readLastPubkey = (): string | null => {
+      try {
+        const raw = window.sessionStorage.getItem(CACHE_LAST_PUBKEY_KEY);
+        if (!raw) return null;
+        const normalized = normalizePubkey(raw);
+        debug("readLastPubkey", {
+          hasValue: normalized.length > 0,
+          pubkeyPreview:
+            normalized.length > 0
+              ? `${normalized.slice(0, 8)}...${normalized.slice(-6)}`
+              : null,
+        });
+        return normalized.length > 0 ? normalized : null;
+      } catch {
+        warn("readLastPubkey failed");
+        return null;
+      }
+    };
+
+    const writeLastPubkey = (pubkey: string) => {
+      try {
+        window.sessionStorage.setItem(CACHE_LAST_PUBKEY_KEY, pubkey);
+        debug("writeLastPubkey", {
+          pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
+        });
+      } catch {
+        // no-op
+      }
+    };
+
+    const canQuerySignerDirectly = (): boolean => {
+      const signer = (window as Window & { nostr?: { getPublicKey?: () => Promise<string> } }).nostr;
+      return !!(signer && typeof signer.getPublicKey === "function");
+    };
+
+    const getSignerPubkeyDirect = async (): Promise<string | null> => {
+      if (!canQuerySignerDirectly()) return null;
+      const signer = (window as Window & { nostr?: { getPublicKey: () => Promise<string> } }).nostr;
+      if (!signer) return null;
+      debug("getSignerPubkeyDirect start");
+      try {
+        const pubkey = await Promise.race([
+          signer.getPublicKey(),
+          new Promise<string>((_, reject) =>
+            window.setTimeout(() => reject(new Error("signer pubkey timeout")), SIGNER_DIRECT_TIMEOUT_MS),
+          ),
+        ]);
+        const normalized = normalizePubkey(pubkey);
+        debug("getSignerPubkeyDirect success", {
+          pubkeyPreview:
+            normalized.length > 0
+              ? `${normalized.slice(0, 8)}...${normalized.slice(-6)}`
+              : null,
+        });
+        return normalized.length > 0 ? normalized : null;
+      } catch {
+        warn("getSignerPubkeyDirect failed or timed out");
+        return null;
+      }
+    };
+
+    const fetchIdentity = async (pubkey: string): Promise<IdentityResponse | null> => {
+      if (!apiBase) return null;
+      debug("fetchIdentity start", {
+        pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
+      });
+      try {
+        const res = await fetch(`${apiBase}/identity/${encodeURIComponent(pubkey)}`, {
+          headers: { accept: "application/json" },
+        });
+        if (!res.ok) {
+          debug("fetchIdentity non-ok", { status: res.status });
+          return null;
+        }
+        const payload = (await res.json()) as IdentityResponse;
+        debug("fetchIdentity success", { hasPicture: Boolean(payload?.picture) });
+        return payload;
+      } catch {
+        warn("fetchIdentity network failure");
+        return null;
+      }
+    };
+
+    const syncIdentityForPubkey = (rawPubkey: string) => {
+      const pubkey = normalizePubkey(rawPubkey);
+      debug("syncIdentityForPubkey", {
+        rawPubkeyPreview:
+          rawPubkey && rawPubkey.length > 12
+            ? `${rawPubkey.slice(0, 8)}...${rawPubkey.slice(-6)}`
+            : rawPubkey || null,
+        normalizedPubkeyPreview:
+          pubkey && pubkey.length > 12
+            ? `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`
+            : pubkey || null,
+        activePubkeyPreview:
+          activePubkey && activePubkey.length > 12
+            ? `${activePubkey.slice(0, 8)}...${activePubkey.slice(-6)}`
+            : activePubkey || null,
+      });
+
+      if (!pubkey) {
+        setLoading(false);
+        if (!hasRevealedInitialState) {
+          showFallbackWithSeed("");
+        }
+        return;
+      }
+
+      if (pubkey === activePubkey) {
+        setLoading(false);
+        revealOnce();
+        return;
+      }
+
+      activeRequestId += 1;
+      const requestId = activeRequestId;
+      writeLastPubkey(pubkey);
+
+      const cachedEntry = readCachedEntry(pubkey);
+      const cachedIdentity: IdentityResponse | null =
+        cachedEntry && !cachedEntry.not_found
+          ? {
+              display_name_resolved: cachedEntry.display_name_resolved ?? null,
+              display_name: cachedEntry.display_name ?? null,
+              name: cachedEntry.name ?? null,
+              picture: cachedEntry.picture ?? null,
+            }
+          : null;
+
+      applyIdentity(pubkey, cachedIdentity);
+
+      if (cachedEntry) {
+        const cachedPicture = cachedIdentity?.picture?.trim();
+        if (cachedPicture) {
+          if (!showPictureImmediateIfAlreadyActive(cachedPicture, pubkey)) {
+            void showPicture(cachedPicture, requestId, pubkey);
+          }
+        } else {
+          showFallbackWithSeed(pubkey);
+        }
+      } else {
+        setLoading(true);
+      }
+
+      const shouldRevalidate = !cachedEntry || !isCacheFresh(cachedEntry);
+      if (!shouldRevalidate) {
+        debug("syncIdentityForPubkey: cache fresh, skipping revalidate", {
+          requestId,
+          pubkeyPreview: `${pubkey.slice(0, 8)}...${pubkey.slice(-6)}`,
+        });
+        setLoading(false);
+        revealOnce();
+        return;
+      }
+
+      setLoading(true);
+
+      void fetchIdentity(pubkey)
+        .then((identity) => {
+          if (requestId !== activeRequestId) return;
+
+          if (!identity) {
+            debug("syncIdentityForPubkey: no identity from API", { requestId });
+            writeCachedNotFound(pubkey);
+            if (!cachedEntry) {
+              showFallbackWithSeed(pubkey);
+            } else {
+              setLoading(false);
+              revealOnce();
+            }
+            return;
+          }
+
+          applyIdentity(pubkey, identity);
+          writeCachedIdentity(pubkey, identity);
+
+          const picture = identity.picture?.trim();
+          if (picture) {
+            if (!showPictureImmediateIfAlreadyActive(picture, pubkey)) {
+              void showPicture(picture, requestId, pubkey);
+            } else {
+              setLoading(false);
+              revealOnce();
+            }
+          } else {
+            showFallbackWithSeed(pubkey);
+          }
+        })
+        .catch(() => {
+          if (requestId !== activeRequestId) return;
+          warn("syncIdentityForPubkey: fetch identity failed", { requestId });
+          if (!cachedEntry) {
+            showFallbackWithSeed(pubkey);
+          } else {
+            setLoading(false);
+            revealOnce();
+          }
+        });
+    };
+
+    const handleResolvedPubkey = (rawPubkey: string) => {
+      flowResolvedOnce = true;
+      const normalized = normalizePubkey(rawPubkey);
+      if (!normalized) {
+        setLoading(false);
+        if (!hasRevealedInitialState) {
+          showFallbackWithSeed("");
+        }
+        return;
+      }
+      if (normalized === activePubkey) {
+        writeLastPubkey(normalized);
+        setLoading(false);
+        debug("handleResolvedPubkey skipped (already active)");
+        revealOnce();
+        return;
+      }
+      syncIdentityForPubkey(normalized);
+    };
+
+    const reconcileWithSigner = async () => {
+      const now = Date.now();
+      if (reconcileInFlight) {
+        debug("reconcileWithSigner skipped (in flight)");
+        return;
+      }
+      if (now - lastReconcileAt < RECONCILE_MIN_GAP_MS) {
+        debug("reconcileWithSigner skipped (throttled)");
+        return;
+      }
+      reconcileInFlight = true;
+      lastReconcileAt = now;
+      debug("reconcileWithSigner start");
+      try {
+        const signerPubkey = await getSignerPubkeyDirect();
+        directSignerAttempted = true;
+        if (!signerPubkey) {
+          if (!flowResolvedOnce && !activePubkey && !hasRevealedInitialState) {
+            showFallbackWithSeed("");
+          }
+          return;
+        }
+        if (signerPubkey !== activePubkey) {
+          debug("reconcileWithSigner pubkey changed", {
+            oldPubkeyPreview:
+              activePubkey && activePubkey.length > 12
+                ? `${activePubkey.slice(0, 8)}...${activePubkey.slice(-6)}`
+                : activePubkey || null,
+            newPubkeyPreview: `${signerPubkey.slice(0, 8)}...${signerPubkey.slice(-6)}`,
+          });
+          syncIdentityForPubkey(signerPubkey);
+        } else {
+          writeLastPubkey(signerPubkey);
+          setLoading(false);
+          debug("reconcileWithSigner pubkey unchanged");
+          revealOnce();
+        }
+      } finally {
+        reconcileInFlight = false;
+      }
+    };
+
+    // Bootstrap strategy:
+    // 1) try shared signer state
+    // 2) else try cached pubkey
+    // 3) else stay hidden and let signer flow / direct signer decide first paint
+    const state = (
+      window as Window & {
+        __openprintsSignerState?: { pubkey?: string | null };
+      }
+    ).__openprintsSignerState;
+
+    if (typeof state?.pubkey === "string" && state.pubkey.length > 0) {
+      debug("bootstrap from shared signer state");
+      syncIdentityForPubkey(state.pubkey);
+    } else {
+      const cachedPubkey = readLastPubkey();
+      if (cachedPubkey) {
+        debug("bootstrap from cached pubkey");
+        syncIdentityForPubkey(cachedPubkey);
+      } else {
+        debug("bootstrap with no signer and no cache; waiting for signer flow");
+        setLoading(true);
+      }
+    }
+
+    document.addEventListener("nostr-signer-ready", (event) => {
+      const customEvent = event as CustomEvent<{ pubkey?: string | null }>;
+      const eventPubkey = customEvent.detail?.pubkey;
+      if (typeof eventPubkey === "string" && eventPubkey.length > 0) {
+        handleResolvedPubkey(eventPubkey);
+      }
+    });
+
+    window.addEventListener("focus", () => {
+      void reconcileWithSigner();
+    });
+    window.addEventListener("pageshow", () => {
+      void reconcileWithSigner();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        void reconcileWithSigner();
+      }
+    });
+
+    initializeNostrSignerFlow({
+      useCachedPubkey: true,
+      onSignerMissingTimeout: () => {
+        flowResolvedOnce = true;
+        if (activePubkey) {
+          setLoading(false);
+          revealOnce();
+          return;
+        }
+        showFallbackWithSeed("");
+      },
+      onPubkeyUnavailable: () => {
+        flowResolvedOnce = true;
+        if (activePubkey) {
+          setLoading(false);
+          revealOnce();
+          return;
+        }
+        showFallbackWithSeed("");
+      },
+      onPubkeyResolved: handleResolvedPubkey,
+    });
+
+    debug("initializeNostrSignerFlow attached");
+
+    // Keep reconciliation, but after bootstrap. It may resolve faster than the flow.
+    void reconcileWithSigner();
+  }
+</script>
+
+<style>
+  [data-app-profile-link][data-booting="true"] .profile-avatar-shell {
+    visibility: hidden;
+    opacity: 0;
+  }
+
+  [data-app-profile-link][data-booting="false"] .profile-avatar-shell {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .profile-avatar-shell {
+    transform-origin: center;
+    transition: opacity 140ms ease;
+  }
+
+  [data-app-profile-link][data-loading="true"] .profile-avatar-shell {
+    animation: profileAvatarPulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes profileAvatarPulse {
+    0%,
+    100% {
+      opacity: 0.95;
+      box-shadow: 0 0 0 0 rgba(52, 211, 153, 0);
+    }
+    50% {
+      opacity: 1;
+      box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.18);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-app-profile-link][data-loading="true"] .profile-avatar-shell,
+    .profile-avatar-fallback,
+    .profile-avatar-picture,
+    .profile-avatar-shell {
+      animation: none;
+      transition: none;
+    }
+  }
+</style>

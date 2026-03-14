@@ -47,6 +47,14 @@ Finally, we'll introduce a new logical component (initially part of the main ind
 - poll the configured relays for kind 0 events for ALL `pubkey`-s whose metadata hasn't been updated recently enough, so that stale metadata is periodically refreshed and the system converges toward eventual consistency
 - use reasonable retry and backoff for `pubkey`-s that never return metadata, to avoid hammering relays unnecessarily
 
+### TODO: On-demand kind 0 fetch endpoint for onboarding
+- Add an API endpoint that accepts a `pubkey` and performs an on-demand relay poll for that identity's latest kind `0` event.
+- Intended use: when `/app/profile` resolves signer pubkey but `GET /identity/{id}` returns 404 (unknown identity in OpenPrints), the client should call this endpoint to bootstrap metadata immediately instead of waiting for periodic indexer refresh.
+- Suggested behavior:
+  - fan out to configured relays with short timeout + bounded retries,
+  - if kind `0` is found, upsert `identities` and return the normalized identity payload,
+  - if not found, return a non-error "not found on relays" result so client can stay in onboarding UX.
+
 
 ## Uncategorized Notes
 - We will not store any history of the user identity metadata. OpenPrints does not aim to be a user profile hub, it merely needs the user profile data for better UX in the client
