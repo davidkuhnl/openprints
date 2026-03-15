@@ -216,9 +216,22 @@ const zapsList: any[] =
             <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
               Design
             </p>
-            <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">
-              {name}
-            </h1>
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">
+                {name}
+              </h1>
+              {design.pubkey && (
+                <span
+                  class="hidden shrink-0 rounded-md border border-emerald-400/35 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-default"
+                  data-owner-edit-cta
+                  data-owner-pubkey={design.pubkey}
+                  aria-hidden="true"
+                  title="Design edit flow is coming in the next phase."
+                >
+                  Edit design (soon)
+                </span>
+              )}
+            </div>
 
             <!-- meta pills row -->
             <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-offset">
@@ -431,3 +444,9 @@ const zapsList: any[] =
     <MockDisclaimer />
   </div>
 </AppLayout>
+
+<script>
+  import { initOwnerEditCtas } from "~/lib/design-owner-edit";
+
+  initOwnerEditCtas();
+</script>
