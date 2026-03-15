@@ -145,6 +145,71 @@ def test_reducer_writes_to_sqlite_store() -> None:
         asyncio.run(_check())
 
 
+def test_reducer_handles_duplicates_correctly_after_restart() -> None:
+    """Duplicate replay after reducer restart should not change current or version_count."""
+    from openprints.indexer.reducer import ReducerWorker
+    from openprints.indexer.types import IngestEnvelope
+    from tests.test_helpers import valid_signed_payload
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "test.db"
+        store = SQLiteIndexStore(path)
+        asyncio.run(store.open())
+
+        payload = valid_signed_payload()
+        event1 = dict(payload["event"])
+        event2 = dict(payload["event"])
+        event2["id"] = "f" * 64
+        event2["created_at"] = int(event1["created_at"]) + 10
+        event2["content"] = "newer content"
+
+        reducer1 = ReducerWorker(store=store)
+        asyncio.run(
+            reducer1.reduce_one(
+                IngestEnvelope(relay="ws://localhost:7447", received_at=1, event=event1)
+            )
+        )
+        asyncio.run(
+            reducer1.reduce_one(
+                IngestEnvelope(relay="ws://localhost:7447", received_at=2, event=event2)
+            )
+        )
+
+        # Simulate process restart: fresh reducer instance, same DB.
+        reducer2 = ReducerWorker(store=store)
+        asyncio.run(
+            reducer2.reduce_one(
+                IngestEnvelope(relay="ws://localhost:7447", received_at=3, event=event1)
+            )
+        )
+        asyncio.run(store.close())
+
+        async def _check() -> None:
+            async with aiosqlite.connect(str(path)) as conn:
+                async with conn.execute("SELECT COUNT(*) FROM design_versions") as cur:
+                    (versions_count,) = await cur.fetchone()
+                assert versions_count == 2
+
+                async with conn.execute(
+                    """
+                    SELECT latest_event_id, latest_published_at, version_count, content
+                    FROM designs
+                    """
+                ) as cur:
+                    row = await cur.fetchone()
+                assert row is not None
+                assert row[0] == event2["id"]
+                assert row[1] == event2["created_at"]
+                assert row[2] == 2
+                assert row[3] == event2["content"]
+
+        asyncio.run(_check())
+
+        assert reducer2.stats.processed == 1
+        assert reducer2.stats.duplicates == 1
+        assert reducer2.stats.reduced == 0
+
+
 async def _run_ensure_identity_pending_upsert() -> None:
     store = SQLiteIndexStore(":memory:")
     await store.open()
