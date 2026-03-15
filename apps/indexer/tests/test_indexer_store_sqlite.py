@@ -54,7 +54,8 @@ async def _run_upsert_and_read_back() -> None:
 
     v = _sample_version_row()
     c = _sample_current_row()
-    await store.upsert_design_version(v)
+    inserted = await store.append_design_version(v)
+    assert inserted is True
     await store.upsert_design_current(c)
 
     conn = store._conn
@@ -89,7 +90,8 @@ async def _run_persists_to_file() -> None:
         path = Path(tmp) / "test.db"
         store = SQLiteIndexStore(path)
         await store.open()
-        await store.upsert_design_version(_sample_version_row())
+        inserted = await store.append_design_version(_sample_version_row())
+        assert inserted is True
         await store.upsert_design_current(_sample_current_row())
         await store.close()
 

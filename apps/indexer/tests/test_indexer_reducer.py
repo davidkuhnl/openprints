@@ -21,10 +21,6 @@ class _CapturingStore(LogOnlyIndexStore):
         self.versions.append(row)
         return True
 
-    async def upsert_design_version(self, row: DesignVersionRow) -> None:
-        self._version_by_event_id[row.event_id] = row
-        self.versions.append(row)
-
     async def upsert_design_current(self, row: DesignCurrentRow) -> None:
         self._current_by_key[(row.pubkey, row.design_id)] = row
         self.current_rows.append(row)

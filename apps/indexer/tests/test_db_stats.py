@@ -122,7 +122,8 @@ def test_db_stats_success_with_designs(tmp_path: Path, capsys: pytest.CaptureFix
     async def create_db_with_design() -> None:
         store = SQLiteIndexStore(db_path)
         await store.open()
-        await store.upsert_design_version(version_row)
+        inserted = await store.append_design_version(version_row)
+        assert inserted is True
         await store.upsert_design_current(current_row)
         await store.close()
 

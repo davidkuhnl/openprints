@@ -46,8 +46,6 @@ class IndexStore(Protocol):
 
     async def append_design_version(self, row: DesignVersionRow) -> bool: ...
 
-    async def upsert_design_version(self, row: DesignVersionRow) -> None: ...
-
     async def upsert_design_current(self, row: DesignCurrentRow) -> None: ...
 
     async def get_design(self, pubkey: str, design_id: str) -> DesignCurrentRow | None: ...
@@ -59,12 +57,8 @@ class LogOnlyIndexStore:
     """Store that only logs upserts; no persistence. For dev/testing."""
 
     async def append_design_version(self, row: DesignVersionRow) -> bool:
-        await self.upsert_design_version(row)
-        return True
-
-    async def upsert_design_version(self, row: DesignVersionRow) -> None:
         logger.info(
-            "upsert_design_version",
+            "append_design_version",
             extra={
                 "event_id": row.event_id,
                 "design_id": row.design_id,
@@ -73,6 +67,7 @@ class LogOnlyIndexStore:
                 "received_at": row.received_at,
             },
         )
+        return True
 
     async def upsert_design_current(self, row: DesignCurrentRow) -> None:
         logger.info(

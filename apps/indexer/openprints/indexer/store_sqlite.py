@@ -147,32 +147,6 @@ class SQLiteIndexStore:
         await conn.commit()
         return int(cursor.rowcount or 0) == 1
 
-    async def upsert_design_version(self, row: DesignVersionRow) -> None:
-        conn = self._conn_required()
-        await conn.execute(
-            """
-            INSERT OR REPLACE INTO design_versions (
-                event_id, pubkey, design_id, kind, created_at,
-                name, format, sha256, url, content, raw_event_json, received_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                row.event_id,
-                row.pubkey,
-                row.design_id,
-                row.kind,
-                row.created_at,
-                row.name,
-                row.format,
-                row.sha256,
-                row.url,
-                row.content,
-                row.raw_event_json,
-                row.received_at,
-            ),
-        )
-        await conn.commit()
-
     async def upsert_design_current(self, row: DesignCurrentRow) -> None:
         conn = self._conn_required()
         await conn.execute(
