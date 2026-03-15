@@ -73,7 +73,12 @@ def run_index(args: Namespace) -> int:
     else:
         store = LogOnlyIndexStore()
 
+    # So we can report real stats when Ctrl+C hits (outer except would otherwise get no return).
+    stats_ref: dict[str, int] = {"processed": 0, "reduced": 0, "duplicates": 0}
+    design_indexer: DesignIndexer | None = None
+
     async def _run() -> tuple[int, int, int]:
+        nonlocal design_indexer
         if isinstance(store, SQLiteIndexStore):
             await store.open()
         try:
@@ -119,19 +124,26 @@ def run_index(args: Namespace) -> int:
                     await app.run_until_cancelled()
             except KeyboardInterrupt:
                 await app.stop()
+                raise
             return (
                 design_indexer.reducer.stats.processed,
                 design_indexer.reducer.stats.reduced,
                 design_indexer.reducer.stats.duplicates,
             )
         finally:
+            if design_indexer is not None:
+                stats_ref["processed"] = design_indexer.reducer.stats.processed
+                stats_ref["reduced"] = design_indexer.reducer.stats.reduced
+                stats_ref["duplicates"] = design_indexer.reducer.stats.duplicates
             if isinstance(store, SQLiteIndexStore):
                 await store.close()
 
     try:
         processed, reduced, duplicates = asyncio.run(_run())
     except KeyboardInterrupt:
-        processed, reduced, duplicates = 0, 0, 0
+        processed = stats_ref["processed"]
+        reduced = stats_ref["reduced"]
+        duplicates = stats_ref["duplicates"]
 
     print_json(
         {

@@ -11,12 +11,22 @@ class _CapturingStore(LogOnlyIndexStore):
         self.versions: list[DesignVersionRow] = []
         self.current_rows: list[DesignCurrentRow] = []
         self.identity_pending: list[tuple[str, int]] = []
+        self._version_by_event_id: dict[str, DesignVersionRow] = {}
+        self._current_by_key: dict[tuple[str, str], DesignCurrentRow] = {}
 
-    async def upsert_design_version(self, row: DesignVersionRow) -> None:
+    async def append_design_version(self, row: DesignVersionRow) -> bool:
+        if row.event_id in self._version_by_event_id:
+            return False
+        self._version_by_event_id[row.event_id] = row
         self.versions.append(row)
+        return True
 
     async def upsert_design_current(self, row: DesignCurrentRow) -> None:
+        self._current_by_key[(row.pubkey, row.design_id)] = row
         self.current_rows.append(row)
+
+    async def get_design(self, pubkey: str, design_id: str) -> DesignCurrentRow | None:
+        return self._current_by_key.get((pubkey, design_id))
 
     async def ensure_identity_pending(self, pubkey: str, first_seen_at: int) -> None:
         self.identity_pending.append((pubkey, first_seen_at))

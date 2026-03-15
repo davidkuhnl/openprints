@@ -44,9 +44,11 @@ class DesignCurrentRow:
 class IndexStore(Protocol):
     """Protocol for indexer storage backends (log-only, SQLite, etc.)."""
 
-    async def upsert_design_version(self, row: DesignVersionRow) -> None: ...
+    async def append_design_version(self, row: DesignVersionRow) -> bool: ...
 
     async def upsert_design_current(self, row: DesignCurrentRow) -> None: ...
+
+    async def get_design(self, pubkey: str, design_id: str) -> DesignCurrentRow | None: ...
 
     async def ensure_identity_pending(self, pubkey: str, first_seen_at: int) -> None: ...
 
@@ -54,9 +56,9 @@ class IndexStore(Protocol):
 class LogOnlyIndexStore:
     """Store that only logs upserts; no persistence. For dev/testing."""
 
-    async def upsert_design_version(self, row: DesignVersionRow) -> None:
+    async def append_design_version(self, row: DesignVersionRow) -> bool:
         logger.info(
-            "upsert_design_version",
+            "append_design_version",
             extra={
                 "event_id": row.event_id,
                 "design_id": row.design_id,
@@ -65,6 +67,7 @@ class LogOnlyIndexStore:
                 "received_at": row.received_at,
             },
         )
+        return True
 
     async def upsert_design_current(self, row: DesignCurrentRow) -> None:
         logger.info(
@@ -76,6 +79,13 @@ class LogOnlyIndexStore:
                 "version_count": row.version_count,
             },
         )
+
+    async def get_design(self, pubkey: str, design_id: str) -> DesignCurrentRow | None:
+        logger.info(
+            "get_design_log_only_store",
+            extra={"pubkey": pubkey, "design_id": design_id},
+        )
+        return None
 
     async def ensure_identity_pending(self, pubkey: str, first_seen_at: int) -> None:
         logger.info(

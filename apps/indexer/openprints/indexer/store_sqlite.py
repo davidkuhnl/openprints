@@ -119,11 +119,12 @@ class SQLiteIndexStore:
             raise RuntimeError("SQLiteIndexStore not open; call open() first")
         return self._conn
 
-    async def upsert_design_version(self, row: DesignVersionRow) -> None:
+    async def append_design_version(self, row: DesignVersionRow) -> bool:
+        """Insert design version once; return False when event_id already exists."""
         conn = self._conn_required()
-        await conn.execute(
+        cursor = await conn.execute(
             """
-            INSERT OR REPLACE INTO design_versions (
+            INSERT OR IGNORE INTO design_versions (
                 event_id, pubkey, design_id, kind, created_at,
                 name, format, sha256, url, content, raw_event_json, received_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -144,6 +145,7 @@ class SQLiteIndexStore:
             ),
         )
         await conn.commit()
+        return int(cursor.rowcount or 0) == 1
 
     async def upsert_design_current(self, row: DesignCurrentRow) -> None:
         conn = self._conn_required()

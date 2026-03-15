@@ -24,8 +24,6 @@ class ReducerWorker:
     def __init__(self, store: IndexStore | None = None) -> None:
         self._store = store or LogOnlyIndexStore()
         self.stats = ReducerStats()
-        self._seen_event_ids: set[str] = set()
-        self._current_by_design: dict[tuple[str, str], DesignCurrentRow] = {}
 
     async def reduce_one(self, envelope: IngestEnvelope) -> None:
         self.stats.processed += 1
@@ -36,10 +34,6 @@ class ReducerWorker:
         if not isinstance(event_id, str) or not isinstance(pubkey, str):
             raise RuntimeError("Reducer invariant violated: id and pubkey must be strings")
         await self._store.ensure_identity_pending(pubkey, envelope.received_at)
-
-        if event_id in self._seen_event_ids:
-            self.stats.duplicates += 1
-            return
 
         tags = event.get("tags")
         design_id = _single_tag_value(tags, "d", event_id, envelope.relay)
@@ -67,11 +61,12 @@ class ReducerWorker:
             raw_event_json=json.dumps(event, separators=(",", ":"), ensure_ascii=False),
             received_at=envelope.received_at,
         )
-        await self._store.upsert_design_version(version_row)
+        inserted = await self._store.append_design_version(version_row)
+        if not inserted:
+            self.stats.duplicates += 1
+            return
 
-        self._seen_event_ids.add(event_id)
-        key = (pubkey, design_id)
-        current = self._current_by_design.get(key)
+        current = await self._store.get_design(pubkey, design_id)
         if current is None:
             next_current = DesignCurrentRow(
                 pubkey=pubkey,
@@ -113,7 +108,6 @@ class ReducerWorker:
                 tags_json=_optional_tags_json(tags) if is_newer else current.tags_json,
             )
 
-        self._current_by_design[key] = next_current
         await self._store.upsert_design_current(next_current)
         self.stats.reduced += 1
         logger.debug(
