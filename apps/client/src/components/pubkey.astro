@@ -1,6 +1,7 @@
 ---
 import TruncateCopy from "~/components/truncate-copy.astro";
 import { nip19 } from "nostr-tools";
+import { isPubkey } from "~/lib/pubkey";
 
 interface Props {
   value: string;
@@ -9,11 +10,9 @@ interface Props {
 
 const { value, maxChars = 10 } = Astro.props;
 
-const isHexPubkey = (s: string): boolean => /^[0-9a-f]{64}$/i.test(s);
-
 let displayValue = value;
 
-if (isHexPubkey(value)) {
+if (isPubkey(value)) {
   try {
     displayValue = nip19.npubEncode(value);
   } catch (err) {

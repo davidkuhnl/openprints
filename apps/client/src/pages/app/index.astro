@@ -5,6 +5,7 @@ import DesignSearchControls from "~/components/design-search-controls.astro";
 import MockMarker from "~/components/mock-marker.astro";
 import { nounForCount } from "~/lib/plural";
 import { Icon } from "astro-icon/components";
+import { mapUnknownDesignStats } from "~/lib/designs";
 
 export const prerender = false;
 
@@ -33,11 +34,9 @@ if (base) {
   try {
     const statsRes = await fetch(`${base}/designs/stats`);
     if (statsRes.ok) {
-      const stats = await statsRes.json();
-      totalDesigns =
-        typeof stats?.designs === "number" ? stats.designs : null;
-      totalVersions =
-        typeof stats?.versions === "number" ? stats.versions : null;
+      const stats = mapUnknownDesignStats(await statsRes.json());
+      totalDesigns = stats.designs;
+      totalVersions = stats.versions;
     }
   } catch {
     // Keep null stats on network errors; page still renders.

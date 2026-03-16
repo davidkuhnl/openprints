@@ -309,6 +309,7 @@ async def _run_update_identity_profile_and_miss() -> None:
             "display_name": "Alice",
             "about": "hello",
             "picture": "https://example.invalid/p.png",
+            "shape": "⭐",
             "banner": None,
             "website": "https://example.invalid",
             "nip05": "alice@example.invalid",
@@ -323,7 +324,7 @@ async def _run_update_identity_profile_and_miss() -> None:
     assert conn is not None
     async with conn.execute(
         """
-        SELECT status, retry_count, name, display_name, website, nip05,
+        SELECT status, retry_count, name, display_name, shape, website, nip05,
                profile_fetched_at, fetch_last_attempt_at
         FROM identities
         WHERE pubkey = ?
@@ -336,6 +337,7 @@ async def _run_update_identity_profile_and_miss() -> None:
     assert row["retry_count"] == 0
     assert row["name"] == "alice"
     assert row["display_name"] == "Alice"
+    assert row["shape"] == "⭐"
     assert row["website"] == "https://example.invalid"
     assert row["nip05"] == "alice@example.invalid"
     assert row["profile_fetched_at"] == 210

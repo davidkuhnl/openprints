@@ -10,6 +10,7 @@ type Props = {
   headerLabel: string;
   headerValue: string;
   headerValueClass?: string;
+  value?: string;
 };
 
 const {
@@ -21,13 +22,17 @@ const {
   headerLabel,
   headerValue,
   headerValueClass = "text-offset/55",
+  value,
 } = Astro.props as Props;
 ---
 
 <div class="space-y-2">
   <div class="flex items-center justify-between gap-2">
     <div class="space-y-0.5">
-      <label for={textareaId} class="text-[11px] font-semibold uppercase tracking-[0.14em] text-offset/80">
+      <label
+        for={textareaId}
+        class="text-[11px] font-semibold uppercase tracking-[0.14em] text-offset/80"
+      >
         {sectionTitle}
       </label>
       <p class="text-[11px] text-offset/70">
@@ -62,6 +67,7 @@ const {
       readonly
       class="min-h-[180px] w-full resize-y border-0 bg-transparent px-3 py-2 font-mono text-[11px] leading-relaxed text-default focus:outline-none focus:ring-0"
       data-output={outputName}
-    ></textarea>
+    >{value ?? ""}</textarea>
   </div>
 </div>
+

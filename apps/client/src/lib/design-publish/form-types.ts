@@ -1,3 +1,5 @@
+import type { Pubkey } from "~/lib/pubkey";
+
 export type NostrTag = [string, string];
 
 export type StepId =
@@ -13,7 +15,7 @@ export type StepId =
 export type UnsignedNostrEvent = {
   kind: number;
   created_at: number;
-  pubkey: string;
+  pubkey: Pubkey;
   tags: NostrTag[];
   content: string;
 };
@@ -21,24 +23,6 @@ export type UnsignedNostrEvent = {
 export type SignedNostrEvent = UnsignedNostrEvent & {
   id: string;
   sig: string;
-};
-
-export type PublishRelayResult = {
-  relay: string;
-  event_id: string;
-  accepted: boolean;
-  duplicate?: boolean;
-  message: string;
-};
-
-export type PublishResponse = {
-  ok: boolean;
-  event_id?: string;
-  relay_results?: PublishRelayResult[];
-  accepted_relay_count?: number;
-  duplicate_relay_count?: number;
-  rejected_relay_count?: number;
-  errors?: Array<{ message?: string }>;
 };
 
 export type BuildResult =
@@ -81,7 +65,7 @@ export type DraftInputs = Pick<Inputs, DraftFieldName>;
 export type FieldElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
 export type IdentityMetadataDetail = {
-  pubkey?: string | null;
+  pubkey?: Pubkey | null;
   lnurl?: string | null;
 };
 

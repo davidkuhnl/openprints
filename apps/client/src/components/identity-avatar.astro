@@ -7,15 +7,29 @@
  */
 import { createAvatar } from "@dicebear/core";
 import { rings } from "@dicebear/collection";
+import type { Pubkey } from "~/lib/pubkey";
+import {
+  buildIdentityShapeMaskDataUri,
+  normalizeIdentityShape,
+} from "~/lib/identity-shape";
 
 interface Props {
   picture?: string | null;
-  pubkey: string;
+  pubkey: Pubkey;
   size?: number;
   alt?: string;
+  shape?: string | null;
+  hover?: boolean;
 }
 
-const { picture, pubkey, size = 32, alt = "Creator avatar" } = Astro.props;
+const {
+  picture,
+  pubkey,
+  size = 32,
+  alt = "Creator avatar",
+  shape = null,
+  hover = false,
+} = Astro.props as Props;
 
 const sizePx = `${size}px`;
 
@@ -33,10 +47,15 @@ const fallbackSvg = avatar.toString();
 const fallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(fallbackSvg)}`;
 
 const hasPicture = picture && String(picture).trim().length > 0;
+const normalizedShape = normalizeIdentityShape(shape);
+const imageShapeClass = "rounded-full";
 ---
 
 <div
-  class="identity-avatar-wrapper relative shrink-0 rounded-full border border-default bg-default shadow-sm p-[4px] overflow-hidden"
+  class="identity-avatar-wrapper relative shrink-0 rounded-full border border-default bg-default shadow-sm p-[4px] overflow-hidden isolate"
+  data-hover={hover ? "true" : "false"}
+  data-shape-mode={normalizedShape ? "emoji" : "circle"}
+  data-identity-avatar-shape={normalizedShape ?? undefined}
   style={`width: ${sizePx}; height: ${sizePx};`}
 >
   {hasPicture && (
@@ -44,7 +63,8 @@ const hasPicture = picture && String(picture).trim().length > 0;
       src={picture}
       alt={alt}
       loading="lazy"
-      class="identity-avatar absolute inset-0 w-full h-full rounded-full object-cover"
+      class={`identity-avatar absolute inset-0 w-full h-full object-cover ${imageShapeClass}`}
+      data-identity-avatar-image
       onerror="this.classList.add('hidden'); this.nextElementSibling?.classList.remove('hidden');"
     />
   )}
@@ -53,7 +73,127 @@ const hasPicture = picture && String(picture).trim().length > 0;
     src={fallbackSrc}
     alt={alt}
     loading="lazy"
-    class={`identity-avatar-fallback w-full h-full rounded-full object-cover ${hasPicture ? "hidden" : ""}`}
+    class={`identity-avatar-fallback absolute inset-0 w-full h-full object-cover ${imageShapeClass} ${hasPicture ? "hidden" : ""}`}
+    data-identity-avatar-image
     aria-hidden={hasPicture ? "true" : "false"}
   />
 </div>
+
+<style>
+  .identity-avatar-wrapper[data-hover="true"] {
+    transform-origin: center;
+    transition: transform 150ms ease-out;
+  }
+
+  .identity-avatar-wrapper[data-hover="true"]:hover {
+    transform: scale(1.03);
+  }
+
+  .identity-avatar-wrapper[data-hover="true"] [data-identity-avatar-image] {
+    transition: filter 150ms ease-out;
+  }
+
+  .identity-avatar-wrapper[data-hover="true"]:hover [data-identity-avatar-image] {
+    filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.45));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .identity-avatar-wrapper[data-hover="true"] {
+      transition: none;
+    }
+
+    .identity-avatar-wrapper[data-hover="true"] [data-identity-avatar-image] {
+      transition: none;
+    }
+  }
+
+  @supports ((-webkit-mask-image: url("")) or (mask-image: url(""))) {
+    .identity-avatar-wrapper[data-identity-avatar-shape]:not(
+        [data-identity-avatar-mask-init="true"]
+      ) {
+      visibility: hidden;
+    }
+
+    .identity-avatar-wrapper[data-shape-mode="emoji"] {
+      border-radius: 0;
+      padding: 0;
+      border-color: transparent;
+      border-width: 0;
+      background: transparent;
+      box-shadow: none;
+      overflow: visible;
+    }
+
+    .identity-avatar-wrapper[data-shape-mode="emoji"]::before,
+    .identity-avatar-wrapper[data-shape-mode="emoji"]::after {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      pointer-events: none;
+      -webkit-mask-image: var(--identity-avatar-mask);
+      mask-image: var(--identity-avatar-mask);
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      -webkit-mask-mode: alpha;
+      mask-mode: alpha;
+    }
+
+    .identity-avatar-wrapper[data-shape-mode="emoji"]::before {
+      background: rgb(9, 196, 161);
+      transform: scale(1.06);
+      z-index: 0;
+    }
+
+    .identity-avatar-wrapper[data-shape-mode="emoji"]::after {
+      background: #ffffff;
+      z-index: 1;
+    }
+
+    .identity-avatar-wrapper[data-shape-mode="emoji"] [data-identity-avatar-image] {
+      border-radius: 0;
+      z-index: 2;
+      -webkit-mask-image: var(--identity-avatar-mask);
+      mask-image: var(--identity-avatar-mask);
+      -webkit-mask-size: contain;
+      mask-size: contain;
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      -webkit-mask-mode: alpha;
+      mask-mode: alpha;
+    }
+  }
+</style>
+
+<script>
+  import { buildIdentityShapeMaskDataUri } from "~/lib/identity-shape";
+
+  if (typeof window !== "undefined") {
+    const avatars = document.querySelectorAll<HTMLElement>(
+      "[data-identity-avatar-shape]:not([data-identity-avatar-mask-init='true'])",
+    );
+
+    for (const avatar of avatars) {
+      avatar.setAttribute("data-identity-avatar-mask-init", "true");
+      const emoji = avatar.getAttribute("data-identity-avatar-shape");
+      if (!emoji) continue;
+
+      const maskSrc = buildIdentityShapeMaskDataUri(emoji);
+      if (!maskSrc) {
+        avatar.setAttribute("data-shape-mode", "circle");
+        avatar.style.removeProperty("--identity-avatar-mask");
+        avatar.style.removeProperty("border-radius");
+        continue;
+      }
+
+      const maskValue = `url("${maskSrc}")`;
+      avatar.style.borderRadius = "0";
+      avatar.style.setProperty("--identity-avatar-mask", maskValue);
+    }
+  }
+</script>

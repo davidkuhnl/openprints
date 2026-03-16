@@ -20,6 +20,7 @@ _IDENTITY_COLUMNS = (
     "display_name",
     "about",
     "picture",
+    "shape",
     "banner",
     "website",
     "nip05",
@@ -75,6 +76,7 @@ CREATE TABLE IF NOT EXISTS identities (
     display_name TEXT,
     about TEXT,
     picture TEXT,
+    shape TEXT,
     banner TEXT,
     website TEXT,
     nip05 TEXT,
@@ -103,6 +105,7 @@ class SQLiteIndexStore:
         self._conn.row_factory = aiosqlite.Row
         await self._conn.execute("PRAGMA foreign_keys = ON")
         await self._conn.executescript(_SCHEMA)
+        await self._ensure_identity_schema()
         await self._conn.commit()
         logger.info("sqlite_store_opened", extra={"path": str(self._path)})
 
@@ -118,6 +121,15 @@ class SQLiteIndexStore:
         if self._conn is None:
             raise RuntimeError("SQLiteIndexStore not open; call open() first")
         return self._conn
+
+    async def _ensure_identity_schema(self) -> None:
+        """Apply lightweight additive schema changes for identities."""
+        conn = self._conn_required()
+        async with conn.execute("PRAGMA table_info(identities)") as cur:
+            rows = await cur.fetchall()
+        existing_columns = {str(row["name"]) for row in rows}
+        if "shape" not in existing_columns:
+            await conn.execute("ALTER TABLE identities ADD COLUMN shape TEXT")
 
     async def append_design_version(self, row: DesignVersionRow) -> bool:
         """Insert design version once; return False when event_id already exists."""
@@ -233,6 +245,7 @@ class SQLiteIndexStore:
                 display_name = ?,
                 about = ?,
                 picture = ?,
+                shape = ?,
                 banner = ?,
                 website = ?,
                 nip05 = ?,
@@ -249,6 +262,7 @@ class SQLiteIndexStore:
                 metadata.get("display_name"),
                 metadata.get("about"),
                 metadata.get("picture"),
+                metadata.get("shape"),
                 metadata.get("banner"),
                 metadata.get("website"),
                 metadata.get("nip05"),

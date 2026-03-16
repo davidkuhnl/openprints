@@ -1,13 +1,13 @@
 ---
 interface Props {
-  value: any;
+  value: unknown;
   emptyText?: string;
   agoFormat?: boolean;
 }
 
 const { value, emptyText = "–", agoFormat = false } = Astro.props;
 
-function getDateFromInput(input: any): Date | null {
+function getDateFromInput(input: unknown): Date | null {
   if (input == null) return null;
 
   const n = typeof input === "number" ? input : Number(input);

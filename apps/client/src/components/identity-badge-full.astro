@@ -3,32 +3,17 @@ import CopyValue from "~/components/copy-value.astro";
 import IdentityAvatar from "~/components/identity-avatar.astro";
 import { getIdentityStatusFlags } from "~/lib/identity-status";
 import { Icon } from "astro-icon/components";
-
-interface CreatorIdentity {
-  id?: string | null;
-  status: string | null;
-  pubkey: string;
-  display_name_resolved: string;
-  npub: string;
-  picture?: string | null;
-  nip05?: string | null;
-  lud06?: string | null;
-  lud16?: string | null;
-}
+import type { CreatorIdentityCard } from "~/lib/designs";
 
 interface Props {
-  identity: CreatorIdentity | null | undefined;
+  identity: CreatorIdentityCard;
 }
 
 const { identity } = Astro.props;
 
-const displayNameResolved =
-  (identity?.display_name_resolved && String(identity.display_name_resolved).trim()) ||
-  "Unknown creator";
-const npub = identity?.npub ?? "";
-const identityHref = identity?.id
-  ? `/app/identity/${encodeURIComponent(identity.id)}`
-  : null;
+const displayNameResolved = identity.display_name_resolved;
+const npub = identity.npub;
+const identityHref = `/app/identity/${encodeURIComponent(identity.pubkey)}`;
 
 const { hasNip05, isZappable } = getIdentityStatusFlags(identity);
 ---
@@ -37,8 +22,9 @@ const { hasNip05, isZappable } = getIdentityStatusFlags(identity);
   <div class="inline-flex items-center">
     <div class="relative z-10">
       <IdentityAvatar
-        picture={identity?.picture ?? null}
-        pubkey={identity?.pubkey ?? ""}
+        picture={identity.picture}
+        shape={identity.shape}
+        pubkey={identity.pubkey}
         size={50}
         alt={displayNameResolved}
       />

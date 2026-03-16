@@ -1,6 +1,10 @@
 ---
 // apps/client/src/components/recent-designs-grid.astro
 import DesignResultCard from "~/components/design-result-card.astro";
+import {
+  mapUnknownDesignListToCardModels,
+  type DesignCardModel,
+} from "~/lib/designs";
 
 const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
 const {
@@ -15,7 +19,7 @@ const {
 
 const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
-let items: any[] = Array.isArray(providedItems) ? providedItems : [];
+let items: DesignCardModel[] = mapUnknownDesignListToCardModels(providedItems);
 let errorMessage: string | null =
   typeof providedErrorMessage === "string" ? providedErrorMessage : null;
 
@@ -40,7 +44,7 @@ if (!Array.isArray(providedItems)) {
         errorMessage = `Failed to load designs (${res.status} ${res.statusText}).`;
       } else {
         const data = await res.json();
-        items = Array.isArray(data?.items) ? data.items : [];
+        items = mapUnknownDesignListToCardModels(data?.items);
       }
     } catch {
       errorMessage =

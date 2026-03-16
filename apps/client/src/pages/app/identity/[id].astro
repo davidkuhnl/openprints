@@ -1,6 +1,12 @@
 ---
 import AppLayout from "~/layouts/app-layout.astro";
 import IdentityDetailCard from "~/components/identity-detail-card.astro";
+import { mapUnknownDesignStats } from "~/lib/designs";
+import { parsePubkeyOrNpub } from "~/lib/nostr-pubkey";
+import {
+  mapUnknownIdentityToDetailModel,
+  type IdentityDetailModel,
+} from "~/lib/identities";
 
 export const prerender = false;
 
@@ -8,10 +14,11 @@ const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
 const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 const { id } = Astro.params;
 const identityIdParam: string = typeof id === "string" ? id : "";
+const normalizedIdentityId = parsePubkeyOrNpub(identityIdParam);
 
 const designsPreviewLimit = 6;
 
-let identity: any = null;
+let identity: IdentityDetailModel | null = null;
 let errorTitle: string | null = null;
 let errorMessage: string | null = null;
 let totalDesignsForIdentity: number | null = null;
@@ -24,8 +31,11 @@ if (!base) {
 } else if (!id) {
   errorTitle = "Identity not found";
   errorMessage = "Missing identity id in the URL.";
+} else if (!normalizedIdentityId) {
+  errorTitle = "Identity unavailable";
+  errorMessage = "Invalid identity id. Expected a 64-character hex pubkey or npub.";
 } else {
-  const identityUrl = `${base}/identity/${encodeURIComponent(id)}`;
+  const identityUrl = `${base}/identity/${encodeURIComponent(normalizedIdentityId)}`;
 
   try {
     const res = await fetch(identityUrl);
@@ -34,7 +44,13 @@ if (!base) {
       errorTitle = "Identity not found";
       errorMessage = `API responded with ${res.status} ${res.statusText} for this identity.`;
     } else {
-      identity = await res.json();
+      const mapped = mapUnknownIdentityToDetailModel(await res.json());
+      if (!mapped.ok) {
+        errorTitle = "Identity unavailable";
+        errorMessage = mapped.reason;
+      } else {
+        identity = mapped.identity;
+      }
     }
   } catch {
     errorTitle = "Identity not found";
@@ -45,16 +61,14 @@ if (!base) {
   // If identity loaded successfully, fetch scoped design stats for this identity.
   if (!errorMessage && identity) {
     const statsUrl = `${base}/designs/stats?identity_id=${encodeURIComponent(
-      id,
+      normalizedIdentityId,
     )}`;
     try {
       const statsRes = await fetch(statsUrl);
       if (statsRes.ok) {
-        const stats = await statsRes.json();
-        totalDesignsForIdentity =
-          typeof stats?.designs === "number" ? stats.designs : null;
-        totalVersionsForIdentity =
-          typeof stats?.versions === "number" ? stats.versions : null;
+        const stats = mapUnknownDesignStats(await statsRes.json());
+        totalDesignsForIdentity = stats.designs;
+        totalVersionsForIdentity = stats.versions;
       } else {
         // Keep null stats on API status errors; page still renders.
       }
@@ -70,7 +84,7 @@ if (!base) {
     identity={identity}
     errorTitle={errorTitle}
     errorMessage={errorMessage}
-    identityId={identityIdParam}
+    identityId={normalizedIdentityId ?? identityIdParam}
     totalDesignsForIdentity={totalDesignsForIdentity}
     totalVersionsForIdentity={totalVersionsForIdentity}
     designsPreviewLimit={designsPreviewLimit}

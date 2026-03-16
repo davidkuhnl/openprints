@@ -1,14 +1,15 @@
 ---
 import { Icon } from "astro-icon/components";
 import TimestampDisplay from "~/components/timestamp-display.astro";
+import type { IdentityDetailModel } from "~/lib/identities";
 
 interface Props {
-  identity: any;
+  identity: IdentityDetailModel;
 }
 
 const { identity } = Astro.props as Props;
 
-const rawStatus = identity?.status as string | null | undefined;
+const rawStatus = identity.status;
 const normalizedStatus =
   typeof rawStatus === "string" ? rawStatus.trim().toLowerCase() : null;
 
@@ -36,19 +37,6 @@ const statusBg =
     : normalizedStatus === "failed"
     ? "rgba(251, 113, 133, 0.12)"
     : "rgba(52, 211, 153, 0.12)";
-
-function getDateFromInput(input: any): Date | null {
-  if (input == null) return null;
-
-  const n = typeof input === "number" ? input : Number(input);
-  if (!Number.isFinite(n)) return null;
-
-  const ms = n > 1e12 ? n : n * 1000;
-  const d = new Date(ms);
-  if (Number.isNaN(d.getTime())) return null;
-
-  return d;
-}
 ---
 
 {rawStatus && (
@@ -126,20 +114,17 @@ function getDateFromInput(input: any): Date | null {
             <div class="space-y-1">
               <p class="text-offset/80">
                 Oh, we know this npub well.
-                {identity?.pubkey_first_seen_at && (
+                {identity.pubkey_first_seen_at && (
                   <>
                     {" "}
                     We first saw them in OpenPrints on{" "}
                     <span class="font-semibold text-default">
-                      {getDateFromInput(identity.pubkey_first_seen_at)?.toLocaleDateString(
-                        undefined,
-                        { year: "numeric", month: "short", day: "2-digit" },
-                      )}
+                      <TimestampDisplay value={identity.pubkey_first_seen_at} />
                     </span>
                     .
                   </>
                 )}
-                {identity?.pubkey_last_seen_at && (
+                {identity.pubkey_last_seen_at && (
                   <>
                     {" "}
                     They were last active{" "}
@@ -152,7 +137,7 @@ function getDateFromInput(input: any): Date | null {
                     .
                   </>
                 )}
-                {identity?.profile_fetched_at && (
+                {identity.profile_fetched_at && (
                   <>
                     {" "}
                     We got their fresh info from the relays{" "}
@@ -172,16 +157,15 @@ function getDateFromInput(input: any): Date | null {
           {/* Failed */}
           {normalizedStatus === "failed" && (
             <div class="space-y-1">
-              {typeof identity?.retry_count === "number" &&
-                identity.retry_count > 0 && (
-                  <p class="text-offset/70">
-                    We’ve already checked the connected relays{" "}
-                    <span class="font-semibold text-default">
-                      {identity.retry_count}
-                    </span>{" "}
-                    time{identity.retry_count === 1 ? "" : "s"}, but we haven’t seen a
-                    kind-0 event for this npub yet. Stay tuned.
-                  </p>
+              {typeof identity.retry_count === "number" && identity.retry_count > 0 && (
+                <p class="text-offset/70">
+                  We’ve already checked the connected relays{" "}
+                  <span class="font-semibold text-default">
+                    {identity.retry_count}
+                  </span>{" "}
+                  time{identity.retry_count === 1 ? "" : "s"}, but we haven’t seen a
+                  kind-0 event for this npub yet. Stay tuned.
+                </p>
               )}
             </div>
           )}

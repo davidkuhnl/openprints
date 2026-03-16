@@ -120,6 +120,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     type IdentityRecord,
     type IdentitySnapshot,
   } from "~/lib/identity-store";
+  import type { Pubkey } from "~/lib/pubkey";
 
   type StatusMode = "checking" | "ready" | "offline";
 
@@ -226,7 +227,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       }
     };
 
-    const getShortNpub = (pubkey: string): string => {
+    const getShortNpub = (pubkey: Pubkey): string => {
       if (!pubkey) {
         return "—";
       }
@@ -246,7 +247,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       identity?.name ||
       "";
 
-    const dispatchLnurlMetadata = (pubkey: string, identity: IdentityRecord | null) => {
+    const dispatchLnurlMetadata = (pubkey: Pubkey, identity: IdentityRecord | null) => {
       const lnurl = identity?.lnurl ?? identity?.lud16 ?? identity?.lud06 ?? null;
       document.dispatchEvent(
         new CustomEvent("openprints-identity-metadata", {

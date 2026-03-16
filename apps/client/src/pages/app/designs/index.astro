@@ -3,6 +3,10 @@ import AppLayout from "~/layouts/app-layout.astro";
 import DesignResultCard from "~/components/design-result-card.astro";
 import DesignSearchControls from "~/components/design-search-controls.astro";
 import { Icon } from "astro-icon/components";
+import {
+  mapUnknownDesignListToCardModels,
+  type DesignCardModel,
+} from "~/lib/designs";
 
 export const prerender = false;
 
@@ -32,7 +36,7 @@ const limit = Number.isFinite(parsedLimit) && [12, 24, 48].includes(parsedLimit)
   : 24;
 const offset = (page - 1) * limit;
 
-let items: any[] = [];
+let items: DesignCardModel[] = [];
 let total = 0;
 let errorMessage: string | null = null;
 
@@ -55,7 +59,7 @@ if (!base) {
       errorMessage = `Failed to load designs (${res.status} ${res.statusText}).`;
     } else {
       const data = await res.json();
-      items = Array.isArray(data?.items) ? data.items : [];
+      items = mapUnknownDesignListToCardModels(data?.items);
       total = typeof data?.total === "number" ? data.total : 0;
     }
   } catch {
