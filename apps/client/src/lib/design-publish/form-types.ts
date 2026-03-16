@@ -23,24 +23,6 @@ export type SignedNostrEvent = UnsignedNostrEvent & {
   sig: string;
 };
 
-export type PublishRelayResult = {
-  relay: string;
-  event_id: string;
-  accepted: boolean;
-  duplicate?: boolean;
-  message: string;
-};
-
-export type PublishResponse = {
-  ok: boolean;
-  event_id?: string;
-  relay_results?: PublishRelayResult[];
-  accepted_relay_count?: number;
-  duplicate_relay_count?: number;
-  rejected_relay_count?: number;
-  errors?: Array<{ message?: string }>;
-};
-
 export type BuildResult =
   | { ok: true; event: UnsignedNostrEvent; warnings: string[] }
   | { ok: false; errors: string[] };

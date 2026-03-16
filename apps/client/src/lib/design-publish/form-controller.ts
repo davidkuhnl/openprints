@@ -16,6 +16,7 @@ import {
   getSuggestedMimeForFormat,
 } from "~/lib/design-publish/form-inference";
 import { renderPreviewImages } from "~/lib/design-publish/form-preview";
+import { mapPublishHttpResult } from "~/lib/design-publish/publish";
 import {
   DRAFT_FIELD_NAMES,
   INPUT_FIELD_NAMES,
@@ -25,7 +26,6 @@ import {
   type FieldName,
   type IdentityMetadataDetail,
   type Inputs,
-  type PublishResponse,
   type SignedNostrEvent,
   type SignerViewChangeDetail,
   type StepId,
@@ -105,7 +105,7 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
   const fields = {
     d: getInput<HTMLInputElement>("d"),
     name: getInput<HTMLInputElement>("name"),
-    format: getInput<HTMLSelectElement>("format") as unknown as HTMLInputElement,
+    format: getInput<HTMLSelectElement>("format"),
     url: getInput<HTMLInputElement>("url"),
     sha256: getInput<HTMLInputElement>("sha256"),
     description: getInput<HTMLTextAreaElement>("description"),
@@ -117,7 +117,7 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
     lnurl: getInput<HTMLInputElement>("lnurl"),
     mime: getInput<HTMLInputElement>("mime"),
   };
-  const formatSelect = fields.format as unknown as HTMLSelectElement;
+  const formatSelect = fields.format;
 
   const stepOrder: StepId[] = STEP_ORDER;
 
@@ -351,9 +351,7 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
       return value.length === 0 ? "empty" : "invalid";
     }
     if (step === "format") {
-      const format = normalizeSingleLine(
-        (fields.format as unknown as HTMLSelectElement).value,
-      ).toLowerCase();
+      const format = normalizeSingleLine(fields.format.value).toLowerCase();
       return format.length === 0 ? "empty" : "invalid";
     }
     if (step === "file") {
@@ -668,12 +666,6 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
     }
   };
 
-  const parsePublishError = (payload: PublishResponse | null, fallback: string): string => {
-    const fromPayload = payload?.errors?.find((entry) => typeof entry?.message === "string")
-      ?.message;
-    return fromPayload && fromPayload.length > 0 ? fromPayload : fallback;
-  };
-
   const handlePublish = async () => {
     if (isPublishing || isSigning) return;
     if (!signedEvent) {
@@ -709,18 +701,19 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
         window.clearTimeout(timeout);
       }
 
-      const payload = (await response.json().catch(() => null)) as PublishResponse | null;
-      if (!response.ok || !payload?.ok) {
-        const message = parsePublishError(payload, `Publish failed (${response.status}).`);
+      const payload = (await response.json().catch(() => null)) as unknown;
+      const publishOutcome = mapPublishHttpResult(response.ok, response.status, payload);
+      if (publishOutcome.kind === "failure") {
+        const message = publishOutcome.message;
         setStatus(message);
         publishedSuccess = false;
         renderAccordion();
         return;
       }
 
-      const accepted = payload.accepted_relay_count ?? 0;
-      const duplicates = payload.duplicate_relay_count ?? 0;
-      const rejected = payload.rejected_relay_count ?? 0;
+      const accepted = publishOutcome.acceptedRelayCount;
+      const duplicates = publishOutcome.duplicateRelayCount;
+      const rejected = publishOutcome.rejectedRelayCount;
       publishedSuccess = true;
       setStatus(
         `Published to ${accepted} relay${accepted === 1 ? "" : "s"} (${duplicates} duplicate ack, ${rejected} rejected).`,

@@ -8,9 +8,10 @@ import IdentityNostrStatus from "~/components/identity-nostr-status.astro";
 import RecentDesignsGrid from "~/components/recent-designs-grid.astro";
 import { nounForCount } from "~/lib/plural";
 import { Icon } from "astro-icon/components";
+import type { IdentityDetailModel } from "~/lib/identities";
 
 interface Props {
-  identity: any;
+  identity: IdentityDetailModel | null;
   errorTitle?: string | null;
   errorMessage?: string | null;
   identityId: string;

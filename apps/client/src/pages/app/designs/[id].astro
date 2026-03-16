@@ -9,6 +9,12 @@ import MockMarker from "~/components/mock-marker.astro";
 import MockDisclaimer from "~/components/mock-disclaimer.astro";
 import PreviewMocks from "~/components/preview-mocks.astro";
 import { Icon } from "astro-icon/components";
+import {
+  mapUnknownDesignDetailToDetailModel,
+  type DesignDetailEndorsement,
+  type DesignDetailZap,
+  type ValidDesignDetail,
+} from "~/lib/designs";
 
 export const prerender = false;
 
@@ -17,7 +23,7 @@ const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 
 const { id } = Astro.params;
 
-let design: any = null;
+let design: ValidDesignDetail | null = null;
 let errorTitle: string | null = null;
 let errorMessage: string | null = null;
 
@@ -38,77 +44,78 @@ if (!base) {
       errorTitle = "Design not found";
       errorMessage = `API responded with ${res.status} ${res.statusText} for this design.`;
     } else {
-      design = await res.json();
+      const mapped = mapUnknownDesignDetailToDetailModel(await res.json());
+      if (mapped.kind === "invalid") {
+        errorTitle = "Design unavailable";
+        errorMessage = mapped.reason;
+      } else {
+        design = mapped;
+      }
     }
-  } catch (err: any) {
+  } catch {
     errorTitle = "Design not found";
     errorMessage =
       "We couldn't load this design due to a network or server error.";
   }
 }
 
-function getTotalZaps(d: any) {
-  if (!d) return "–";
-
-  // Prefer aggregating from individual zaps when available
-  if (Array.isArray(d.zaps) && d.zaps.length > 0) {
-    const total = d.zaps.reduce((sum: number, zap: any) => {
-      const amount = getZapAmount(zap);
-      return typeof amount === "number" ? sum + amount : sum;
-    }, 0);
-
+function getTotalZaps(
+  detail: ValidDesignDetail | null,
+  zaps: DesignDetailZap[],
+) {
+  if (!detail) return "–";
+  if (zaps.length > 0) {
+    const total = zaps.reduce(
+      (sum, zap) => sum + (typeof zap.amount === "number" ? zap.amount : 0),
+      0,
+    );
     if (total > 0) return total;
   }
-
-  if (typeof d.total_zaps === "number") return d.total_zaps;
-  if (typeof d.totalZaps === "number") return d.totalZaps;
+  if (typeof detail.total_zaps === "number") return detail.total_zaps;
   return "–";
 }
 
-function getEndorsements(d: any) {
-  if (!d) return "–";
-  // Use endorsements array length when present (real or fake data),
-  // otherwise fall back to any pre-computed count from the API.
-  if (Array.isArray(d.endorsements)) return d.endorsements.length;
-  if (typeof d.endorsements_count === "number") return d.endorsements_count;
+function getEndorsements(
+  detail: ValidDesignDetail | null,
+  endorsements: DesignDetailEndorsement[],
+) {
+  if (!detail) return "–";
+  if (endorsements.length > 0) return endorsements.length;
+  if (typeof detail.endorsements_count === "number") return detail.endorsements_count;
   return "–";
 }
 
-function getZapAmount(z: any) {
-  if (!z) return "–";
-  if (typeof z.amount === "number") return z.amount;
-  if (typeof z.value === "number") return z.value;
-  if (typeof z.sats === "number") return z.sats;
+function getZapAmount(zap: DesignDetailZap) {
+  if (typeof zap.amount === "number") return zap.amount;
   return "–";
 }
 
-const name = design && design.name ? design.name : "Untitled design";
+const name = design?.name || "Untitled design";
 
-const description =
-  design && typeof design.content === "string" ? design.content : "";
+const description = typeof design?.content === "string" ? design.content : "";
 
-const format = design && design.format ? design.format : "–";
+const format = design?.format || "–";
 
-const sha256Raw = design && design.sha256 ? design.sha256 : "–";
+const sha256Raw = design?.sha256 || "–";
 const sha256MaxChars = 16; // show more of the hash, still truncatable
 
-const firstPublishedAt =
-  design && design.first_published_at ? design.first_published_at : null;
-const latestPublishedAt =
-  design && design.latest_published_at ? design.latest_published_at : null;
+const firstPublishedAt = design?.first_published_at ?? null;
+const latestPublishedAt = design?.latest_published_at ?? null;
 
-const urlValue = design && design.url ? design.url : "";
+const urlValue = design?.url || "";
 
 let previewImages: string[] = [];
 
-if (design && (design as any).tags_json) {
+if (design?.tags_json) {
   try {
     const rawTags =
-      typeof (design as any).tags_json === "string"
-        ? JSON.parse((design as any).tags_json)
-        : (design as any).tags_json;
-
-    const previews = rawTags && rawTags.preview;
+      typeof design.tags_json === "string"
+        ? JSON.parse(design.tags_json)
+        : design.tags_json;
+    const previews =
+      rawTags && typeof rawTags === "object" && !Array.isArray(rawTags)
+        ? (rawTags as Record<string, unknown>).preview
+        : null;
 
     if (Array.isArray(previews)) {
       previewImages = previews.filter(
@@ -121,55 +128,50 @@ if (design && (design as any).tags_json) {
   }
 }
 
+const fallbackEndorsements: DesignDetailEndorsement[] = [
+  {
+    pubkey: "npub1endorseraaaa",
+    content: "Really solid design, prints cleanly at 0.2mm.",
+    created_at: Date.now() - 1000 * 60 * 60 * 2, // 2h ago
+  },
+  {
+    pubkey: "npub1endorserbbbb",
+    content: "Used this in a prototype and it held up great.",
+    created_at: Date.now() - 1000 * 60 * 60 * 24, // 1 day ago
+  },
+  {
+    pubkey: "npub1endorsercccc",
+    content: "Nice balance of material usage and strength.",
+    created_at: Date.now() - 1000 * 60 * 60 * 72, // 3 days ago
+  },
+];
+
+const fallbackZaps: DesignDetailZap[] = [
+  { pubkey: "npub1zapperaaaa", amount: 500 },
+  { pubkey: "npub1zapperbbbb", amount: 250 },
+  { pubkey: "npub1zappercccc", amount: 100 },
+  { pubkey: "npub1zapperdddd", amount: 50 },
+];
+
+const endorsementsData =
+  import.meta.env.DEV && design && design.endorsements.length === 0
+    ? fallbackEndorsements
+    : design?.endorsements ?? [];
+const zapsData =
+  import.meta.env.DEV && design && design.zaps.length === 0
+    ? fallbackZaps
+    : design?.zaps ?? [];
+
 // Dev-only fake data to visually test endorsements/zaps layout and meta counts.
 // This only runs in development and feeds both the "Top endorsements/zaps"
 // lists and the meta pills (total zaps & endorsements count).
-if (import.meta.env.DEV && design) {
-  if (
-    !Array.isArray(design.endorsements) ||
-    design.endorsements.length === 0
-  ) {
-    design.endorsements = [
-      {
-        pubkey: "npub1endorseraaaa",
-        content: "Really solid design, prints cleanly at 0.2mm.",
-        created_at: Date.now() - 1000 * 60 * 60 * 2, // 2h ago
-      },
-      {
-        pubkey: "npub1endorserbbbb",
-        content: "Used this in a prototype and it held up great.",
-        created_at: Date.now() - 1000 * 60 * 60 * 24, // 1 day ago
-      },
-      {
-        pubkey: "npub1endorsercccc",
-        content: "Nice balance of material usage and strength.",
-        created_at: Date.now() - 1000 * 60 * 60 * 72, // 3 days ago
-      },
-    ];
-  }
-
-  if (!Array.isArray(design.zaps) || design.zaps.length === 0) {
-    design.zaps = [
-      { pubkey: "npub1zapperaaaa", amount: 500 },
-      { pubkey: "npub1zapperbbbb", amount: 250 },
-      { pubkey: "npub1zappercccc", amount: 100 },
-      { pubkey: "npub1zapperdddd", amount: 50 },
-    ];
-  }
-}
-
 // Totals and counts use real data when present, or dev-only fake data above.
-const totalZaps = getTotalZaps(design);
-const endorsementsCount = getEndorsements(design);
+const totalZaps = getTotalZaps(design, zapsData);
+const endorsementsCount = getEndorsements(design, endorsementsData);
 
 // Lists for bottom section
-const endorsementsList: any[] =
-  design && Array.isArray(design.endorsements)
-    ? design.endorsements.slice(0, 10)
-    : [];
-
-const zapsList: any[] =
-  design && Array.isArray(design.zaps) ? design.zaps.slice(0, 10) : [];
+const endorsementsList = endorsementsData.slice(0, 10);
+const zapsList = zapsData.slice(0, 10);
 ---
 
 <AppLayout title="OpenPrints – Design detail">

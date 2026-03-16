@@ -1,22 +1,10 @@
 ---
 import IdentityBadgeCompact from "~/components/identity-badge-compact.astro";
 import IdentityBadgeFull from "~/components/identity-badge-full.astro";
-
-/** Creator identity from API (creator_identity field on design). Backend guarantees pubkey, display_name_resolved, npub. */
-interface CreatorIdentity {
-  id?: string | null;
-  status: string | null;
-  pubkey: string;
-  display_name_resolved: string;
-  npub: string;
-  picture?: string | null;
-  nip05?: string | null;
-  lud06?: string | null;
-  lud16?: string | null;
-}
+import type { CreatorIdentityCard } from "~/lib/designs";
 
 interface Props {
-  identity: CreatorIdentity | null | undefined;
+  identity: CreatorIdentityCard | null | undefined;
   size?: "full" | "compact" | "responsive";
 }
 

@@ -3,21 +3,10 @@ import CopyValue from "~/components/copy-value.astro";
 import IdentityAvatar from "~/components/identity-avatar.astro";
 import { getIdentityStatusFlags } from "~/lib/identity-status";
 import { Icon } from "astro-icon/components";
-
-interface CreatorIdentity {
-  id?: string | null;
-  status: string | null;
-  pubkey: string;
-  display_name_resolved: string;
-  npub: string;
-  picture?: string | null;
-  nip05?: string | null;
-  lud06?: string | null;
-  lud16?: string | null;
-}
+import type { CreatorIdentityCard } from "~/lib/designs";
 
 interface Props {
-  identity: CreatorIdentity | null | undefined;
+  identity: CreatorIdentityCard | null | undefined;
 }
 
 const { identity } = Astro.props;

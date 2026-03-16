@@ -1,9 +1,10 @@
 ---
 import { Icon } from "astro-icon/components";
 import TimestampDisplay from "~/components/timestamp-display.astro";
+import type { IdentityDetailModel } from "~/lib/identities";
 
 interface Props {
-  identity: any;
+  identity: IdentityDetailModel | null | undefined;
 }
 
 const { identity } = Astro.props as Props;
@@ -37,7 +38,7 @@ const statusBg =
     ? "rgba(251, 113, 133, 0.12)"
     : "rgba(52, 211, 153, 0.12)";
 
-function getDateFromInput(input: any): Date | null {
+function getDateFromInput(input: unknown): Date | null {
   if (input == null) return null;
 
   const n = typeof input === "number" ? input : Number(input);

@@ -6,6 +6,15 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from openprints.api.deps import get_ready_context, get_store
+from openprints.api.schemas import (
+    ApiError,
+    DesignItemPayload,
+    DesignListResponse,
+    DesignStatsResponse,
+    PublishDesignResponse,
+    PublishRelayResult,
+    SignedDesignEvent,
+)
 from openprints.api.serializers.designs import design_row_to_item
 from openprints.api.serializers.identity import build_identity_payload
 from openprints.api.services.relay_publish import publish_event_to_relays
@@ -18,7 +27,7 @@ from openprints.common.identity_utils import identity_api_id_to_pubkey
 router = APIRouter(prefix="/designs", tags=["designs"])
 
 
-@router.get("")
+@router.get("", response_model=DesignListResponse)
 async def list_designs(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -31,7 +40,7 @@ async def list_designs(
         default=None,
         description="Filter designs by creator identity id (npub or hex pubkey).",
     ),
-) -> dict:
+) -> DesignListResponse:
     """List designs with pagination and optional filters."""
     creator_pubkey: str | None = None
     if identity_id is not None:
@@ -62,26 +71,20 @@ async def list_designs(
         creator_pubkey=creator_pubkey,
     )
     identities_by_pubkey = await store.get_identities_by_pubkeys([row.pubkey for row in rows])
-    return {
-        "items": [
-            design_row_to_item(
-                r, build_identity_payload(r.pubkey, identities_by_pubkey.get(r.pubkey))
-            )
-            for r in rows
-        ],
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-    }
+    items: list[DesignItemPayload] = [
+        design_row_to_item(r, build_identity_payload(r.pubkey, identities_by_pubkey.get(r.pubkey)))
+        for r in rows
+    ]
+    return DesignListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
-@router.get("/stats")
+@router.get("/stats", response_model=DesignStatsResponse)
 async def design_stats(
     identity_id: str | None = Query(
         default=None,
         description="Filter stats by creator identity id (npub or hex pubkey).",
     ),
-) -> dict:
+) -> DesignStatsResponse:
     """Return total number of designs and versions, optionally scoped to a creator."""
     creator_pubkey: str | None = None
     if identity_id is not None:
@@ -99,11 +102,11 @@ async def design_stats(
             detail="Database not configured; run indexer with database_path first.",
         )
     designs_count, versions_count = await store.get_counts(creator_pubkey=creator_pubkey)
-    return {"designs": designs_count, "versions": versions_count}
+    return DesignStatsResponse(designs=designs_count, versions=versions_count)
 
 
-@router.get("/{design_api_id}")
-async def get_design(design_api_id: str) -> dict:
+@router.get("/{design_api_id}", response_model=DesignItemPayload)
+async def get_design(design_api_id: str) -> DesignItemPayload:
     """Return a single design by its API id (opaque id from list designs)."""
     pair = api_id_decode(design_api_id)
     if pair is None:
@@ -122,19 +125,41 @@ async def get_design(design_api_id: str) -> dict:
     return design_row_to_item(row, build_identity_payload(row.pubkey, identity))
 
 
-@router.post("/publish")
-async def publish_design(event: dict) -> JSONResponse:
+@router.post(
+    "/publish",
+    response_model=PublishDesignResponse,
+    status_code=202,
+    responses={
+        400: {"model": PublishDesignResponse},
+        502: {"model": PublishDesignResponse},
+    },
+)
+async def publish_design(event: SignedDesignEvent) -> JSONResponse:
     """Verify and publish a signed kind-33301 event to configured relays."""
-    signed_event, event_errors = validate_signed_design_event(event)
+    signed_event, event_errors = validate_signed_design_event(event.model_dump())
     if event_errors:
-        return JSONResponse(status_code=400, content={"ok": False, "errors": event_errors})
+        error_payload = PublishDesignResponse(
+            ok=False,
+            errors=[ApiError(path=err["path"], message=err["message"]) for err in event_errors],
+        )
+        return JSONResponse(status_code=400, content=error_payload.model_dump())
 
     assert signed_event is not None
     sig_error = verify_event_signature(signed_event)
     if sig_error is not None:
+        signature_error = invalid_value("event", sig_error)
+        error_payload = PublishDesignResponse(
+            ok=False,
+            errors=[
+                ApiError(
+                    path=signature_error["path"],
+                    message=signature_error["message"],
+                )
+            ],
+        )
         return JSONResponse(
             status_code=400,
-            content={"ok": False, "errors": [invalid_value("event", sig_error)]},
+            content=error_payload.model_dump(),
         )
 
     _db_path, relay_urls = get_ready_context()
@@ -149,27 +174,43 @@ async def publish_design(event: dict) -> JSONResponse:
     duplicates = [result for result in accepted if bool(result.get("duplicate"))]
     rejected = [result for result in relay_results if not bool(result.get("accepted"))]
 
-    payload = {
-        "event_id": signed_event["id"],
-        "relay_results": relay_results,
-        "accepted_relay_count": len(accepted),
-        "duplicate_relay_count": len(duplicates),
-        "rejected_relay_count": len(rejected),
-    }
+    payload = PublishDesignResponse(
+        ok=bool(accepted),
+        event_id=signed_event["id"],
+        relay_results=[
+            PublishRelayResult(
+                relay=str(result.get("relay") or ""),
+                event_id=str(result.get("event_id") or signed_event["id"]),
+                accepted=bool(result.get("accepted")),
+                duplicate=bool(result.get("duplicate")),
+                message=str(result.get("message") or ""),
+            )
+            for result in relay_results
+        ],
+        accepted_relay_count=len(accepted),
+        duplicate_relay_count=len(duplicates),
+        rejected_relay_count=len(rejected),
+    )
 
     if accepted:
-        return JSONResponse(status_code=202, content={"ok": True, **payload})
+        return JSONResponse(status_code=202, content=payload.model_dump())
 
-    return JSONResponse(
-        status_code=502,
-        content={
+    all_failed_error = invalid_value(
+        "relay",
+        "Event verification passed but all relay publishes failed.",
+    )
+    failed_payload = payload.model_copy(
+        update={
             "ok": False,
             "errors": [
-                invalid_value(
-                    "relay",
-                    "Event verification passed but all relay publishes failed.",
+                ApiError(
+                    path=all_failed_error["path"],
+                    message=all_failed_error["message"],
                 )
             ],
-            **payload,
-        },
+        }
+    )
+    return JSONResponse(
+        status_code=502,
+        content=failed_payload.model_dump(),
     )

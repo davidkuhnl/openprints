@@ -3,6 +3,11 @@ import AppLayout from "~/layouts/app-layout.astro";
 import NostrSignerRequired from "~/components/nostr-signer-required.astro";
 import IdentityDetailCard from "~/components/identity-detail-card.astro";
 import { nip19 } from "nostr-tools";
+import { mapUnknownDesignStats } from "~/lib/designs";
+import {
+  mapUnknownIdentityToDetailModel,
+  type IdentityDetailModel,
+} from "~/lib/identities";
 
 export const prerender = false;
 
@@ -12,13 +17,13 @@ const profileIdentityId = (Astro.url.searchParams.get("id") ?? "").trim();
 
 const designsPreviewLimit = 6;
 
-let identity: any = null;
+let identity: IdentityDetailModel | null = null;
 let errorTitle: string | null = null;
 let errorMessage: string | null = null;
 let totalDesignsForIdentity: number | null = null;
 let totalVersionsForIdentity: number | null = null;
 
-const buildOnboardingIdentity = (pubkey: string) => {
+const buildOnboardingIdentity = (pubkey: string): IdentityDetailModel => {
   let npub = "";
   try {
     npub = nip19.npubEncode(pubkey);
@@ -32,11 +37,25 @@ const buildOnboardingIdentity = (pubkey: string) => {
   return {
     id: pubkey,
     pubkey,
+    status: null,
+    pubkey_first_seen_at: null,
+    pubkey_last_seen_at: null,
+    name: null,
+    display_name: null,
     npub,
     display_name_resolved: displayFromNpub || "New identity",
+    picture: null,
+    banner: null,
+    website: null,
+    nip05: null,
+    lud06: null,
+    lud16: null,
+    profile_raw_json: null,
+    profile_fetched_at: null,
+    fetch_last_attempt_at: null,
+    retry_count: null,
     about:
       "Welcome to OpenPrints. We are still fetching your full profile from Nostr, but you can already continue and publish your first design.",
-    status: null,
   };
 };
 
@@ -57,7 +76,13 @@ if (profileIdentityId) {
         errorTitle = "Identity not found";
         errorMessage = `API responded with ${res.status} ${res.statusText} for this identity.`;
       } else {
-        identity = await res.json();
+        const mapped = mapUnknownIdentityToDetailModel(await res.json());
+        if (!mapped.ok) {
+          errorTitle = "Identity unavailable";
+          errorMessage = mapped.reason;
+        } else {
+          identity = mapped.identity;
+        }
       }
     } catch {
       errorTitle = "Identity not found";
@@ -72,11 +97,9 @@ if (profileIdentityId) {
       try {
         const statsRes = await fetch(statsUrl);
         if (statsRes.ok) {
-          const stats = await statsRes.json();
-          totalDesignsForIdentity =
-            typeof stats?.designs === "number" ? stats.designs : null;
-          totalVersionsForIdentity =
-            typeof stats?.versions === "number" ? stats.versions : null;
+          const stats = mapUnknownDesignStats(await statsRes.json());
+          totalDesignsForIdentity = stats.designs;
+          totalVersionsForIdentity = stats.versions;
         }
       } catch {
         // Keep null stats on network errors; page still renders.
