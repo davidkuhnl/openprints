@@ -19,9 +19,17 @@ interface Props {
   size?: number;
   alt?: string;
   shape?: string | null;
+  hover?: boolean;
 }
 
-const { picture, pubkey, size = 32, alt = "Creator avatar", shape = null } = Astro.props;
+const {
+  picture,
+  pubkey,
+  size = 32,
+  alt = "Creator avatar",
+  shape = null,
+  hover = false,
+} = Astro.props as Props;
 
 const sizePx = `${size}px`;
 
@@ -45,6 +53,7 @@ const imageShapeClass = "rounded-full";
 
 <div
   class="identity-avatar-wrapper relative shrink-0 rounded-full border border-default bg-default shadow-sm p-[4px] overflow-hidden isolate"
+  data-hover={hover ? "true" : "false"}
   data-shape-mode={normalizedShape ? "emoji" : "circle"}
   data-identity-avatar-shape={normalizedShape ?? undefined}
   style={`width: ${sizePx}; height: ${sizePx};`}
@@ -71,7 +80,40 @@ const imageShapeClass = "rounded-full";
 </div>
 
 <style>
+  .identity-avatar-wrapper[data-hover="true"] {
+    transform-origin: center;
+    transition: transform 150ms ease-out;
+  }
+
+  .identity-avatar-wrapper[data-hover="true"]:hover {
+    transform: scale(1.03);
+  }
+
+  .identity-avatar-wrapper[data-hover="true"] [data-identity-avatar-image] {
+    transition: filter 150ms ease-out;
+  }
+
+  .identity-avatar-wrapper[data-hover="true"]:hover [data-identity-avatar-image] {
+    filter: drop-shadow(0 0 6px rgba(16, 185, 129, 0.45));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .identity-avatar-wrapper[data-hover="true"] {
+      transition: none;
+    }
+
+    .identity-avatar-wrapper[data-hover="true"] [data-identity-avatar-image] {
+      transition: none;
+    }
+  }
+
   @supports ((-webkit-mask-image: url("")) or (mask-image: url(""))) {
+    .identity-avatar-wrapper[data-identity-avatar-shape]:not(
+        [data-identity-avatar-mask-init="true"]
+      ) {
+      visibility: hidden;
+    }
+
     .identity-avatar-wrapper[data-shape-mode="emoji"] {
       border-radius: 0;
       padding: 0;
@@ -79,13 +121,14 @@ const imageShapeClass = "rounded-full";
       border-width: 0;
       background: transparent;
       box-shadow: none;
+      overflow: visible;
     }
 
     .identity-avatar-wrapper[data-shape-mode="emoji"]::before,
     .identity-avatar-wrapper[data-shape-mode="emoji"]::after {
       content: "";
       position: absolute;
-      inset: 0;
+      inset: -2px;
       pointer-events: none;
       -webkit-mask-image: var(--identity-avatar-mask);
       mask-image: var(--identity-avatar-mask);
