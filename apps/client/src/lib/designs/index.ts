@@ -1,5 +1,7 @@
 export type {
   ApiCreatorIdentity,
+  DesignPubkey,
+  DesignTags,
   ApiDesignDetail,
   ApiDesignDetailParseResult,
   ApiDesignListItem,

@@ -10,20 +10,23 @@ export interface ApiCreatorIdentity {
   lud16: string | null;
 }
 
+export type DesignPubkey = string & { readonly __brand: "DesignPubkey" };
+export type DesignTags = Record<string, unknown> & { readonly __brand: "DesignTags" };
+
 export interface ApiDesignListItem {
   id: string;
-  pubkey: string;
-  name: string | null;
+  pubkey: DesignPubkey;
+  name: string;
   content: string | null;
   creator_identity: ApiCreatorIdentity | null;
   latest_published_at: number | null;
   format: string | null;
-  tags_json: string | Record<string, unknown> | null;
+  tags_json: DesignTags;
 }
 
 export interface ApiDesignDetail {
   id: string;
-  pubkey: string;
+  pubkey: DesignPubkey;
   creator_identity: ApiCreatorIdentity | null;
   design_id: string | null;
   latest_event_id: string | null;
@@ -32,12 +35,12 @@ export interface ApiDesignDetail {
   first_seen_at: number | null;
   updated_at: number | null;
   version_count: number | null;
-  name: string | null;
+  name: string;
   format: string | null;
   sha256: string | null;
   url: string | null;
   content: string | null;
-  tags_json: string | Record<string, unknown> | null;
+  tags_json: DesignTags;
   endorsements: ApiDesignEndorsement[];
   endorsements_count: number | null;
   zaps: ApiDesignZap[];
@@ -82,6 +85,13 @@ const asTrimmedStringOrNull = (value: unknown): string | null => {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+};
+
+const asDesignPubkeyOrNull = (value: unknown): DesignPubkey | null => {
+  const trimmed = asTrimmedStringOrNull(value);
+  if (!trimmed) return null;
+  if (!/^[a-fA-F0-9]{64}$/.test(trimmed)) return null;
+  return trimmed.toLowerCase() as DesignPubkey;
 };
 
 const asFiniteNumberOrNull = (value: unknown): number | null =>
@@ -138,6 +148,22 @@ const parseApiCreatorIdentity = (value: unknown): ApiCreatorIdentity | null => {
   };
 };
 
+const parseDesignTagsOrNull = (value: unknown): DesignTags | null => {
+  let parsed: unknown = value;
+
+  if (typeof value === "string") {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!isRecord(parsed)) return null;
+  if (Object.keys(parsed).some((key) => key.trim().length === 0)) return null;
+  return parsed as DesignTags;
+};
+
 export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseResult => {
   if (!isRecord(value)) {
     return {
@@ -149,7 +175,9 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
   }
 
   const id = asTrimmedStringOrNull(value.id);
-  const pubkey = asTrimmedStringOrNull(value.pubkey);
+  const pubkey = asDesignPubkeyOrNull(value.pubkey);
+  const name = asTrimmedStringOrNull(value.name);
+  const tagsJson = parseDesignTagsOrNull(value.tags_json);
 
   if (!id) {
     return {
@@ -163,23 +191,36 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
   if (!pubkey) {
     return {
       ok: false,
-      reason: "malformed/invalid/corrupt design payload: missing design pubkey",
+      reason: "malformed/invalid/corrupt design payload: missing or invalid design pubkey",
       rawId: id,
       raw: value,
     };
   }
 
-  const tagsJson =
-    typeof value.tags_json === "string" || isRecord(value.tags_json)
-      ? value.tags_json
-      : null;
+  if (!name) {
+    return {
+      ok: false,
+      reason: "malformed/invalid/corrupt design payload: missing design name",
+      rawId: id,
+      raw: value,
+    };
+  }
+
+  if (!tagsJson) {
+    return {
+      ok: false,
+      reason: "malformed/invalid/corrupt design payload: invalid design tags_json object",
+      rawId: id,
+      raw: value,
+    };
+  }
 
   return {
     ok: true,
     item: {
       id,
       pubkey,
-      name: asStringOrNull(value.name),
+      name,
       content: asStringOrNull(value.content),
       creator_identity: parseApiCreatorIdentity(value.creator_identity),
       latest_published_at: asFiniteNumberOrNull(value.latest_published_at),

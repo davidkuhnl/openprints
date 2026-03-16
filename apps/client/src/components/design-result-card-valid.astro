@@ -11,35 +11,17 @@ interface Props {
 
 const { design } = Astro.props;
 
-const name = design.name ?? "Untitled design";
-const description = typeof design.content === "string" ? design.content.trim() : "";
+const name = design.name;
+const description = design.content?.trim() ?? "";
 const excerpt = description.length > 120 ? `${description.slice(0, 120)}…` : description;
-const ownerPubkey =
-  typeof design.pubkey === "string" && design.pubkey.trim().length > 0
-    ? design.pubkey
-    : "";
-
-let previewImages: string[] = [];
-
-if (design.tags_json) {
-  try {
-    const rawTags =
-      typeof design.tags_json === "string" ? JSON.parse(design.tags_json) : design.tags_json;
-    const previews =
-      rawTags && typeof rawTags === "object" && !Array.isArray(rawTags)
-        ? (rawTags as Record<string, unknown>).preview
-        : null;
-
-    if (Array.isArray(previews)) {
-      previewImages = previews.filter(
-        (item: unknown): item is string =>
-          typeof item === "string" && item.trim().length > 0,
-      );
-    }
-  } catch {
-    // Ignore malformed tags_json
-  }
-}
+const ownerPubkey = design.pubkey;
+const previewSource = design.tags_json.preview;
+const previewImages = Array.isArray(previewSource)
+  ? previewSource.filter(
+      (item: unknown): item is string =>
+        typeof item === "string" && item.trim().length > 0,
+    )
+  : [];
 ---
 
 <article class="design-result-card flex flex-col gap-1 rounded-xl border border-default bg-offset/30 px-3.5 py-2.5 sm:px-4 sm:py-3 transition hover:bg-offset/40 hover:border-emerald-400/40">
@@ -54,17 +36,15 @@ if (design.tags_json) {
           {name}
         </a>
       </h2>
-      {ownerPubkey && (
-        <span
-          class="hidden shrink-0 rounded-md border border-emerald-400/35 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold text-default"
-          data-owner-edit-cta
-          data-owner-pubkey={ownerPubkey}
-          aria-hidden="true"
-          title="Design edit flow is coming in the next phase."
-        >
-          Edit soon
-        </span>
-      )}
+      <span
+        class="hidden shrink-0 rounded-md border border-emerald-400/35 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold text-default"
+        data-owner-edit-cta
+        data-owner-pubkey={ownerPubkey}
+        aria-hidden="true"
+        title="Design edit flow is coming in the next phase."
+      >
+        Edit soon
+      </span>
     </div>
 
     <div class="mt-1 mb-1.5 flex flex-wrap items-center gap-3 text-[11px] text-offset">
