@@ -15,12 +15,12 @@ def build_identity_payload(
     pubkey: str, identity: dict[str, object | None] | None
 ) -> IdentityPayload:
     """Build API identity payload with normalized display-name fallback."""
-    npub = to_npub(pubkey)
+    npub = to_npub(pubkey) or pubkey
     display_name = non_empty_string(identity.get("display_name")) if identity else None
     name = non_empty_string(identity.get("name")) if identity else None
     nip05 = non_empty_string(identity.get("nip05")) if identity else None
     display_name_resolved = display_name or name or nip05
-    if display_name_resolved is None and npub is not None:
+    if display_name_resolved is None:
         display_name_resolved = truncate_middle(npub)
 
     return IdentityPayload(

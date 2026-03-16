@@ -18,7 +18,7 @@ export interface ApiDesignListItem {
   pubkey: DesignPubkey;
   name: string;
   content: string | null;
-  creator_identity: ApiCreatorIdentity | null;
+  creator_identity: ApiCreatorIdentity;
   latest_published_at: number;
   format: string | null;
   tags_json: DesignTags;
@@ -27,7 +27,7 @@ export interface ApiDesignListItem {
 export interface ApiDesignDetail {
   id: string;
   pubkey: DesignPubkey;
-  creator_identity: ApiCreatorIdentity | null;
+  creator_identity: ApiCreatorIdentity;
   design_id: string | null;
   latest_event_id: string | null;
   latest_published_at: number;
@@ -179,6 +179,7 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
   const name = asTrimmedStringOrNull(value.name);
   const latestPublishedAt = asFiniteNumberOrNull(value.latest_published_at);
   const tagsJson = parseDesignTagsOrNull(value.tags_json);
+  const creatorIdentity = parseApiCreatorIdentity(value.creator_identity);
 
   if (!id) {
     return {
@@ -216,6 +217,16 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
     };
   }
 
+  if (!creatorIdentity) {
+    return {
+      ok: false,
+      reason:
+        "malformed/invalid/corrupt design payload: missing or invalid creator_identity",
+      rawId: id,
+      raw: value,
+    };
+  }
+
   if (latestPublishedAt == null) {
     return {
       ok: false,
@@ -233,7 +244,7 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
       pubkey,
       name,
       content: asStringOrNull(value.content),
-      creator_identity: parseApiCreatorIdentity(value.creator_identity),
+      creator_identity: creatorIdentity,
       latest_published_at: latestPublishedAt,
       format: asStringOrNull(value.format),
       tags_json: tagsJson,

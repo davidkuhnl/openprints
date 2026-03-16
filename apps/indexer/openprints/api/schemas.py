@@ -35,8 +35,8 @@ class IdentityPayload(BaseModel):
     profile_fetched_at: int | None = None
     fetch_last_attempt_at: int | None = None
     retry_count: int | None = None
-    npub: str | None = None
-    display_name_resolved: str | None = None
+    npub: str
+    display_name_resolved: str
 
 
 class DesignItemPayload(BaseModel):

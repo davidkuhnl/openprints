@@ -9,7 +9,7 @@ export interface ValidDesignCard {
   pubkey: DesignPubkey;
   name: string;
   content: string | null;
-  creator_identity: CreatorIdentityCard | null;
+  creator_identity: CreatorIdentityCard;
   latest_published_at: number;
   format: string | null;
   tags_json: DesignTags;
@@ -39,7 +39,7 @@ export interface ValidDesignDetail {
   kind: "valid";
   id: string;
   pubkey: DesignPubkey;
-  creator_identity: CreatorIdentityDetail | null;
+  creator_identity: CreatorIdentityDetail;
   design_id: string | null;
   latest_event_id: string | null;
   latest_published_at: number;
