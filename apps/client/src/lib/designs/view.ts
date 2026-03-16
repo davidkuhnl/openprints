@@ -1,4 +1,5 @@
 import type { ApiCreatorIdentity, DesignPubkey, DesignTags } from "~/lib/designs/api";
+import type { Pubkey } from "~/lib/pubkey";
 
 export type CreatorIdentityCard = ApiCreatorIdentity;
 export type CreatorIdentityDetail = ApiCreatorIdentity;
@@ -25,13 +26,13 @@ export interface InvalidDesignCard {
 export type DesignCardModel = ValidDesignCard | InvalidDesignCard;
 
 export interface DesignDetailEndorsement {
-  pubkey: string | null;
+  pubkey: Pubkey | null;
   content: string | null;
   created_at: number | null;
 }
 
 export interface DesignDetailZap {
-  pubkey: string | null;
+  pubkey: Pubkey | null;
   amount: number | null;
 }
 

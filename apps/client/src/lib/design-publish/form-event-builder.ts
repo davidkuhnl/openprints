@@ -1,7 +1,6 @@
 import type { BuildResult, Inputs, NostrTag } from "~/lib/design-publish/form-types";
 import {
   FORMAT_RE,
-  HEX_64_RE,
   SHA256_RE,
   UUID_V4_RE,
   asHttpsUrl,
@@ -10,6 +9,7 @@ import {
   normalizeTextArea,
   parseLineList,
 } from "~/lib/design-publish/form-utils";
+import { parsePubkey } from "~/lib/pubkey";
 
 export const buildUnsignedEvent = (inputs: Inputs, pubkey: string): BuildResult => {
   const errors: string[] = [];
@@ -86,8 +86,8 @@ export const buildUnsignedEvent = (inputs: Inputs, pubkey: string): BuildResult 
     }
   }
 
-  const normalizedPubkey = pubkey.trim().toLowerCase();
-  if (!HEX_64_RE.test(normalizedPubkey)) errors.push("Signer pubkey is not available yet.");
+  const normalizedPubkey = parsePubkey(pubkey);
+  if (!normalizedPubkey) errors.push("Signer pubkey is not available yet.");
 
   if (errors.length > 0) return { ok: false, errors };
 

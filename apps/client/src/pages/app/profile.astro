@@ -4,6 +4,7 @@ import NostrSignerRequired from "~/components/nostr-signer-required.astro";
 import IdentityDetailCard from "~/components/identity-detail-card.astro";
 import { nip19 } from "nostr-tools";
 import { mapUnknownDesignStats } from "~/lib/designs";
+import { parsePubkey, type Pubkey } from "~/lib/pubkey";
 import {
   mapUnknownIdentityToDetailModel,
   type IdentityDetailModel,
@@ -13,7 +14,8 @@ export const prerender = false;
 
 const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
 const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
-const profileIdentityId = (Astro.url.searchParams.get("id") ?? "").trim();
+const profileIdentityIdRaw = (Astro.url.searchParams.get("id") ?? "").trim();
+const profileIdentityId = parsePubkey(profileIdentityIdRaw);
 
 const designsPreviewLimit = 6;
 
@@ -23,7 +25,7 @@ let errorMessage: string | null = null;
 let totalDesignsForIdentity: number | null = null;
 let totalVersionsForIdentity: number | null = null;
 
-const buildOnboardingIdentity = (pubkey: string): IdentityDetailModel => {
+const buildOnboardingIdentity = (pubkey: Pubkey): IdentityDetailModel => {
   let npub = "";
   try {
     npub = nip19.npubEncode(pubkey);
@@ -59,8 +61,11 @@ const buildOnboardingIdentity = (pubkey: string): IdentityDetailModel => {
   };
 };
 
-if (profileIdentityId) {
-  if (!base) {
+if (profileIdentityIdRaw) {
+  if (!profileIdentityId) {
+    errorTitle = "Identity unavailable";
+    errorMessage = "The requested identity id is invalid. Expected a 64-character hex pubkey.";
+  } else if (!base) {
     errorTitle = "Identity not available";
     errorMessage =
       "API base URL is not configured. Check PUBLIC_OPENPRINTS_API_URL.";
@@ -119,14 +124,14 @@ if (profileIdentityId) {
       id="nostr-ok"
       class="hidden"
       aria-live="polite"
-      data-profile-id={profileIdentityId}
+      data-profile-id={profileIdentityIdRaw}
     >
-      {profileIdentityId ? (
+      {profileIdentityIdRaw ? (
         <IdentityDetailCard
           identity={identity}
           errorTitle={errorTitle}
           errorMessage={errorMessage}
-          identityId={profileIdentityId}
+          identityId={profileIdentityIdRaw}
           totalDesignsForIdentity={totalDesignsForIdentity}
           totalVersionsForIdentity={totalVersionsForIdentity}
           designsPreviewLimit={designsPreviewLimit}
@@ -155,6 +160,7 @@ if (profileIdentityId) {
       subscribeToCurrentIdentity,
       type IdentitySnapshot,
     } from "~/lib/identity-store";
+    import { parsePubkey } from "~/lib/pubkey";
 
     (function () {
       const missingEl = document.getElementById("nostr-missing");
@@ -173,17 +179,14 @@ if (profileIdentityId) {
         okEl.classList.remove("hidden");
       };
 
-      const normalize = (value: string | null | undefined): string =>
-        typeof value === "string" ? value.trim().toLowerCase() : "";
-
       const routeToProfileIdentity = (pubkey: string) => {
-        if (typeof pubkey !== "string" || pubkey.length === 0) return;
-        const normalizedPubkey = normalize(pubkey);
-        if (normalize(currentId) === normalizedPubkey) {
+        const normalizedPubkey = parsePubkey(pubkey);
+        if (!normalizedPubkey) return;
+        if (parsePubkey(currentId) === normalizedPubkey) {
           showProfile();
           return;
         }
-        const target = `/app/profile?id=${encodeURIComponent(pubkey)}`;
+        const target = `/app/profile?id=${encodeURIComponent(normalizedPubkey)}`;
         window.location.assign(target);
       };
 

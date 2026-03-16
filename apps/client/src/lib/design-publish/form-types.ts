@@ -1,3 +1,5 @@
+import type { Pubkey } from "~/lib/pubkey";
+
 export type NostrTag = [string, string];
 
 export type StepId =
@@ -13,7 +15,7 @@ export type StepId =
 export type UnsignedNostrEvent = {
   kind: number;
   created_at: number;
-  pubkey: string;
+  pubkey: Pubkey;
   tags: NostrTag[];
   content: string;
 };
@@ -63,7 +65,7 @@ export type DraftInputs = Pick<Inputs, DraftFieldName>;
 export type FieldElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
 export type IdentityMetadataDetail = {
-  pubkey?: string | null;
+  pubkey?: Pubkey | null;
   lnurl?: string | null;
 };
 

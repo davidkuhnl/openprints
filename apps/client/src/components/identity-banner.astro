@@ -1,9 +1,10 @@
 ---
 import { createAvatar } from "@dicebear/core";
 import { glass } from "@dicebear/collection";
+import type { Pubkey } from "~/lib/pubkey";
 
 interface Props {
-  pubkey: string;
+  pubkey: Pubkey;
   height?: number;
 }
 

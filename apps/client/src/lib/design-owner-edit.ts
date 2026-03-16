@@ -3,22 +3,20 @@ import {
   subscribeToCurrentIdentity,
   type IdentitySnapshot,
 } from "~/lib/identity-store";
+import { parsePubkey, pubkeysEqual } from "~/lib/pubkey";
 
 const OWNER_EDIT_CTA_SELECTOR = "[data-owner-edit-cta]";
 
 let ownerEditInitialized = false;
 let ownerEditUnsubscribe: (() => void) | null = null;
 
-const normalizePubkey = (value: string | null | undefined): string =>
-  typeof value === "string" ? value.trim().toLowerCase() : "";
-
 const applyOwnerVisibility = (snapshot: IdentitySnapshot) => {
-  const signerPubkey = snapshot.authoritative ? normalizePubkey(snapshot.pubkey) : "";
+  const signerPubkey = snapshot.authoritative ? parsePubkey(snapshot.pubkey) : null;
   const ctas = document.querySelectorAll<HTMLElement>(OWNER_EDIT_CTA_SELECTOR);
 
   for (const cta of ctas) {
-    const ownerPubkey = normalizePubkey(cta.dataset.ownerPubkey);
-    const show = signerPubkey.length > 0 && ownerPubkey.length > 0 && signerPubkey === ownerPubkey;
+    const ownerPubkey = parsePubkey(cta.dataset.ownerPubkey);
+    const show = pubkeysEqual(signerPubkey, ownerPubkey);
     cta.classList.toggle("hidden", !show);
     cta.setAttribute("aria-hidden", String(!show));
   }

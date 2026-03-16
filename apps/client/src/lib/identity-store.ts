@@ -1,3 +1,5 @@
+import { parsePubkey, type Pubkey } from "~/lib/pubkey";
+
 type NostrSignerLike = {
   getPublicKey?: () => Promise<string>;
   signEvent?: (event: unknown) => Promise<unknown>;
@@ -5,7 +7,7 @@ type NostrSignerLike = {
 
 export type IdentityRecord = {
   id?: string | null;
-  pubkey?: string | null;
+  pubkey?: Pubkey | null;
   status?: string | null;
   display_name_resolved?: string | null;
   display_name?: string | null;
@@ -18,7 +20,7 @@ export type IdentityRecord = {
 };
 
 type IdentityCacheEntry = {
-  pubkey: string;
+  pubkey: Pubkey;
   identity: IdentityRecord | null;
   notFound: boolean;
   cachedAt: number;
@@ -28,7 +30,7 @@ type CacheSource = "none" | "memory" | "storage" | "backend";
 type SignerStatus = "checking" | "confirmed" | "timed_out";
 
 export type IdentitySnapshot = {
-  pubkey: string | null;
+  pubkey: Pubkey | null;
   identity: IdentityRecord | null;
   authoritative: boolean;
   signerStatus: SignerStatus;
@@ -68,22 +70,19 @@ const SIGNER_GIVE_UP_MS = 10_000;
 const MIN_RECONCILE_GAP_MS = 1_200;
 const SIGNER_RECONCILE_INTERVAL_MS = 5_000;
 
-const memoryByPubkey = new Map<string, MemoryIdentityEntry>();
+const memoryByPubkey = new Map<Pubkey, MemoryIdentityEntry>();
 const currentSubscribers = new Set<CurrentIdentitySubscriber>();
-const subscribersByPubkey = new Map<string, Set<IdentitySubscriber>>();
-const refreshInFlightByPubkey = new Map<string, Promise<IdentityRecord | null>>();
+const subscribersByPubkey = new Map<Pubkey, Set<IdentitySubscriber>>();
+const refreshInFlightByPubkey = new Map<Pubkey, Promise<IdentityRecord | null>>();
 
 let started = false;
 let reconciling = false;
 let lastReconcileAt = 0;
-let activePubkey: string | null = null;
+let activePubkey: Pubkey | null = null;
 let activeAuthoritative = false;
 let activeRefreshing = false;
 let signerStatus: SignerStatus = "checking";
 let signerWaitStartedAt: number | null = null;
-
-const normalizePubkey = (value: string | null | undefined): string =>
-  typeof value === "string" ? value.trim().toLowerCase() : "";
 
 const getSigner = (): NostrSignerLike | null => {
   if (typeof window === "undefined") return null;
@@ -101,7 +100,7 @@ const isStorageFresh = (entry: IdentityCacheEntry | null): boolean => {
   return Date.now() - entry.cachedAt < STORAGE_TTL_MS;
 };
 
-const getSnapshotForPubkey = (pubkey: string | null): IdentitySnapshot => {
+const getSnapshotForPubkey = (pubkey: Pubkey | null): IdentitySnapshot => {
   if (!pubkey) {
     return {
       pubkey: null,
@@ -126,7 +125,7 @@ const getSnapshotForPubkey = (pubkey: string | null): IdentitySnapshot => {
   };
 };
 
-const emitSnapshot = (pubkey: string | null) => {
+const emitSnapshot = (pubkey: Pubkey | null) => {
   const snapshot = getSnapshotForPubkey(pubkey);
 
   for (const callback of currentSubscribers) {
@@ -157,18 +156,17 @@ const setSignerStatus = (nextStatus: SignerStatus) => {
   emitCurrentIdentityEvent(snapshot);
 };
 
-const readLastPubkeyFromStorage = (): string | null => {
+const readLastPubkeyFromStorage = (): Pubkey | null => {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_LAST_PUBKEY_KEY);
-    const normalized = normalizePubkey(raw);
-    return normalized.length > 0 ? normalized : null;
+    return parsePubkey(raw);
   } catch {
     return null;
   }
 };
 
-const writeLastPubkeyToStorage = (pubkey: string) => {
+const writeLastPubkeyToStorage = (pubkey: Pubkey) => {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_LAST_PUBKEY_KEY, pubkey);
@@ -177,13 +175,13 @@ const writeLastPubkeyToStorage = (pubkey: string) => {
   }
 };
 
-const readIdentityFromStorage = (pubkey: string): IdentityCacheEntry | null => {
+const readIdentityFromStorage = (pubkey: Pubkey): IdentityCacheEntry | null => {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(`${STORAGE_IDENTITY_PREFIX}${pubkey}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as IdentityCacheEntry;
-    if (!parsed || normalizePubkey(parsed.pubkey) !== pubkey) return null;
+    if (!parsed || parsePubkey(parsed.pubkey) !== pubkey) return null;
     if (typeof parsed.cachedAt !== "number") return null;
     return {
       pubkey,
@@ -197,7 +195,7 @@ const readIdentityFromStorage = (pubkey: string): IdentityCacheEntry | null => {
 };
 
 const writeIdentityToStorage = (
-  pubkey: string,
+  pubkey: Pubkey,
   identity: IdentityRecord | null,
   notFound: boolean,
 ) => {
@@ -219,7 +217,7 @@ const writeIdentityToStorage = (
 };
 
 const writeMemoryIdentity = (
-  pubkey: string,
+  pubkey: Pubkey,
   identity: IdentityRecord | null,
   notFound: boolean,
   source: CacheSource,
@@ -232,7 +230,7 @@ const writeMemoryIdentity = (
   });
 };
 
-const setActivePubkey = (pubkey: string | null, authoritative: boolean) => {
+const setActivePubkey = (pubkey: Pubkey | null, authoritative: boolean) => {
   activePubkey = pubkey;
   activeAuthoritative = authoritative && Boolean(pubkey);
   if (activeAuthoritative) {
@@ -247,7 +245,7 @@ const setActivePubkey = (pubkey: string | null, authoritative: boolean) => {
   emitCurrentIdentityEvent(snapshot);
 };
 
-const resolveSignerPubkey = async (): Promise<string | null> => {
+const resolveSignerPubkey = async (): Promise<Pubkey | null> => {
   const signer = getSigner();
   if (!signer || typeof signer.getPublicKey !== "function") return null;
   try {
@@ -260,9 +258,7 @@ const resolveSignerPubkey = async (): Promise<string | null> => {
         );
       }),
     ]);
-    const normalized = normalizePubkey(pubkey);
-    if (!normalized) return null;
-    return normalized;
+    return parsePubkey(pubkey);
   } catch {
     return null;
   }
@@ -274,7 +270,7 @@ const getApiBase = (): string => {
 };
 
 const fetchIdentityFromBackend = async (
-  pubkey: string,
+  pubkey: Pubkey,
 ): Promise<{ identity: IdentityRecord | null; notFound: boolean }> => {
   const apiBase = getApiBase();
   if (!apiBase) return { identity: null, notFound: true };
@@ -292,7 +288,7 @@ const fetchIdentityFromBackend = async (
   }
 };
 
-const maybeEmitIdentityMetadata = (pubkey: string, identity: IdentityRecord | null) => {
+const maybeEmitIdentityMetadata = (pubkey: Pubkey, identity: IdentityRecord | null) => {
   const lnurl = identity?.lnurl ?? identity?.lud16 ?? identity?.lud06 ?? null;
   document.dispatchEvent(
     new CustomEvent("openprints-identity-metadata", {
@@ -305,7 +301,7 @@ const maybeEmitIdentityMetadata = (pubkey: string, identity: IdentityRecord | nu
 };
 
 export const refreshIdentity = async (rawPubkey: string): Promise<IdentityRecord | null> => {
-  const pubkey = normalizePubkey(rawPubkey);
+  const pubkey = parsePubkey(rawPubkey);
   if (!pubkey) return null;
 
   const existing = refreshInFlightByPubkey.get(pubkey);
@@ -341,7 +337,7 @@ export const refreshIdentity = async (rawPubkey: string): Promise<IdentityRecord
   }
 };
 
-const ensureCachedIdentityForPubkey = (pubkey: string): IdentityRecord | null => {
+const ensureCachedIdentityForPubkey = (pubkey: Pubkey): IdentityRecord | null => {
   const memoryEntry = memoryByPubkey.get(pubkey);
   if (memoryEntry) {
     return memoryEntry.notFound ? null : memoryEntry.identity;
@@ -475,7 +471,7 @@ export const startIdentityStore = () => {
 
 export const getCurrentPubkey = async (
   options: GetCurrentPubkeyOptions = {},
-): Promise<string | null> => {
+): Promise<Pubkey | null> => {
   const allowCache = options.allowCache ?? true;
   if (!started) startIdentityStore();
   if (activePubkey) return activePubkey;
@@ -514,7 +510,7 @@ export const getCurrentIdentity = async (
 export const clearIdentityCache = (rawPubkey?: string) => {
   if (typeof window === "undefined") return;
   if (rawPubkey) {
-    const pubkey = normalizePubkey(rawPubkey);
+    const pubkey = parsePubkey(rawPubkey);
     if (!pubkey) return;
     memoryByPubkey.delete(pubkey);
     try {
@@ -552,7 +548,7 @@ export const subscribeToIdentity = (
   rawPubkey: string,
   callback: IdentitySubscriber,
 ): (() => void) => {
-  const pubkey = normalizePubkey(rawPubkey);
+  const pubkey = parsePubkey(rawPubkey);
   if (!pubkey) return () => {};
 
   const existing = subscribersByPubkey.get(pubkey) ?? new Set<IdentitySubscriber>();
@@ -580,7 +576,7 @@ export const subscribeToCurrentIdentity = (
 };
 
 export const signWithCurrentSigner = async <TSignedEvent = unknown>(
-  unsignedEvent: { pubkey: string } & Record<string, unknown>,
+  unsignedEvent: { pubkey: Pubkey } & Record<string, unknown>,
   options: SignWithCurrentSignerOptions = {},
 ): Promise<TSignedEvent> => {
   const requirePubkeyMatch = options.requirePubkeyMatch ?? true;
@@ -589,7 +585,10 @@ export const signWithCurrentSigner = async <TSignedEvent = unknown>(
     throw new Error("Signer pubkey is unavailable.");
   }
 
-  const eventPubkey = normalizePubkey(unsignedEvent.pubkey);
+  const eventPubkey = parsePubkey(unsignedEvent.pubkey);
+  if (!eventPubkey) {
+    throw new Error("Unsigned event pubkey is invalid.");
+  }
   if (requirePubkeyMatch && signerPubkey !== eventPubkey) {
     throw new Error("Signer pubkey does not match event pubkey.");
   }

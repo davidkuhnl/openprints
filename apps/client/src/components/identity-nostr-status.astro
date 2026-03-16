@@ -37,19 +37,6 @@ const statusBg =
     : normalizedStatus === "failed"
     ? "rgba(251, 113, 133, 0.12)"
     : "rgba(52, 211, 153, 0.12)";
-
-function getDateFromInput(input: unknown): Date | null {
-  if (input == null) return null;
-
-  const n = typeof input === "number" ? input : Number(input);
-  if (!Number.isFinite(n)) return null;
-
-  const ms = n > 1e12 ? n : n * 1000;
-  const d = new Date(ms);
-  if (Number.isNaN(d.getTime())) return null;
-
-  return d;
-}
 ---
 
 {rawStatus && (
@@ -132,10 +119,7 @@ function getDateFromInput(input: unknown): Date | null {
                     {" "}
                     We first saw them in OpenPrints on{" "}
                     <span class="font-semibold text-default">
-                      {getDateFromInput(identity.pubkey_first_seen_at)?.toLocaleDateString(
-                        undefined,
-                        { year: "numeric", month: "short", day: "2-digit" },
-                      )}
+                      <TimestampDisplay value={identity.pubkey_first_seen_at} />
                     </span>
                     .
                   </>

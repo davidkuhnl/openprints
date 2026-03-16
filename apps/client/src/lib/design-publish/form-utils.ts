@@ -1,4 +1,5 @@
 import type { SignedNostrEvent } from "~/lib/design-publish/form-types";
+import { isPubkey } from "~/lib/pubkey";
 
 export const FORMAT_RE = /^[a-z0-9][a-z0-9+.-]{0,31}$/;
 export const SHA256_RE = /^[a-f0-9]{64}$/;
@@ -54,7 +55,7 @@ export const validateSignedEvent = (
   if (typeof event.sig !== "string" || !HEX_128_RE.test(event.sig.toLowerCase())) return false;
   if (event.kind !== 33301) return false;
   if (!Array.isArray(event.tags)) return false;
-  if (typeof event.pubkey !== "string" || !HEX_64_RE.test(event.pubkey.toLowerCase())) return false;
+  if (typeof event.pubkey !== "string" || !isPubkey(event.pubkey)) return false;
   if (typeof event.created_at !== "number") return false;
   if (typeof event.content !== "string") return false;
   return true;

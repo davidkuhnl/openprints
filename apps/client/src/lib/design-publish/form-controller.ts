@@ -33,7 +33,6 @@ import {
 } from "~/lib/design-publish/form-types";
 import {
   FORMAT_RE,
-  HEX_64_RE,
   SHA256_RE,
   asHttpsUrl,
   generateDesignId,
@@ -43,6 +42,7 @@ import {
   parseLineList,
   validateSignedEvent,
 } from "~/lib/design-publish/form-utils";
+import { isPubkey } from "~/lib/pubkey";
 
 export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
   const root =
@@ -311,7 +311,7 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
     refreshUnsignedPreview();
   };
 
-  const isSignerComplete = (): boolean => HEX_64_RE.test((signerPubkey || "").toLowerCase());
+  const isSignerComplete = (): boolean => isPubkey(signerPubkey);
   const isNameComplete = (): boolean => {
     const name = normalizeSingleLine(fields.name.value);
     return name.length > 0 && name.length <= 120 && !hasInvalidTextContent(name);

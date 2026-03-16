@@ -1,6 +1,8 @@
+import { parsePubkey, type Pubkey } from "~/lib/pubkey";
+
 export interface ApiIdentity {
   id: string;
-  pubkey: string;
+  pubkey: Pubkey;
   status: string | null;
   pubkey_first_seen_at: number | null;
   pubkey_last_seen_at: number | null;
@@ -55,7 +57,7 @@ export const parseApiIdentity = (value: unknown): ApiIdentityParseResult => {
   }
 
   const id = asTrimmedStringOrNull(value.id);
-  const pubkey = asTrimmedStringOrNull(value.pubkey);
+  const pubkey = typeof value.pubkey === "string" ? parsePubkey(value.pubkey) : null;
   const npub = asTrimmedStringOrNull(value.npub);
   const displayNameResolved = asTrimmedStringOrNull(value.display_name_resolved);
 

@@ -1,7 +1,9 @@
+import { parsePubkey, type Pubkey } from "~/lib/pubkey";
+
 export interface ApiCreatorIdentity {
   id: string | null;
   status: string | null;
-  pubkey: string;
+  pubkey: DesignPubkey;
   display_name_resolved: string;
   npub: string;
   picture: string | null;
@@ -10,7 +12,7 @@ export interface ApiCreatorIdentity {
   lud16: string | null;
 }
 
-export type DesignPubkey = string & { readonly __brand: "DesignPubkey" };
+export type DesignPubkey = Pubkey;
 export type DesignTags = Record<string, unknown> & { readonly __brand: "DesignTags" };
 
 export interface ApiDesignListItem {
@@ -48,13 +50,13 @@ export interface ApiDesignDetail {
 }
 
 export interface ApiDesignEndorsement {
-  pubkey: string | null;
+  pubkey: Pubkey | null;
   content: string | null;
   created_at: number | null;
 }
 
 export interface ApiDesignZap {
-  pubkey: string | null;
+  pubkey: Pubkey | null;
   amount: number | null;
 }
 
@@ -88,10 +90,8 @@ const asTrimmedStringOrNull = (value: unknown): string | null => {
 };
 
 const asDesignPubkeyOrNull = (value: unknown): DesignPubkey | null => {
-  const trimmed = asTrimmedStringOrNull(value);
-  if (!trimmed) return null;
-  if (!/^[a-fA-F0-9]{64}$/.test(trimmed)) return null;
-  return trimmed.toLowerCase() as DesignPubkey;
+  if (typeof value !== "string") return null;
+  return parsePubkey(value);
 };
 
 const asFiniteNumberOrNull = (value: unknown): number | null =>
@@ -105,8 +105,9 @@ const asIntegerOrNull = (value: unknown): number | null => {
 
 const parseEndorsement = (value: unknown): ApiDesignEndorsement | null => {
   if (!isRecord(value)) return null;
+  const pubkey = typeof value.pubkey === "string" ? parsePubkey(value.pubkey) : null;
   return {
-    pubkey: asStringOrNull(value.pubkey),
+    pubkey,
     content: asStringOrNull(value.content),
     created_at: asFiniteNumberOrNull(value.created_at),
   };
@@ -118,8 +119,9 @@ const parseZap = (value: unknown): ApiDesignZap | null => {
     asFiniteNumberOrNull(value.amount) ??
     asFiniteNumberOrNull(value.value) ??
     asFiniteNumberOrNull(value.sats);
+  const pubkey = typeof value.pubkey === "string" ? parsePubkey(value.pubkey) : null;
   return {
-    pubkey: asStringOrNull(value.pubkey),
+    pubkey,
     amount,
   };
 };
@@ -127,7 +129,7 @@ const parseZap = (value: unknown): ApiDesignZap | null => {
 const parseApiCreatorIdentity = (value: unknown): ApiCreatorIdentity | null => {
   if (!isRecord(value)) return null;
 
-  const pubkey = asTrimmedStringOrNull(value.pubkey);
+  const pubkey = asDesignPubkeyOrNull(value.pubkey);
   const displayNameResolved = asTrimmedStringOrNull(value.display_name_resolved);
   const npub = asTrimmedStringOrNull(value.npub);
 
