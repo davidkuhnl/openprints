@@ -40,6 +40,7 @@ def test_identity_indexer_fetches_and_marks_misses(monkeypatch) -> None:
                 "display_name": None,
                 "about": None,
                 "picture": None,
+                "shape": "⭐",
                 "banner": None,
                 "website": None,
                 "nip05": None,

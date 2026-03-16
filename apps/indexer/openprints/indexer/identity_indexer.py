@@ -19,6 +19,7 @@ _PROFILE_FIELDS = (
     "display_name",
     "about",
     "picture",
+    "shape",
     "banner",
     "website",
     "nip05",

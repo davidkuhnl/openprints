@@ -11,12 +11,13 @@ const { identity } = Astro.props;
 
 const displayNameResolved = identity.display_name_resolved;
 const npub = identity.npub;
-const identityHref = identity.id ? `/app/identity/${encodeURIComponent(identity.id)}` : null;
+const identityHref = `/app/identity/${encodeURIComponent(identity.pubkey)}`;
 ---
 
 <div class="inline-flex items-center gap-2">
   <IdentityAvatar
     picture={identity.picture}
+    shape={identity.shape}
     pubkey={identity.pubkey}
     size={28}
     alt={displayNameResolved}

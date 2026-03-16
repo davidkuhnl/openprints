@@ -2,7 +2,7 @@
 import AppLayout from "~/layouts/app-layout.astro";
 import IdentityDetailCard from "~/components/identity-detail-card.astro";
 import { mapUnknownDesignStats } from "~/lib/designs";
-import { parsePubkey } from "~/lib/pubkey";
+import { parsePubkeyOrNpub } from "~/lib/nostr-pubkey";
 import {
   mapUnknownIdentityToDetailModel,
   type IdentityDetailModel,
@@ -14,7 +14,7 @@ const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
 const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 const { id } = Astro.params;
 const identityIdParam: string = typeof id === "string" ? id : "";
-const normalizedIdentityId = parsePubkey(identityIdParam);
+const normalizedIdentityId = parsePubkeyOrNpub(identityIdParam);
 
 const designsPreviewLimit = 6;
 
@@ -33,7 +33,7 @@ if (!base) {
   errorMessage = "Missing identity id in the URL.";
 } else if (!normalizedIdentityId) {
   errorTitle = "Identity unavailable";
-  errorMessage = "Invalid identity id. Expected a 64-character hex pubkey.";
+  errorMessage = "Invalid identity id. Expected a 64-character hex pubkey or npub.";
 } else {
   const identityUrl = `${base}/identity/${encodeURIComponent(normalizedIdentityId)}`;
 
@@ -84,7 +84,7 @@ if (!base) {
     identity={identity}
     errorTitle={errorTitle}
     errorMessage={errorMessage}
-    identityId={identityIdParam}
+    identityId={normalizedIdentityId ?? identityIdParam}
     totalDesignsForIdentity={totalDesignsForIdentity}
     totalVersionsForIdentity={totalVersionsForIdentity}
     designsPreviewLimit={designsPreviewLimit}

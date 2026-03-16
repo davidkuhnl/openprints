@@ -33,6 +33,7 @@ def build_identity_payload(
         display_name=(identity.get("display_name") if identity else None),
         about=(identity.get("about") if identity else None),
         picture=(identity.get("picture") if identity else None),
+        shape=(identity.get("shape") if identity else None),
         banner=(identity.get("banner") if identity else None),
         website=(identity.get("website") if identity else None),
         nip05=(identity.get("nip05") if identity else None),

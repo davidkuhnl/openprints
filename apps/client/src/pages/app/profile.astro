@@ -5,6 +5,7 @@ import IdentityDetailCard from "~/components/identity-detail-card.astro";
 import { nip19 } from "nostr-tools";
 import { mapUnknownDesignStats } from "~/lib/designs";
 import { parsePubkey, type Pubkey } from "~/lib/pubkey";
+import { parsePubkeyOrNpub } from "~/lib/nostr-pubkey";
 import {
   mapUnknownIdentityToDetailModel,
   type IdentityDetailModel,
@@ -15,7 +16,7 @@ export const prerender = false;
 const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
 const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 const profileIdentityIdRaw = (Astro.url.searchParams.get("id") ?? "").trim();
-const profileIdentityId = parsePubkey(profileIdentityIdRaw);
+const profileIdentityId = parsePubkeyOrNpub(profileIdentityIdRaw);
 
 const designsPreviewLimit = 6;
 
@@ -47,6 +48,7 @@ const buildOnboardingIdentity = (pubkey: Pubkey): IdentityDetailModel => {
     npub,
     display_name_resolved: displayFromNpub || "New identity",
     picture: null,
+    shape: null,
     banner: null,
     website: null,
     nip05: null,
@@ -64,7 +66,7 @@ const buildOnboardingIdentity = (pubkey: Pubkey): IdentityDetailModel => {
 if (profileIdentityIdRaw) {
   if (!profileIdentityId) {
     errorTitle = "Identity unavailable";
-    errorMessage = "The requested identity id is invalid. Expected a 64-character hex pubkey.";
+    errorMessage = "The requested identity id is invalid. Expected a 64-character hex pubkey or npub.";
   } else if (!base) {
     errorTitle = "Identity not available";
     errorMessage =
@@ -131,7 +133,7 @@ if (profileIdentityIdRaw) {
           identity={identity}
           errorTitle={errorTitle}
           errorMessage={errorMessage}
-          identityId={profileIdentityIdRaw}
+          identityId={profileIdentityId ?? profileIdentityIdRaw}
           totalDesignsForIdentity={totalDesignsForIdentity}
           totalVersionsForIdentity={totalVersionsForIdentity}
           designsPreviewLimit={designsPreviewLimit}

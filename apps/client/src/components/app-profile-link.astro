@@ -28,8 +28,8 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
   data-booting="true"
   data-timeout="false"
 >
-  <span class="profile-avatar-shell relative inline-flex h-8 w-8 box-border items-center justify-center rounded-full border border-default/60 bg-default p-px">
-    <span class="relative inline-flex h-full w-full overflow-hidden rounded-full">
+  <span class="profile-avatar-shell relative inline-flex h-8 w-8 box-border items-center justify-center border border-default/60 bg-default p-px">
+    <span class="profile-avatar-clip relative inline-flex h-full w-full overflow-hidden">
       <img
         src=""
         alt="Your profile avatar"
@@ -52,6 +52,10 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
 
 <script>
   import {
+    buildIdentityShapeMaskDataUri,
+    normalizeIdentityShape,
+  } from "~/lib/identity-shape";
+  import {
     getCurrentIdentity,
     startIdentityStore,
     subscribeToCurrentIdentity,
@@ -71,12 +75,15 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
     root.dataset.initialized = "true";
 
     const defaultFallback = root.getAttribute("data-default-fallback") ?? "";
+    const shellEl = root.querySelector<HTMLElement>(".profile-avatar-shell");
+    const clipEl = root.querySelector<HTMLElement>(".profile-avatar-clip");
     const fallbackEl = root.querySelector<HTMLImageElement>("[data-profile-fallback]");
     const pictureEl = root.querySelector<HTMLImageElement>("[data-profile-picture]");
 
     let activeRequestId = 0;
     let activePictureUrl = "";
     let activeFallbackSrc = "";
+    let activeShape = "";
     let currentMode: AvatarMode | null = null;
     let hasRevealedInitialState = false;
 
@@ -108,6 +115,72 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
         ringColor: ["60a5fa", "34d399", "f472b6", "a78bfa", "fb923c"],
       });
       return `data:image/svg+xml;utf8,${encodeURIComponent(avatar.toString())}`;
+    };
+
+    const clearShapeMask = () => {
+      if (shellEl) {
+        shellEl.style.removeProperty("-webkit-mask-image");
+        shellEl.style.removeProperty("mask-image");
+        shellEl.style.removeProperty("-webkit-mask-size");
+        shellEl.style.removeProperty("mask-size");
+        shellEl.style.removeProperty("-webkit-mask-repeat");
+        shellEl.style.removeProperty("mask-repeat");
+        shellEl.style.removeProperty("-webkit-mask-position");
+        shellEl.style.removeProperty("mask-position");
+        shellEl.style.removeProperty("-webkit-mask-mode");
+        shellEl.style.removeProperty("mask-mode");
+      }
+      if (clipEl) {
+        clipEl.style.removeProperty("-webkit-mask-image");
+        clipEl.style.removeProperty("mask-image");
+        clipEl.style.removeProperty("-webkit-mask-size");
+        clipEl.style.removeProperty("mask-size");
+        clipEl.style.removeProperty("-webkit-mask-repeat");
+        clipEl.style.removeProperty("mask-repeat");
+        clipEl.style.removeProperty("-webkit-mask-position");
+        clipEl.style.removeProperty("mask-position");
+        clipEl.style.removeProperty("-webkit-mask-mode");
+        clipEl.style.removeProperty("mask-mode");
+      }
+    };
+
+    const applyShape = (shapeRaw: string | null | undefined) => {
+      const normalized = normalizeIdentityShape(shapeRaw);
+      const nextShape = normalized ?? "";
+      if (activeShape === nextShape) return;
+      activeShape = nextShape;
+
+      if (!normalized) {
+        root.setAttribute("data-shape-mode", "circle");
+        root.removeAttribute("data-shape-emoji");
+        clearShapeMask();
+        return;
+      }
+
+      const maskSrc = buildIdentityShapeMaskDataUri(normalized);
+      if (!maskSrc) {
+        root.setAttribute("data-shape-mode", "circle");
+        root.removeAttribute("data-shape-emoji");
+        clearShapeMask();
+        return;
+      }
+      const maskValue = `url("${maskSrc}")`;
+      root.setAttribute("data-shape-mode", "emoji");
+      root.setAttribute("data-shape-emoji", normalized);
+
+      for (const element of [shellEl, clipEl]) {
+        if (!element) continue;
+        element.style.setProperty("-webkit-mask-image", maskValue);
+        element.style.setProperty("mask-image", maskValue);
+        element.style.setProperty("-webkit-mask-size", "contain");
+        element.style.setProperty("mask-size", "contain");
+        element.style.setProperty("-webkit-mask-repeat", "no-repeat");
+        element.style.setProperty("mask-repeat", "no-repeat");
+        element.style.setProperty("-webkit-mask-position", "center");
+        element.style.setProperty("mask-position", "center");
+        element.style.setProperty("-webkit-mask-mode", "alpha");
+        element.style.setProperty("mask-mode", "alpha");
+      }
     };
 
     const ensureFallbackSrc = (src: string) => {
@@ -245,11 +318,14 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
       root.setAttribute("data-timeout", showTimeoutHalo ? "true" : "false");
 
       if (!snapshot.pubkey) {
+        applyShape(null);
         showFallbackWithSeed("");
         setLoading(false);
         revealOnce();
         return;
       }
+
+      applyShape(snapshot.identity?.shape ?? null);
 
       const picture = snapshot.identity?.picture?.trim();
       if (picture) {
@@ -299,6 +375,18 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
   .profile-avatar-shell {
     transform-origin: center;
     transition: opacity 140ms ease;
+    border-radius: 9999px;
+  }
+
+  .profile-avatar-clip {
+    border-radius: 9999px;
+  }
+
+  @supports ((-webkit-mask-image: url("")) or (mask-image: url(""))) {
+    [data-app-profile-link][data-shape-mode="emoji"] .profile-avatar-shell,
+    [data-app-profile-link][data-shape-mode="emoji"] .profile-avatar-clip {
+      border-radius: 0;
+    }
   }
 
   .profile-avatar-shell::after {

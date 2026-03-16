@@ -10,6 +10,7 @@ export interface ApiIdentity {
   display_name: string | null;
   about: string | null;
   picture: string | null;
+  shape: string | null;
   banner: string | null;
   website: string | null;
   nip05: string | null;
@@ -81,6 +82,7 @@ export const parseApiIdentity = (value: unknown): ApiIdentityParseResult => {
       display_name: asStringOrNull(value.display_name),
       about: asStringOrNull(value.about),
       picture: asStringOrNull(value.picture),
+      shape: asStringOrNull(value.shape),
       banner: asStringOrNull(value.banner),
       website: asStringOrNull(value.website),
       nip05: asStringOrNull(value.nip05),

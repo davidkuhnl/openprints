@@ -13,6 +13,7 @@ export type IdentityRecord = {
   display_name?: string | null;
   name?: string | null;
   picture?: string | null;
+  shape?: string | null;
   nip05?: string | null;
   lud06?: string | null;
   lud16?: string | null;

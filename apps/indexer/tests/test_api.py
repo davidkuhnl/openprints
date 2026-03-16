@@ -135,6 +135,7 @@ def test_designs_includes_creator_identity_with_resolved_name(monkeypatch) -> No
                     "display_name": "Alice",
                     "about": "maker",
                     "picture": "https://example.invalid/pic.png",
+                    "shape": "⭐",
                     "banner": None,
                     "website": None,
                     "nip05": "alice@example.com",
@@ -182,6 +183,7 @@ def test_designs_filter_by_identity_id_npub(monkeypatch) -> None:
                     "display_name": "Alice",
                     "about": "maker",
                     "picture": "https://example.invalid/pic.png",
+                    "shape": "⭐",
                     "banner": None,
                     "website": None,
                     "nip05": "alice@example.com",
@@ -236,6 +238,7 @@ def test_design_by_id_includes_creator_identity_fallback_to_truncated_npub(monke
                     "display_name": "   ",
                     "about": None,
                     "picture": None,
+                    "shape": None,
                     "banner": None,
                     "website": None,
                     "nip05": "",
@@ -299,6 +302,7 @@ def test_identity_by_id_returns_full_identity(monkeypatch) -> None:
                     "display_name": "Alice",
                     "about": "maker",
                     "picture": "https://example.invalid/pic.png",
+                    "shape": "⭐",
                     "banner": "https://example.invalid/banner.png",
                     "website": "https://example.invalid",
                     "nip05": "alice@example.com",
@@ -322,6 +326,7 @@ def test_identity_by_id_returns_full_identity(monkeypatch) -> None:
     assert payload["name"] == "alice"
     assert payload["display_name"] == "Alice"
     assert payload["about"] == "maker"
+    assert payload["shape"] == "⭐"
     assert payload["nip05"] == "alice@example.com"
 
 

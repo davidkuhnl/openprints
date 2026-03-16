@@ -7,6 +7,7 @@ export interface ApiCreatorIdentity {
   display_name_resolved: string;
   npub: string;
   picture: string | null;
+  shape: string | null;
   nip05: string | null;
   lud06: string | null;
   lud16: string | null;
@@ -144,6 +145,7 @@ const parseApiCreatorIdentity = (value: unknown): ApiCreatorIdentity | null => {
     display_name_resolved: displayNameResolved,
     npub,
     picture: asStringOrNull(value.picture),
+    shape: asStringOrNull(value.shape),
     nip05: asStringOrNull(value.nip05),
     lud06: asStringOrNull(value.lud06),
     lud16: asStringOrNull(value.lud16),

@@ -13,7 +13,7 @@ const { identity } = Astro.props;
 
 const displayNameResolved = identity.display_name_resolved;
 const npub = identity.npub;
-const identityHref = identity.id ? `/app/identity/${encodeURIComponent(identity.id)}` : null;
+const identityHref = `/app/identity/${encodeURIComponent(identity.pubkey)}`;
 
 const { hasNip05, isZappable } = getIdentityStatusFlags(identity);
 ---
@@ -21,7 +21,13 @@ const { hasNip05, isZappable } = getIdentityStatusFlags(identity);
 <div class="inline-flex items-center">
   <div class="inline-flex items-center">
     <div class="relative z-10">
-      <IdentityAvatar picture={identity.picture} pubkey={identity.pubkey} size={50} alt={displayNameResolved} />
+      <IdentityAvatar
+        picture={identity.picture}
+        shape={identity.shape}
+        pubkey={identity.pubkey}
+        size={50}
+        alt={displayNameResolved}
+      />
     </div>
 
     <span class="inline-flex items-center gap-1.5 rounded-md border border-default px-2 py-1 text-[10px] text-offset -ml-3 pl-5">

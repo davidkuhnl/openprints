@@ -26,6 +26,7 @@ class IdentityPayload(BaseModel):
     display_name: str | None = None
     about: str | None = None
     picture: str | None = None
+    shape: str | None = None
     banner: str | None = None
     website: str | None = None
     nip05: str | None = None
