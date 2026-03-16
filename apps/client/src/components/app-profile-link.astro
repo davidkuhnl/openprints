@@ -22,6 +22,7 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
   aria-label="Open profile"
   title="Profile"
   data-app-profile-link
+  data-shape-mode="circle"
   data-api-base={apiBase}
   data-default-fallback={defaultFallbackSrc}
   data-loading="false"
@@ -58,6 +59,7 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
     type IdentityRecord,
     type IdentitySnapshot,
   } from "~/lib/identity-store";
+  import { applyIdentityShapeMaskToElements } from "~/lib/identity-shape";
   import type { Pubkey } from "~/lib/pubkey";
   import { createAvatar } from "@dicebear/core";
   import { rings } from "@dicebear/collection";
@@ -239,6 +241,12 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
         snapshot.authoritative,
         snapshot.signerStatus,
       );
+      applyIdentityShapeMaskToElements(
+        snapshot.identity?.shape,
+        root,
+        shellEl,
+        clipEl,
+      );
       const isProvisional = Boolean(snapshot.pubkey) && !snapshot.authoritative;
       const shouldPulse =
         snapshot.refreshing ||
@@ -305,7 +313,12 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
   }
 
   .profile-avatar-clip {
+    z-index: 2;
     border-radius: 9999px;
+  }
+
+  .profile-avatar-shell::before {
+    content: none;
   }
 
   .profile-avatar-shell::after {
@@ -318,6 +331,7 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
     pointer-events: none;
     animation: profileAvatarPulseHalo 1.6s ease-in-out infinite;
     transition: opacity 220ms ease-out;
+    z-index: 1;
   }
 
   [data-app-profile-link][data-loading="true"] .profile-avatar-shell::after {
@@ -330,6 +344,79 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.42);
   }
 
+  [data-app-profile-link][data-shape-mode="emoji"] .profile-avatar-shell {
+    border-width: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    overflow: visible;
+    transition: opacity 140ms ease;
+  }
+
+  [data-app-profile-link][data-shape-mode="emoji"] .profile-avatar-clip {
+    border-radius: 0;
+    -webkit-mask-image: var(--identity-avatar-mask);
+    mask-image: var(--identity-avatar-mask);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-mode: alpha;
+    mask-mode: alpha;
+  }
+
+  [data-app-profile-link][data-shape-mode="emoji"] .profile-avatar-shell::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    pointer-events: none;
+    -webkit-mask-image: var(--identity-avatar-mask);
+    mask-image: var(--identity-avatar-mask);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-mode: alpha;
+    mask-mode: alpha;
+    background: rgb(9, 196, 161);
+    transform: scale(1.06);
+    transition: background-color 220ms ease-out;
+    z-index: 0;
+  }
+
+  [data-app-profile-link][data-shape-mode="emoji"] .profile-avatar-shell::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    -webkit-mask-image: var(--identity-avatar-mask);
+    mask-image: var(--identity-avatar-mask);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    -webkit-mask-mode: alpha;
+    mask-mode: alpha;
+    background: var(--color-background);
+    opacity: 1;
+    z-index: 1;
+  }
+
+  [data-app-profile-link][data-loading="true"][data-shape-mode="emoji"] .profile-avatar-shell::before {
+    animation: profileAvatarPulseShapeOutline 1.6s ease-in-out infinite;
+  }
+
+  [data-app-profile-link][data-timeout="true"][data-shape-mode="emoji"] .profile-avatar-shell::before {
+    animation: none;
+    background: rgba(245, 158, 11, 0.9);
+  }
+
   @keyframes profileAvatarPulseHalo {
     0%,
     100% {
@@ -340,11 +427,24 @@ const defaultFallbackSrc = `data:image/svg+xml;utf8,${encodeURIComponent(default
     }
   }
 
+  @keyframes profileAvatarPulseShapeOutline {
+    0%,
+    100% {
+      background: transparent;
+    }
+    50% {
+      background: rgba(52, 211, 153, 0.95);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
+    [data-app-profile-link][data-loading="true"][data-shape-mode="emoji"] .profile-avatar-shell::before,
+    [data-app-profile-link][data-loading="true"] .profile-avatar-shell::before,
     [data-app-profile-link][data-loading="true"] .profile-avatar-shell::after,
     .profile-avatar-fallback,
     .profile-avatar-picture,
     .profile-avatar-shell,
+    .profile-avatar-shell::before,
     .profile-avatar-shell::after {
       animation: none;
       transition: none;

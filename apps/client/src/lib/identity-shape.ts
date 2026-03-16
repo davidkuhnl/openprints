@@ -82,6 +82,11 @@ const clearMaskStyles = (element?: HTMLElement | null): void => {
   element.style.removeProperty("mask-mode");
 };
 
+const clearMaskVariable = (element?: HTMLElement | null): void => {
+  if (!element) return;
+  element.style.removeProperty("--identity-avatar-mask");
+};
+
 const buildIdentityShapeMaskDataUriUncached = (emoji: string): string => {
   const work = getCanvasContext("work");
   const output = getCanvasContext("output");
@@ -177,6 +182,7 @@ export const applyIdentityShapeMaskToElements = (
   const clearShapeMask = () => {
     root.setAttribute("data-shape-mode", "circle");
     root.removeAttribute("data-shape-emoji");
+    clearMaskVariable(root);
 
     for (const element of [shellEl, clipEl]) {
       clearMaskStyles(element);
@@ -206,20 +212,10 @@ export const applyIdentityShapeMaskToElements = (
 
   root.setAttribute("data-shape-mode", "emoji");
   root.setAttribute("data-shape-emoji", normalized);
+  root.style.setProperty("--identity-avatar-mask", maskValue);
 
   for (const element of [shellEl, clipEl]) {
-    if (!element) continue;
-
-    element.style.setProperty("-webkit-mask-image", maskValue);
-    element.style.setProperty("mask-image", maskValue);
-    element.style.setProperty("-webkit-mask-size", "contain");
-    element.style.setProperty("mask-size", "contain");
-    element.style.setProperty("-webkit-mask-repeat", "no-repeat");
-    element.style.setProperty("mask-repeat", "no-repeat");
-    element.style.setProperty("-webkit-mask-position", "center");
-    element.style.setProperty("mask-position", "center");
-    element.style.setProperty("-webkit-mask-mode", "alpha");
-    element.style.setProperty("mask-mode", "alpha");
+    clearMaskStyles(element);
   }
 };
 
