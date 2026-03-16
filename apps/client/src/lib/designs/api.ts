@@ -19,7 +19,7 @@ export interface ApiDesignListItem {
   name: string;
   content: string | null;
   creator_identity: ApiCreatorIdentity | null;
-  latest_published_at: number | null;
+  latest_published_at: number;
   format: string | null;
   tags_json: DesignTags;
 }
@@ -30,11 +30,11 @@ export interface ApiDesignDetail {
   creator_identity: ApiCreatorIdentity | null;
   design_id: string | null;
   latest_event_id: string | null;
-  latest_published_at: number | null;
-  first_published_at: number | null;
-  first_seen_at: number | null;
-  updated_at: number | null;
-  version_count: number | null;
+  latest_published_at: number;
+  first_published_at: number;
+  first_seen_at: number;
+  updated_at: number;
+  version_count: number;
   name: string;
   format: string | null;
   sha256: string | null;
@@ -177,6 +177,7 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
   const id = asTrimmedStringOrNull(value.id);
   const pubkey = asDesignPubkeyOrNull(value.pubkey);
   const name = asTrimmedStringOrNull(value.name);
+  const latestPublishedAt = asFiniteNumberOrNull(value.latest_published_at);
   const tagsJson = parseDesignTagsOrNull(value.tags_json);
 
   if (!id) {
@@ -215,6 +216,16 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
     };
   }
 
+  if (latestPublishedAt == null) {
+    return {
+      ok: false,
+      reason:
+        "malformed/invalid/corrupt design payload: missing or invalid latest_published_at timestamp",
+      rawId: id,
+      raw: value,
+    };
+  }
+
   return {
     ok: true,
     item: {
@@ -223,7 +234,7 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
       name,
       content: asStringOrNull(value.content),
       creator_identity: parseApiCreatorIdentity(value.creator_identity),
-      latest_published_at: asFiniteNumberOrNull(value.latest_published_at),
+      latest_published_at: latestPublishedAt,
       format: asStringOrNull(value.format),
       tags_json: tagsJson,
     },
@@ -250,16 +261,36 @@ export const parseApiDesignDetail = (value: unknown): ApiDesignDetailParseResult
   const endorsementsRaw = Array.isArray(raw.endorsements) ? raw.endorsements : [];
   const zapsRaw = Array.isArray(raw.zaps) ? raw.zaps : [];
 
+  const firstPublishedAt = asFiniteNumberOrNull(raw.first_published_at);
+  const firstSeenAt = asFiniteNumberOrNull(raw.first_seen_at);
+  const updatedAt = asFiniteNumberOrNull(raw.updated_at);
+  const versionCount = asIntegerOrNull(raw.version_count);
+
+  if (
+    firstPublishedAt == null ||
+    firstSeenAt == null ||
+    updatedAt == null ||
+    versionCount == null
+  ) {
+    return {
+      ok: false,
+      reason:
+        "malformed/invalid/corrupt design detail payload: missing or invalid required timestamps or version_count",
+      rawId: listResult.item.id,
+      raw: value,
+    };
+  }
+
   return {
     ok: true,
     item: {
       ...listResult.item,
       design_id: asStringOrNull(raw.design_id),
       latest_event_id: asStringOrNull(raw.latest_event_id),
-      first_published_at: asFiniteNumberOrNull(raw.first_published_at),
-      first_seen_at: asFiniteNumberOrNull(raw.first_seen_at),
-      updated_at: asFiniteNumberOrNull(raw.updated_at),
-      version_count: asIntegerOrNull(raw.version_count),
+      first_published_at: firstPublishedAt,
+      first_seen_at: firstSeenAt,
+      updated_at: updatedAt,
+      version_count: versionCount,
       sha256: asStringOrNull(raw.sha256),
       url: asStringOrNull(raw.url),
       endorsements: endorsementsRaw

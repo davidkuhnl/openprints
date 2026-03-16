@@ -10,7 +10,7 @@ export interface ValidDesignCard {
   name: string;
   content: string | null;
   creator_identity: CreatorIdentityCard | null;
-  latest_published_at: number | null;
+  latest_published_at: number;
   format: string | null;
   tags_json: DesignTags;
 }
@@ -42,11 +42,11 @@ export interface ValidDesignDetail {
   creator_identity: CreatorIdentityDetail | null;
   design_id: string | null;
   latest_event_id: string | null;
-  latest_published_at: number | null;
-  first_published_at: number | null;
-  first_seen_at: number | null;
-  updated_at: number | null;
-  version_count: number | null;
+  latest_published_at: number;
+  first_published_at: number;
+  first_seen_at: number;
+  updated_at: number;
+  version_count: number;
   name: string;
   format: string | null;
   sha256: string | null;

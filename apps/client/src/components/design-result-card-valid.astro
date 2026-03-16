@@ -1,6 +1,5 @@
 ---
 import TimestampDisplay from "~/components/timestamp-display.astro";
-import PreviewMocks from "~/components/preview-mocks.astro";
 import { Icon } from "astro-icon/components";
 import IdentityBadge from "~/components/identity-badge.astro";
 import type { ValidDesignCard } from "~/lib/designs";
@@ -49,16 +48,14 @@ const previewImages = Array.isArray(previewSource)
 
     <div class="mt-1 mb-1.5 flex flex-wrap items-center gap-3 text-[11px] text-offset">
       <IdentityBadge identity={design.creator_identity} size="responsive" />
-      {design.latest_published_at != null && (
-        <span class="inline-flex items-center gap-1">
-          <Icon
-            name="mdi:clock-outline"
-            class="size-3 text-offset"
-            aria-hidden="true"
-          />
-          <TimestampDisplay value={design.latest_published_at} agoFormat />
-        </span>
-      )}
+      <span class="inline-flex items-center gap-1">
+        <Icon
+          name="mdi:clock-outline"
+          class="size-3 text-offset"
+          aria-hidden="true"
+        />
+        <TimestampDisplay value={design.latest_published_at} agoFormat />
+      </span>
 
       {design.format && (
         <span class="inline-flex items-center gap-1 text-emerald-400/80">
@@ -80,23 +77,20 @@ const previewImages = Array.isArray(previewSource)
     </p>
   )}
 
-  <!-- (3) THUMBNAIL STRIP -->
-  <div class="mt-1.5 flex justify-end">
-    {previewImages.length > 0 ? (
+  {previewImages.length > 0 && (
+    <div class="mt-1.5 flex justify-end">
       <div class="flex flex-wrap gap-1.5">
         {previewImages.map((src) => (
           <img
             src={src}
             loading="lazy"
-            alt={`Preview of ${name}`}
+            alt={`Preview of {name}`}
             class="h-16 w-16 shrink-0 rounded-md border border-default/40 bg-default/20 object-cover"
           />
         ))}
       </div>
-    ) : (
-      <PreviewMocks count={3} variant="card" />
-    )}
-  </div>
+    </div>
+  )}
 </article>
 
 <script>
