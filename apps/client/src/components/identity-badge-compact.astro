@@ -4,24 +4,20 @@ import IdentityAvatar from "~/components/identity-avatar.astro";
 import type { CreatorIdentityCard } from "~/lib/designs";
 
 interface Props {
-  identity: CreatorIdentityCard | null | undefined;
+  identity: CreatorIdentityCard;
 }
 
 const { identity } = Astro.props;
 
-const displayNameResolved =
-  (identity?.display_name_resolved && String(identity.display_name_resolved).trim()) ||
-  "Unknown creator";
-const npub = identity?.npub ?? "";
-const identityHref = identity?.id
-  ? `/app/identity/${encodeURIComponent(identity.id)}`
-  : null;
+const displayNameResolved = identity.display_name_resolved;
+const npub = identity.npub;
+const identityHref = identity.id ? `/app/identity/${encodeURIComponent(identity.id)}` : null;
 ---
 
 <div class="inline-flex items-center gap-2">
   <IdentityAvatar
-    picture={identity?.picture ?? null}
-    pubkey={identity?.pubkey ?? ""}
+    picture={identity.picture}
+    pubkey={identity.pubkey}
     size={28}
     alt={displayNameResolved}
   />
