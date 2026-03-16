@@ -19,6 +19,7 @@ export interface InvalidDesignCard {
   kind: "invalid";
   reason: string;
   raw_id: string | null;
+  raw_payload: unknown | null;
 }
 
 export type DesignCardModel = ValidDesignCard | InvalidDesignCard;
@@ -62,6 +63,7 @@ export interface InvalidDesignDetail {
   kind: "invalid";
   reason: string;
   raw_id: string | null;
+  raw_payload: unknown | null;
 }
 
 export type DesignDetailModel = ValidDesignDetail | InvalidDesignDetail;

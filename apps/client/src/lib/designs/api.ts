@@ -62,11 +62,11 @@ export interface ApiDesignStats {
 
 export type ApiDesignListItemParseResult =
   | { ok: true; item: ApiDesignListItem }
-  | { ok: false; reason: string; rawId: string | null };
+  | { ok: false; reason: string; rawId: string | null; raw: unknown | null };
 
 export type ApiDesignDetailParseResult =
   | { ok: true; item: ApiDesignDetail }
-  | { ok: false; reason: string; rawId: string | null };
+  | { ok: false; reason: string; rawId: string | null; raw: unknown | null };
 
 export type ApiDesignStatsParseResult =
   | { ok: true; stats: ApiDesignStats }
@@ -144,6 +144,7 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
       ok: false,
       reason: "malformed/invalid/corrupt design payload: expected an object",
       rawId: null,
+      raw: value,
     };
   }
 
@@ -155,6 +156,7 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
       ok: false,
       reason: "malformed/invalid/corrupt design payload: missing design id",
       rawId: null,
+      raw: value,
     };
   }
 
@@ -163,6 +165,7 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
       ok: false,
       reason: "malformed/invalid/corrupt design payload: missing design pubkey",
       rawId: id,
+      raw: value,
     };
   }
 
@@ -194,7 +197,12 @@ export const parseApiDesignListItems = (value: unknown): ApiDesignListItemParseR
 export const parseApiDesignDetail = (value: unknown): ApiDesignDetailParseResult => {
   const listResult = parseApiDesignListItem(value);
   if (!listResult.ok) {
-    return listResult;
+    return {
+      ok: false,
+      reason: listResult.reason,
+      rawId: listResult.rawId,
+      raw: listResult.raw ?? value,
+    };
   }
 
   const raw = isRecord(value) ? value : {};

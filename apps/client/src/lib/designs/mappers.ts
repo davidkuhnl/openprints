@@ -34,6 +34,7 @@ export const mapApiDesignParseResultToCardModel = (
         kind: "invalid",
         reason: result.reason,
         raw_id: result.rawId,
+        raw_payload: result.raw ?? null,
       };
 
 export const mapUnknownDesignListToCardModels = (value: unknown): DesignCardModel[] =>
@@ -72,6 +73,7 @@ export const mapUnknownDesignDetailToDetailModel = (value: unknown): DesignDetai
       kind: "invalid",
       reason: result.reason,
       raw_id: result.rawId,
+      raw_payload: result.raw ?? null,
     };
   }
 

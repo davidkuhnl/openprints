@@ -1,153 +1,19 @@
 ---
-import TimestampDisplay from "~/components/timestamp-display.astro";
-import PreviewMocks from "~/components/preview-mocks.astro";
-import { Icon } from "astro-icon/components";
-import IdentityBadge from "~/components/identity-badge.astro";
 import type { DesignCardModel } from "~/lib/designs";
+import DesignResultCardValid from "~/components/design-result-card-valid.astro";
+import DesignResultCardInvalid from "~/components/design-result-card-invalid.astro";
 
 interface Props {
   design: DesignCardModel;
 }
 
 const { design } = Astro.props;
-const isInvalid = design.kind === "invalid";
-
-const name = !isInvalid ? (design.name ?? "Untitled design") : "Invalid design";
-const description =
-  !isInvalid && typeof design.content === "string" ? design.content.trim() : "";
-const excerpt =
-  description.length > 120 ? `${description.slice(0, 120)}…` : description;
-const ownerPubkey =
-  !isInvalid && typeof design.pubkey === "string" && design.pubkey.trim().length > 0
-    ? design.pubkey
-    : "";
-
-let previewImages: string[] = [];
-
-if (!isInvalid && design.tags_json) {
-  try {
-    const rawTags =
-      typeof design.tags_json === "string"
-        ? JSON.parse(design.tags_json)
-        : design.tags_json;
-    const previews =
-      rawTags && typeof rawTags === "object" && !Array.isArray(rawTags)
-        ? (rawTags as Record<string, unknown>).preview
-        : null;
-
-    if (Array.isArray(previews)) {
-      previewImages = previews.filter(
-        (item: unknown): item is string =>
-          typeof item === "string" && item.trim().length > 0
-      );
-    }
-  } catch {
-    // Ignore malformed tags_json
-  }
-}
 ---
 
 {
-  isInvalid ? (
-    <article class="design-result-card flex flex-col gap-1 rounded-xl border border-amber-400/40 bg-amber-400/10 px-3.5 py-2.5 sm:px-4 sm:py-3">
-      <header class="pb-2 mb-2 border-b border-amber-400/25">
-        <div class="flex items-center gap-1.5 text-[11px] text-amber-200/90">
-          <Icon name="mdi:alert-outline" class="size-3.5 shrink-0" aria-hidden="true" />
-          <span class="font-semibold">Malformed / invalid / corrupt design</span>
-        </div>
-      </header>
-      <p class="text-xs text-amber-100/90">{design.reason}</p>
-      {design.raw_id && (
-        <p class="text-[11px] text-amber-100/70">
-          Received design id: <code>{design.raw_id}</code>
-        </p>
-      )}
-      <p class="text-[11px] text-amber-100/70">
-        This record is ignored for normal design actions.
-      </p>
-    </article>
+  design.kind === "invalid" ? (
+    <DesignResultCardInvalid design={design} />
   ) : (
-    <article class="design-result-card flex flex-col gap-1 rounded-xl border border-default bg-offset/30 px-3.5 py-2.5 sm:px-4 sm:py-3 transition hover:bg-offset/40 hover:border-emerald-400/40">
-      <!-- (1) HEADER BLOCK -->
-      <header class="pb-2 mb-2 border-b border-default/60">
-        <div class="flex items-start justify-between gap-2">
-          <h2 class="text-sm font-medium text-default">
-            <a
-              href={`/app/designs/${encodeURIComponent(design.id)}`}
-              class="underline-offset-2 hover:underline"
-            >
-              {name}
-            </a>
-          </h2>
-          {ownerPubkey && (
-            <span
-              class="hidden shrink-0 rounded-md border border-emerald-400/35 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold text-default"
-              data-owner-edit-cta
-              data-owner-pubkey={ownerPubkey}
-              aria-hidden="true"
-              title="Design edit flow is coming in the next phase."
-            >
-              Edit soon
-            </span>
-          )}
-        </div>
-
-        <div class="mt-1 mb-1.5 flex flex-wrap items-center gap-3 text-[11px] text-offset">
-          <IdentityBadge identity={design.creator_identity} size="responsive" />
-          {design.latest_published_at != null && (
-            <span class="inline-flex items-center gap-1">
-              <Icon
-                name="mdi:clock-outline"
-                class="size-3 text-offset"
-                aria-hidden="true"
-              />
-              <TimestampDisplay value={design.latest_published_at} agoFormat />
-            </span>
-          )}
-
-          {design.format && (
-            <span class="inline-flex items-center gap-1 text-emerald-400/80">
-              <Icon
-                name="mdi:file-outline"
-                class="size-3 text-offset"
-                aria-hidden="true"
-              />
-              {design.format}
-            </span>
-          )}
-        </div>
-      </header>
-
-      <!-- (2) SHORT DESCRIPTION -->
-      {excerpt && (
-        <p class="mb-2 text-xs text-offset line-clamp-2">
-          {excerpt}
-        </p>
-      )}
-
-      <!-- (3) THUMBNAIL STRIP -->
-      <div class="mt-1.5 flex justify-end">
-        {previewImages.length > 0 ? (
-          <div class="flex flex-wrap gap-1.5">
-            {previewImages.map((src) => (
-              <img
-                src={src}
-                loading="lazy"
-                alt={`Preview of ${name}`}
-                class="h-16 w-16 shrink-0 rounded-md border border-default/40 bg-default/20 object-cover"
-              />
-            ))}
-          </div>
-        ) : (
-          <PreviewMocks count={3} variant="card" />
-        )}
-      </div>
-    </article>
+    <DesignResultCardValid design={design} />
   )
 }
-
-<script>
-  import { initOwnerEditCtas } from "~/lib/design-owner-edit";
-
-  initOwnerEditCtas();
-</script>

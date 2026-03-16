@@ -2,7 +2,7 @@
 import { Icon } from "astro-icon/components";
 import NostrSignerDetected from "~/components/nostr-signer-detected.astro";
 import DesignPublishStepPanel from "~/components/design-publish/step-panel.astro";
-import DesignPublishEventJsonPanel from "~/components/design-publish/event-json-panel.astro";
+import EventJsonPanel from "~/components/event-json-panel.astro";
 import DesignPublishInfoPanel from "~/components/design-publish/info-panel.astro";
 
 const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
@@ -261,7 +261,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 </div>
       <p class="text-xs text-offset" data-sign-status>Waiting for signer pubkey...</p>
       <div class="hidden space-y-3" data-hacker-field>
-        <DesignPublishEventJsonPanel
+        <EventJsonPanel
           sectionTitle="Unsigned event"
           sectionDescription="Preview of the event before signing."
           copyAction="copy-unsigned"
@@ -271,7 +271,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           headerValue="kind 33301"
           headerValueClass="text-offset/55"
         />
-        <DesignPublishEventJsonPanel
+        <EventJsonPanel
           sectionTitle="Signed event"
           sectionDescription="Final event payload ready to publish."
           copyAction="copy-signed"
