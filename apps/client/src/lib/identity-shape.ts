@@ -218,7 +218,3 @@ export const applyIdentityShapeMaskToElements = (
     clearMaskStyles(element);
   }
 };
-
-// Note: applyIdentityShapeMaskToElementsWithImages was removed; if you need
-// to mask both container elements and images in the future, prefer composing
-// applyIdentityShapeMaskToElements with targeted selectors at the call site.

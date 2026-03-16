@@ -5,9 +5,6 @@ import TimestampDisplay from "~/components/timestamp-display.astro";
 import IconPill from "~/components/icon-pill.astro";
 import IdentityBadge from "~/components/identity-badge.astro";
 import Pubkey from "~/components/pubkey.astro";
-import MockMarker from "~/components/mock-marker.astro";
-import MockDisclaimer from "~/components/mock-disclaimer.astro";
-import PreviewMocks from "~/components/preview-mocks.astro";
 import { Icon } from "astro-icon/components";
 import {
   mapUnknownDesignDetailToDetailModel,
@@ -113,50 +110,15 @@ if (Array.isArray(previewSource)) {
   );
 }
 
-const fallbackEndorsements: DesignDetailEndorsement[] = [
-  {
-    pubkey: "npub1endorseraaaa",
-    content: "Really solid design, prints cleanly at 0.2mm.",
-    created_at: Date.now() - 1000 * 60 * 60 * 2, // 2h ago
-  },
-  {
-    pubkey: "npub1endorserbbbb",
-    content: "Used this in a prototype and it held up great.",
-    created_at: Date.now() - 1000 * 60 * 60 * 24, // 1 day ago
-  },
-  {
-    pubkey: "npub1endorsercccc",
-    content: "Nice balance of material usage and strength.",
-    created_at: Date.now() - 1000 * 60 * 60 * 72, // 3 days ago
-  },
-];
+const totalZaps = getTotalZaps(design, design?.zaps ?? []);
+const endorsementsCount = getEndorsements(
+  design,
+  design?.endorsements ?? [],
+);
 
-const fallbackZaps: DesignDetailZap[] = [
-  { pubkey: "npub1zapperaaaa", amount: 500 },
-  { pubkey: "npub1zapperbbbb", amount: 250 },
-  { pubkey: "npub1zappercccc", amount: 100 },
-  { pubkey: "npub1zapperdddd", amount: 50 },
-];
-
-const endorsementsData =
-  import.meta.env.DEV && design && design.endorsements.length === 0
-    ? fallbackEndorsements
-    : design?.endorsements ?? [];
-const zapsData =
-  import.meta.env.DEV && design && design.zaps.length === 0
-    ? fallbackZaps
-    : design?.zaps ?? [];
-
-// Dev-only fake data to visually test endorsements/zaps layout and meta counts.
-// This only runs in development and feeds both the "Top endorsements/zaps"
-// lists and the meta pills (total zaps & endorsements count).
-// Totals and counts use real data when present, or dev-only fake data above.
-const totalZaps = getTotalZaps(design, zapsData);
-const endorsementsCount = getEndorsements(design, endorsementsData);
-
-// Lists for bottom section
-const endorsementsList = endorsementsData.slice(0, 10);
-const zapsList = zapsData.slice(0, 10);
+// Lists for bottom section (real data only)
+const endorsementsList = (design?.endorsements ?? []).slice(0, 10);
+const zapsList = (design?.zaps ?? []).slice(0, 10);
 ---
 
 <AppLayout title="OpenPrints – Design detail">
@@ -259,7 +221,7 @@ const zapsList = zapsData.slice(0, 10);
               <p class="text-xs leading-relaxed text-offset">
                 {description}
               </p>
-              {previewImages.length > 0 ? (
+              {previewImages.length > 0 && (
                 <div class="flex flex-wrap gap-1.5">
                   {previewImages.map((src) => (
                     <img
@@ -270,8 +232,6 @@ const zapsList = zapsData.slice(0, 10);
                     />
                   ))}
                 </div>
-              ) : (
-                <PreviewMocks count={5} variant="card" />
               )}
             </div>
           )}
@@ -341,7 +301,6 @@ const zapsList = zapsData.slice(0, 10);
           <section class="mt-4 grid gap-4 md:grid-cols-2">
             <!-- Endorsements column -->
             <div class="relative">
-                  <MockMarker top={15} right={70} rotation={0} />
               <h2 class="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.16em] text-offset">
                 <Icon
                   name="mdi:heart-outline"
@@ -387,7 +346,6 @@ const zapsList = zapsData.slice(0, 10);
 
             <!-- Zaps column -->
             <div class="relative">
-              <MockMarker top={15} right={70} rotation={0} />
               <h2 class="flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.16em] text-offset">
                 <Icon
                   name="mdi:lightning-bolt"
@@ -426,7 +384,6 @@ const zapsList = zapsData.slice(0, 10);
       )}
     </article>
 
-    <MockDisclaimer />
   </div>
 </AppLayout>
 
