@@ -21,11 +21,11 @@ This brings up the local Nostr relay, indexer, and (with a bit of config) the As
 
 Quality checks: `make lint`, `make test`, `make check`. See [docs/dev-setup.md](docs/dev-setup.md) for the full list.
 
-## State of the Union (2026-02-26)
+## State of the Union (2026-03-16)
 
 ### Deploy
 - client: live on https://openprints.dev/ via CF talking to the indexer api via a secure tunnel
-- indexer: limping on my trusty old raspberry pi
+- indexer: running on a BitLaunch VPS listening to real live relays
 - data: a few test designs pushed through the pipeline and available in the live client
 
 ### Roadmap
