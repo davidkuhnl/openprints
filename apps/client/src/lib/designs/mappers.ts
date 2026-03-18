@@ -68,6 +68,7 @@ export const mapApiDesignDetailToDetailModel = (
 
 export const mapUnknownDesignDetailToDetailModel = (value: unknown): DesignDetailModel => {
   const result = parseApiDesignDetail(value);
+
   if (!result.ok) {
     return {
       kind: "invalid",

@@ -2,6 +2,7 @@
 import AppLayout from "~/layouts/app-layout.astro";
 import NostrSignerRequired from "~/components/nostr-signer-required.astro";
 import DesignPublishForm from "~/components/design-publish/form.astro";
+import { Icon } from "astro-icon/components";
 import { mapUnknownDesignDetailToDetailModel, type ValidDesignDetail } from "~/lib/designs";
 import { buildEditInitialValues } from "~/lib/design-publish/edit-prefill";
 
@@ -67,6 +68,7 @@ if (!base) {
 const backHref = design ? `/app/designs/${encodeURIComponent(design.id)}` : "/app/designs";
 const lockedDesignId = design ? resolveLockedDesignId(design) : "";
 const initialValues = design ? buildEditInitialValues(design, lockedDesignId) : null;
+const ownerIdentityLabel = design?.creator_identity.display_name_resolved ?? "the design owner";
 
 if (!errorMessage && design && !lockedDesignId) {
   errorTitle = "Edit unavailable";
@@ -108,12 +110,40 @@ if (!errorMessage && design && !lockedDesignId) {
           id="nostr-not-owner"
           class="hidden rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-offset sm:p-5"
           aria-live="polite"
+          data-owner-identity-label={ownerIdentityLabel}
         >
           <h2 class="text-sm font-semibold tracking-tight text-default">Edit access required</h2>
-          <p class="mt-1.5 leading-relaxed">
-            This design can only be updated by the key that created it. Switch your active signer to
-            the design owner identity to publish an update.
+          <p class="mt-1.5 flex flex-wrap items-center gap-1.5 leading-relaxed">
+            <span>This does not appear to be your design, </span>
+            <span
+              class="inline-flex items-center gap-1 rounded-md border border-default/50 bg-default/10 px-2 py-1"
+            >
+              <Icon name="mdi:account" class="size-3.5 shrink-0" aria-hidden="true" />
+              <span data-not-owner-signer-identity>—</span>
+            </span>
+            <span>. You can only edit your own designs.</span>
           </p>
+
+          <details class="group mt-3 border-t border-default/50 pt-2.5">
+            <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 text-[11px] font-medium text-offset/80 transition hover:text-default focus-visible:outline-none">
+              <span class="group-open:hidden">More details</span>
+              <span class="hidden group-open:inline">Less details</span>
+              <Icon
+                name="mdi:chevron-down"
+                class="size-3.5 transition-transform duration-200 group-open:rotate-180"
+                aria-hidden="true"
+              />
+            </summary>
+            <div class="mt-2 space-y-2">
+              <p class="text-[11px] leading-relaxed text-offset/70">
+                Your active signer pubkey does not match this design's owner pubkey.
+              </p>
+              <p class="text-[11px] leading-relaxed text-offset/70">
+                If this is your design, switch your signer to {ownerIdentityLabel} and reload this
+                page.
+              </p>
+            </div>
+          </details>
         </section>
 
         <section
@@ -156,6 +186,11 @@ if (!errorMessage && design && !lockedDesignId) {
       if (!missingEl || !notOwnerEl || !okEl) return;
 
       const ownerPubkey = okEl.getAttribute("data-owner-pubkey")?.trim() ?? "";
+      const signerIdentityEl = notOwnerEl.querySelector<HTMLElement>("[data-not-owner-signer-identity]");
+      const ownerIdentityLabel = notOwnerEl.getAttribute("data-owner-identity-label")?.trim() ?? "the design owner";
+
+      const getSignerIdentityLabel = (snapshot: IdentitySnapshot): string =>
+        snapshot.resolvedDisplayLabel ?? "Unknown signer";
 
       const showMissing = () => {
         missingEl.classList.remove("hidden");
@@ -183,6 +218,9 @@ if (!errorMessage && design && !lockedDesignId) {
         }
 
         if (snapshot.pubkey !== ownerPubkey) {
+          if (signerIdentityEl) {
+            signerIdentityEl.textContent = getSignerIdentityLabel(snapshot);
+          }
           showNotOwner();
           return;
         }
