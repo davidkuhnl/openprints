@@ -169,15 +169,16 @@ const zapsList = (design?.zaps ?? []).slice(0, 10);
               <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">
                 {name}
               </h1>
-              <span
+              <a
                 class="hidden shrink-0 rounded-md border border-emerald-400/35 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-default"
                 data-owner-edit-cta
                 data-owner-pubkey={design.pubkey}
                 aria-hidden="true"
-                title="Design edit flow is coming in the next phase."
+                href={`/app/designs/${encodeURIComponent(design.id)}/edit`}
+                title="Edit this design"
               >
-                Edit design (soon)
-              </span>
+                Edit design
+              </a>
             </div>
 
             <!-- meta pills row -->

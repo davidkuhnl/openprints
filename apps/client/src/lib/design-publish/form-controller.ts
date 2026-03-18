@@ -18,6 +18,7 @@ import {
 import { renderPreviewImages } from "~/lib/design-publish/form-preview";
 import { mapPublishHttpResult } from "~/lib/design-publish/publish";
 import {
+  type DesignPublishFormMode,
   DRAFT_FIELD_NAMES,
   INPUT_FIELD_NAMES,
   STEP_ORDER,
@@ -120,6 +121,7 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
   const formatSelect = fields.format;
 
   const stepOrder: StepId[] = STEP_ORDER;
+  const requiredForSign: StepId[] = ["signer", "file", "format", "name"];
 
   const stepIndexById = Object.fromEntries(
     stepOrder.map((step, index) => [step, index]),
@@ -186,8 +188,35 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
   }
 
   const HACKER_MODE_STORAGE_KEY = "openprints:design-publish:hacker-mode";
-  const FORM_DRAFT_STORAGE_KEY = "openprints:design-publish:form-draft";
   const apiBase = (root.getAttribute("data-api-base") ?? "").trim().replace(/\/$/, "");
+  const rawMode = (root.getAttribute("data-form-mode") ?? "").trim().toLowerCase();
+  const formMode: DesignPublishFormMode = rawMode === "edit" ? "edit" : "create";
+  const lockedDesignId = normalizeSingleLine(root.getAttribute("data-locked-design-id") ?? "");
+  const FORM_DRAFT_STORAGE_KEY =
+    formMode === "edit"
+      ? `openprints:design-publish:form-draft:edit:${encodeURIComponent(lockedDesignId || "unknown")}`
+      : "openprints:design-publish:form-draft:create";
+  const signIntentLabel = formMode === "edit" ? "update" : "design event";
+
+  const parseInitialValues = (raw: string | null): Partial<Inputs> | null => {
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!parsed || typeof parsed !== "object") return null;
+      const values: Partial<Inputs> = {};
+      for (const field of INPUT_FIELD_NAMES) {
+        const value = (parsed as Record<string, unknown>)[field];
+        if (typeof value === "string") {
+          values[field] = value;
+        }
+      }
+      return values;
+    } catch {
+      return null;
+    }
+  };
+
+  const initialValues = parseInitialValues(root.getAttribute("data-initial-values"));
   let signerPubkey = "";
   let isSigning = false;
   let isPublishing = false;
@@ -244,13 +273,29 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
     return picked;
   };
 
-  const collectInputs = (): Inputs => pickInputValues(INPUT_FIELD_NAMES);
+  const collectInputs = (): Inputs => {
+    const inputs = pickInputValues(INPUT_FIELD_NAMES);
+    if (formMode === "edit" && lockedDesignId) {
+      inputs.d = lockedDesignId;
+    }
+    return inputs;
+  };
   const collectDraftInputs = (): DraftInputs => pickInputValues(DRAFT_FIELD_NAMES);
 
   const applyDraft = (draft: DraftInputs | null) => {
     if (!draft) return;
     for (const field of DRAFT_FIELD_NAMES) {
       setFieldValue(field, draft[field]);
+    }
+  };
+
+  const applyInitialValues = (values: Partial<Inputs> | null) => {
+    if (!values) return;
+    for (const field of INPUT_FIELD_NAMES) {
+      const value = values[field];
+      if (typeof value === "string") {
+        setFieldValue(field, value);
+      }
     }
   };
 
@@ -546,12 +591,11 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
     setSummary(`Unsigned event is valid and deterministic.${warningText}`);
 
     const completion = getCompletionState();
-    const requiredForSign: StepId[] = ["signer", "file", "format", "name"];
     const signUnlocked = requiredForSign.every((step) => completion[step]);
     signButton.disabled = isSigning || isPublishing || !signUnlocked;
     publishButton.disabled = !signedEvent || isPublishing;
     copyUnsignedBtn.disabled = unsignedOutput.value.length === 0;
-    if (!signedEvent) setStatus('Ready to sign. Click "Sign design event".');
+    if (!signedEvent) setStatus(`Ready to sign. Click "Sign ${signIntentLabel}".`);
 
     renderAccordion();
   };
@@ -625,7 +669,6 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
     if (isSigning || isPublishing) return;
 
     const completion = getCompletionState();
-    const requiredForSign: StepId[] = ["signer", "file", "format", "name"];
     const signUnlocked = requiredForSign.every((step) => completion[step]);
     if (!signUnlocked) {
       setStatus("Complete the previous steps before signing.");
@@ -726,7 +769,7 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
       isPublishing = false;
       const canSign = buildUnsignedEvent(collectInputs(), signerPubkey).ok;
       const completion = getCompletionState();
-      signButton.disabled = !canSign || !stepOrder.every((step) => completion[step]);
+      signButton.disabled = !canSign || !requiredForSign.every((step) => completion[step]);
       publishButton.disabled = !signedEvent;
       renderAccordion();
     }
@@ -735,7 +778,14 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
   const handleReset = () => {
     form.reset();
     clearDraftFromSession(FORM_DRAFT_STORAGE_KEY);
-    fields.d.value = generateDesignId();
+    if (formMode === "edit") {
+      applyInitialValues(initialValues);
+      if (lockedDesignId) {
+        fields.d.value = lockedDesignId;
+      }
+    } else {
+      fields.d.value = generateDesignId();
+    }
     mimeTouched = false;
     formatTouched = false;
     nameTouched = false;
@@ -744,7 +794,11 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
     autoMovedFromSigner = false;
     lastPreviewRenderSignature = "";
     activeStep = isSignerComplete() ? "file" : "signer";
-    setStatus("Form reset. Complete each step to sign and publish.");
+    setStatus(
+      formMode === "edit"
+        ? "Edit form reset to current design values."
+        : "Form reset. Complete each step to sign and publish.",
+    );
     refreshUnsignedPreview();
     refreshInferMimeVisibility();
   };
@@ -764,8 +818,18 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
   };
 
   // init
-  fields.d.value = generateDesignId();
+  if (formMode === "edit") {
+    applyInitialValues(initialValues);
+    if (lockedDesignId) {
+      fields.d.value = lockedDesignId;
+    }
+  } else {
+    fields.d.value = generateDesignId();
+  }
   applyDraft(loadDraftFromSession(FORM_DRAFT_STORAGE_KEY));
+  if (formMode === "edit" && lockedDesignId) {
+    fields.d.value = lockedDesignId;
+  }
 
   const allWatchFields: (HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)[] =
     INPUT_FIELD_NAMES.filter((field) => field !== "d").map((field) => getFieldElement(field));

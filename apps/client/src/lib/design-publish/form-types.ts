@@ -12,6 +12,8 @@ export type StepId =
   | "lightning-payments"
   | "design-images";
 
+export type DesignPublishFormMode = "create" | "edit";
+
 export type UnsignedNostrEvent = {
   kind: number;
   created_at: number;

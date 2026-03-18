@@ -1,0 +1,202 @@
+---
+import AppLayout from "~/layouts/app-layout.astro";
+import NostrSignerRequired from "~/components/nostr-signer-required.astro";
+import DesignPublishForm from "~/components/design-publish/form.astro";
+import { mapUnknownDesignDetailToDetailModel, type ValidDesignDetail } from "~/lib/designs";
+import { buildEditInitialValues } from "~/lib/design-publish/edit-prefill";
+
+export const prerender = false;
+
+const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
+const base = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
+
+const { id } = Astro.params;
+
+let design: ValidDesignDetail | null = null;
+let errorTitle: string | null = null;
+let errorMessage: string | null = null;
+
+const resolveLockedDesignId = (detail: ValidDesignDetail): string => {
+  const tags = (detail.tags_json ?? {}) as Record<string, unknown>;
+  const tagD = tags.d;
+  if (typeof detail.design_id === "string" && detail.design_id.trim().length > 0) {
+    return detail.design_id.trim();
+  }
+  if (typeof tagD === "string" && tagD.trim().length > 0) {
+    return tagD.trim();
+  }
+  if (Array.isArray(tagD)) {
+    const candidate = tagD.find(
+      (item: unknown): item is string => typeof item === "string" && item.trim().length > 0,
+    );
+    if (candidate) return candidate.trim();
+  }
+  if (typeof detail.id === "string" && detail.id.trim().length > 0) {
+    return detail.id.trim();
+  }
+  return "";
+};
+
+if (!base) {
+  errorTitle = "Edit unavailable";
+  errorMessage = "API base URL is not configured. Check PUBLIC_OPENPRINTS_API_URL.";
+} else if (!id) {
+  errorTitle = "Edit unavailable";
+  errorMessage = "Missing design id in the URL.";
+} else {
+  try {
+    const response = await fetch(`${base}/designs/${encodeURIComponent(id)}`);
+    if (!response.ok) {
+      errorTitle = "Design not found";
+      errorMessage = `API responded with ${response.status} ${response.statusText} for this design.`;
+    } else {
+      const mapped = mapUnknownDesignDetailToDetailModel(await response.json());
+      if (mapped.kind === "invalid") {
+        errorTitle = "Design unavailable";
+        errorMessage = mapped.reason;
+      } else {
+        design = mapped;
+      }
+    }
+  } catch {
+    errorTitle = "Edit unavailable";
+    errorMessage = "We couldn't load this design due to a network or server error.";
+  }
+}
+
+const backHref = design ? `/app/designs/${encodeURIComponent(design.id)}` : "/app/designs";
+const lockedDesignId = design ? resolveLockedDesignId(design) : "";
+const initialValues = design ? buildEditInitialValues(design, lockedDesignId) : null;
+
+if (!errorMessage && design && !lockedDesignId) {
+  errorTitle = "Edit unavailable";
+  errorMessage = "This design is missing a stable design id (`d`) and cannot be edited safely.";
+}
+---
+
+<AppLayout title="OpenPrints – Edit design">
+  <div class="mx-auto flex max-w-5xl flex-col gap-3">
+    <a
+      href={backHref}
+      class="inline-flex w-fit items-center gap-1 text-[10px] text-offset underline-offset-2 hover:underline focus:outline-none focus-visible:outline-none"
+    >
+      <span>←</span>
+      <span>{design ? "Back to design" : "Back to designs"}</span>
+    </a>
+
+    {errorMessage && (
+      <article class="rounded-xl border border-default bg-offset/30 p-4 sm:p-5">
+        <h1 class="text-lg font-semibold tracking-tight">{errorTitle ?? "Edit unavailable"}</h1>
+        <p class="mt-1.5 text-xs text-offset">{errorMessage}</p>
+      </article>
+    )}
+
+    {!errorMessage && !design && (
+      <article class="rounded-xl border border-default bg-offset/30 p-4 sm:p-5">
+        <h1 class="text-lg font-semibold tracking-tight">Loading design…</h1>
+        <p class="mt-1.5 text-xs text-offset">Fetching design details.</p>
+      </article>
+    )}
+
+    {!errorMessage && design && (
+      <>
+        <section id="nostr-missing" aria-live="polite">
+          <NostrSignerRequired context="publish" />
+        </section>
+
+        <section
+          id="nostr-not-owner"
+          class="hidden rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-offset sm:p-5"
+          aria-live="polite"
+        >
+          <h2 class="text-sm font-semibold tracking-tight text-default">Edit access required</h2>
+          <p class="mt-1.5 leading-relaxed">
+            This design can only be updated by the key that created it. Switch your active signer to
+            the design owner identity to publish an update.
+          </p>
+        </section>
+
+        <section
+          id="nostr-ok"
+          class="relative hidden flex flex-col overflow-hidden rounded-xl border border-default bg-offset/30"
+          aria-live="polite"
+          data-owner-pubkey={design.pubkey}
+        >
+          <header class="space-y-1.5 border-b border-default p-4 pb-4 pr-36 sm:p-5 sm:pb-5 sm:pr-40">
+            <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">Publish</p>
+            <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">Edit design</h1>
+            <p class="max-w-2xl text-xs leading-relaxed text-offset">
+              Update metadata for this design, sign a new event with the same identity, and publish it
+              as the next version.
+            </p>
+          </header>
+          <DesignPublishForm
+            mode="edit"
+            lockedDesignId={lockedDesignId}
+            initialValues={initialValues}
+            signButtonLabel="Sign update"
+            publishButtonLabel="Publish update"
+          />
+        </section>
+      </>
+    )}
+  </div>
+
+  <script>
+    import {
+      startIdentityStore,
+      subscribeToCurrentIdentity,
+      type IdentitySnapshot,
+    } from "~/lib/identity-store";
+
+    (function () {
+      const missingEl = document.getElementById("nostr-missing");
+      const notOwnerEl = document.getElementById("nostr-not-owner");
+      const okEl = document.getElementById("nostr-ok");
+      if (!missingEl || !notOwnerEl || !okEl) return;
+
+      const ownerPubkey = okEl.getAttribute("data-owner-pubkey")?.trim() ?? "";
+
+      const showMissing = () => {
+        missingEl.classList.remove("hidden");
+        notOwnerEl.classList.add("hidden");
+        okEl.classList.add("hidden");
+      };
+
+      const showNotOwner = () => {
+        missingEl.classList.add("hidden");
+        notOwnerEl.classList.remove("hidden");
+        okEl.classList.add("hidden");
+      };
+
+      const showOwnerEditor = () => {
+        missingEl.classList.add("hidden");
+        notOwnerEl.classList.add("hidden");
+        okEl.classList.remove("hidden");
+      };
+
+      startIdentityStore();
+      const unsubscribe = subscribeToCurrentIdentity((snapshot: IdentitySnapshot) => {
+        if (!snapshot.pubkey || !snapshot.authoritative) {
+          showMissing();
+          return;
+        }
+
+        if (snapshot.pubkey !== ownerPubkey) {
+          showNotOwner();
+          return;
+        }
+
+        showOwnerEditor();
+      });
+
+      window.addEventListener(
+        "beforeunload",
+        () => {
+          unsubscribe();
+        },
+        { once: true },
+      );
+    })();
+  </script>
+</AppLayout>
