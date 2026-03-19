@@ -6,10 +6,11 @@ import { loadDesignVersionViewData } from "~/lib/designs/version-page";
 
 export const prerender = false;
 
-const { id } = Astro.params;
+const { id, versionId } = Astro.params;
 const data = await loadDesignVersionViewData({
   apiBaseUrl: import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "",
   designId: id,
+  requestedVersionId: versionId,
 });
 ---
 
@@ -37,7 +38,6 @@ const data = await loadDesignVersionViewData({
       isHistoricalView={data.isHistoricalView}
       historicalContext={data.historicalContext}
     />
-
   </div>
 </AppLayout>
 

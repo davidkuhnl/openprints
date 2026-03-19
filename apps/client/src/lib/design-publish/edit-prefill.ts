@@ -27,6 +27,7 @@ export const buildEditInitialValues = (
   const tags = (design.tags_json ?? {}) as Record<string, unknown>;
   return {
     d: lockedDesignId,
+    previousVersionEventId: design.latest_event_id ?? "",
     name: design.name ?? "",
     format: design.format ?? "",
     url: design.url ?? "",

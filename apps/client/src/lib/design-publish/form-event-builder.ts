@@ -1,5 +1,6 @@
 import type { BuildResult, Inputs, NostrTag } from "~/lib/design-publish/form-types";
 import {
+  EVENT_ID_RE,
   FORMAT_RE,
   SHA256_RE,
   UUID_V4_RE,
@@ -18,6 +19,11 @@ export const buildUnsignedEvent = (inputs: Inputs, pubkey: string): BuildResult 
   const d = normalizeSingleLine(inputs.d).toLowerCase();
   if (!UUID_V4_RE.test(d)) {
     errors.push("Design id is missing or invalid. Reload to generate a valid id.");
+  }
+
+  const previousVersionEventId = normalizeSingleLine(inputs.previousVersionEventId).toLowerCase();
+  if (previousVersionEventId && !EVENT_ID_RE.test(previousVersionEventId)) {
+    errors.push("Previous version event id must be exactly 64 lowercase hex characters.");
   }
 
   const name = normalizeSingleLine(inputs.name);
@@ -97,6 +103,9 @@ export const buildUnsignedEvent = (inputs: Inputs, pubkey: string): BuildResult 
     ["format", format],
     ["url", normalizedUrl as string],
   ];
+  if (previousVersionEventId) {
+    tags.push(["previous_version_event_id", previousVersionEventId]);
+  }
 
   if (sha256) tags.push(["sha256", sha256]);
   for (const previewUrl of previewUrls) tags.push(["preview", previewUrl]);

@@ -102,6 +102,7 @@ These are not required but strongly encouraged for discovery and UX:
 | `license` | License identifier, e.g. `CC-BY-4.0`, `MIT`, `proprietary`. | Single recommended |
 | `lnurl`   | LNURL pay address for the creator (Lightning tips). | Single recommended |
 | `m`       | MIME type of the main file, e.g. `model/stl`. | Single recommended |
+| `previous_version_event_id` | Direct predecessor event id for lineage (`64` lowercase hex). Omit for initial version. | Single recommended |
 
 Optional: **`version`** — string or integer to track logical version numbers alongside `created_at`. Indexers may use this for display or ordering; replaceability is still defined by `created_at`.
 
@@ -127,6 +128,7 @@ Indexers should store `content` as untrusted text, and clients should sanitize b
 - One logical design = `(creator_pubkey, kind=33301, d="openprints:<uuid>")`.
 - If multiple events exist with the same tuple, the event with the **highest `created_at`** is the current version.
 - Older events may be stored for history at the indexer’s discretion.
+- For version lineage traversal, clients/indexers should use `previous_version_event_id` when present.
 
 ---
 

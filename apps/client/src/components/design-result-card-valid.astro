@@ -58,6 +58,15 @@ const previewImages = Array.isArray(previewSource)
         <TimestampDisplay value={design.latest_published_at} agoFormat />
       </span>
 
+      <span class="inline-flex items-center gap-1">
+        <Icon
+          name="mdi:layers-outline"
+          class="size-3 text-offset"
+          aria-hidden="true"
+        />
+        {design.version_count} {design.version_count === 1 ? "version" : "versions"}
+      </span>
+
       {design.format && (
         <span class="inline-flex items-center gap-1 text-emerald-400/80">
           <Icon

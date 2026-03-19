@@ -105,6 +105,7 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
 
   const fields = {
     d: getInput<HTMLInputElement>("d"),
+    previousVersionEventId: getInput<HTMLInputElement>("previousVersionEventId"),
     name: getInput<HTMLInputElement>("name"),
     format: getInput<HTMLSelectElement>("format"),
     url: getInput<HTMLInputElement>("url"),
@@ -832,7 +833,9 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
   }
 
   const allWatchFields: (HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement)[] =
-    INPUT_FIELD_NAMES.filter((field) => field !== "d").map((field) => getFieldElement(field));
+    INPUT_FIELD_NAMES
+      .filter((field) => field !== "d" && field !== "previousVersionEventId")
+      .map((field) => getFieldElement(field));
 
   for (const field of allWatchFields) {
     const onChange = () => {

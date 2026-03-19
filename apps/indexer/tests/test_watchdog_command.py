@@ -3,7 +3,32 @@ from __future__ import annotations
 import sys
 from argparse import Namespace
 
+import pytest
+
 import openprints.watchdog.runner as watchdog_runner
+
+
+@pytest.fixture(autouse=True)
+def _disable_telegram_for_watchdog_tests(monkeypatch) -> None:
+    """
+    Prevent accidental live Telegram messaging during watchdog-related tests.
+
+    The watchdog runner constructs its Telegram notifier from both environment
+    variables and an optional `.env.watchdog` file in the current working
+    directory. We disable it for all tests by overriding
+    `openprints.watchdog.runner.build_telegram_notifier`.
+    """
+
+    # Ensure any environment-based configuration is ignored.
+    monkeypatch.setenv("OPENPRINTS_WATCHDOG_TELEGRAM_BOT_TOKEN", "")
+    monkeypatch.setenv("OPENPRINTS_WATCHDOG_TELEGRAM_CHAT_ID", "")
+
+    def _disabled_build_telegram_notifier(_env_path):
+        return watchdog_runner._TelegramNotifier(token=None, chat_id=None)
+
+    monkeypatch.setattr(
+        watchdog_runner, "build_telegram_notifier", _disabled_build_telegram_notifier
+    )
 
 
 class _FakeChild:

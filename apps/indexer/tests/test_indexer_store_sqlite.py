@@ -17,6 +17,7 @@ def _sample_version_row() -> DesignVersionRow:
         event_id="a" * 64,
         pubkey="b" * 64,
         design_id="openprints:00000000-0000-4000-8000-000000000001",
+        previous_version_event_id=None,
         kind=33301,
         created_at=1730000000,
         name="Test Design",
@@ -347,3 +348,41 @@ async def _run_update_identity_profile_and_miss() -> None:
 
 def test_update_identity_profile_and_miss() -> None:
     asyncio.run(_run_update_identity_profile_and_miss())
+
+
+async def _run_list_design_versions_newest_first() -> None:
+    store = SQLiteIndexStore(":memory:")
+    await store.open()
+    base = _sample_version_row()
+    newer = DesignVersionRow(
+        event_id="f" * 64,
+        pubkey=base.pubkey,
+        design_id=base.design_id,
+        previous_version_event_id=base.event_id,
+        kind=base.kind,
+        created_at=base.created_at + 100,
+        name="Test Design v2",
+        format=base.format,
+        sha256=base.sha256,
+        url=base.url,
+        content="Updated",
+        raw_event_json='{"id":"' + ("f" * 64) + '"}',
+        received_at=base.received_at + 100,
+    )
+    await store.append_design_version(base)
+    await store.append_design_version(newer)
+
+    rows, total = await store.list_design_versions(base.pubkey, base.design_id, limit=1, offset=0)
+    assert total == 2
+    assert len(rows) == 1
+    assert rows[0].event_id == newer.event_id
+
+    rows, total = await store.list_design_versions(base.pubkey, base.design_id, limit=10, offset=1)
+    assert total == 2
+    assert len(rows) == 1
+    assert rows[0].event_id == base.event_id
+    await store.close()
+
+
+def test_list_design_versions_newest_first() -> None:
+    asyncio.run(_run_list_design_versions_newest_first())

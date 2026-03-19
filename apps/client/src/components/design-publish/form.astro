@@ -196,6 +196,7 @@ const serializedInitialValues = initialValues ? JSON.stringify(initialValues) : 
           <label for="design-lnurl" class="text-xs font-medium text-default">LNURL pay address <span class="text-offset/70">(optional)</span></label>
           <input id="design-lnurl" name="lnurl" type="text" autocomplete="off" placeholder="lnurlp://creator.example.com/pay" class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs text-default placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-field="lnurl" />
           <input type="hidden" name="d" data-field="d" />
+          <input type="hidden" name="previousVersionEventId" data-field="previousVersionEventId" />
         </div>
         <DesignPublishInfoPanel
           icon="mdi:lightning-bolt"

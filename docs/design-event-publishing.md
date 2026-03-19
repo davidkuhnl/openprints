@@ -55,6 +55,9 @@ High level implementation plan for the design event publishing pipeline:
 2) Serialize the design event in the UI before signing
     - construct unsigned Nostr event `{kind:33301, created_at, pubkey, tags, content}`
     - include deterministic tags (`d`, `name`, `format`, `url`, optional `sha256`, etc.)
+    - include optional lineage tag `previous_version_event_id`
+      - `null`/omitted for initial version
+      - set to the direct predecessor event id for updates
     - ensure tag ordering and formatting match `docs/event-schema.md`
     - preview the serialized event (optional debug view)
 
@@ -219,3 +222,135 @@ Recommendation:
 - Should non-owners see "Fork design" immediately or later phase?
 - Do we classify change type heuristically only, or also allow optional explicit author tag?
 - Do we allow editing from any historical version ("reuse as draft") in V1 of this phase, or only from latest?
+
+## Version view and routing strategy
+
+We will implement version-aware design pages in two steps.
+
+### Step 1 — Canonical version view
+
+Refactor the current design page into a canonical version view.
+
+This view represents a single version of a design (not “a design with history”).
+
+Clarifications:
+- The current `/design/:designId` page is effectively the latest version.
+- We should redesign it so it can represent any version, not just the latest.
+
+What belongs in the canonical version view:
+- Core design content
+  - title
+  - images
+  - description
+- File/download section
+- Metadata relevant to that version
+- A lightweight version history navigator (not full snapshots)
+- An optional “advanced” / collapsible section for technical transparency
+  - raw snapshot data
+  - signed event JSON
+  - hashes / technical fields
+
+UI rules:
+- The main UI should be human-readable.
+- Raw/system-heavy data should be secondary and collapsible.
+- The page should not behave like a debug inspector.
+
+### Step 2 — Routing and version resolution
+
+Introduce two routes:
+- `/design/:designId`
+  - resolves to the latest version
+  - canonical/shareable page
+- `/design/:designId/version/:versionId`
+  - resolves to a specific historical version
+
+Implementation detail:
+- Both routes should use the same underlying view/component.
+- The only difference is the data source and a small amount of context UI.
+- Version records should explicitly model lineage using nullable `previous_version_event_id`.
+  - Initial version: `previous_version_event_id = null`.
+  - Subsequent updates: `previous_version_event_id = <event id of previous version>`.
+
+Expected UI differences for the historical view:
+- Show a banner/indicator:
+  - `Viewing version X from {timestamp}`
+- Provide a CTA:
+  - `Back to latest version`
+- Potentially disable or adjust actions that only make sense for the latest version
+
+### Design principles
+
+- Separate identity (design) from state (version).
+- Treat the main page as “latest version of this design”.
+- Treat version pages as “snapshots in time”.
+- Keep version history lightweight and navigational.
+- Move full snapshot + raw event data out of the main flow.
+
+### Outcome
+
+Expected result:
+- Clean, product-focused design page.
+- Clear mental model for users:
+  - `design = identity`
+  - `versions = evolution over time`
+- Scalable structure for future features (diffs, comparisons, etc.).
+
+## Delete support TODOs
+
+- [ ] Add design delete support as a first-class flow (owner-only).
+- [ ] On delete, hide/disable the design across UI surfaces, including all version pages (`/design/:designId` and `/design/:designId/version/:versionId`).
+- [ ] Publish a Nostr delete event to configured relays for the design/version events being removed.
+- [ ] If the design files are hosted on Blossom servers, issue deletion requests for those files as part of the delete flow.
+- [ ] Add clear user messaging: because of Nostr replication, we cannot guarantee full deletion of the historical trail from all relays/clients.
+- [ ] Add a post-delete "download safety" check:
+  - list every download URL ever referenced by any version,
+  - verify whether each file is still reachable,
+  - show a clear status (`still available` / `unreachable`) so users can confirm practical takedown.
+
+## Forks and historical base-version TODOs
+
+- [ ] Immediate rule: only allow editing from the current/latest version to avoid ambiguous branching semantics in V1.
+- [ ] Enforce this in both UI and API behavior:
+  - edit entry points should always preload from latest,
+  - historical version views should not expose "Edit this version" yet.
+- [ ] Add chain-consistency validation for lineage:
+  - if `previous_version_event_id` is present, ensure it belongs to the same `(pubkey, kind=33301, d)` as the event being published (i.e. it is a true predecessor for the same design identity).
+  - if the predecessor event is not yet indexed, validate in a best-effort way without rejecting the publish.
+- [ ] Add clear UX copy on historical version pages:
+  - `Editing is only available from the latest version for now.`
+- [ ] Future feature: introduce fork as a first-class concept, allowing users to fork from any historical version.
+- [ ] Fork behavior should create a new design identity (`new d`) while preserving attribution to source design + source version.
+- [ ] Add dedicated "Fork this version" action on version pages once this lands.
+- [ ] Include fork lineage in UI and API:
+  - show `forked from {designId}@{versionId}`,
+  - support filtering/browsing related forks.
+
+## Indexer background URL health-check TODOs
+
+- [ ] Add a periodic background job in the indexer to validate that referenced URLs are still live.
+- [ ] Scope to both:
+  - design file/download URLs,
+  - image/media URLs used in design metadata.
+- [ ] Persist health status per URL (last checked at, HTTP/status result, consecutive failures, first seen down timestamp).
+- [ ] Define failure thresholds and retry policy to avoid noisy transient alerts.
+- [ ] On confirmed failures, notify admins with enough context to act:
+  - design id, version/event id, URL, failure reason, and first observed downtime.
+- [ ] Notify design authors when their file/image URLs appear to be down, with guidance to publish an updated version.
+- [ ] Surface URL health in product UI (at minimum owner/admin visibility) so issues are visible without relying only on external alerts.
+
+## Indexer relay presence / completeness TODOs
+
+- [ ] Track relay presence for every accepted/indexed design event (kind `33301` and any related delete events):
+  - store `event_id`,
+  - store the set of `relay_url`s we have seen it on,
+  - store `first_seen_at` / `last_seen_at` per relay (or an aggregated equivalent).
+- [ ] Define “expected relays” as the configured relay list for the indexer (from indexer config / env).
+- [ ] Periodically (or on-demand after indexing) check for completeness:
+  - if an event is missing from one or more configured relays, mark it as incomplete.
+- [ ] Offer recovery actions to the creator/owner:
+  - surface which relays are missing,
+  - prompt the creator to republish the event to those relays.
+- [ ] Optional automation:
+  - if policy allows, the indexer can attempt to publish/rebroadcast to missing relays automatically after a configurable grace period.
+- [ ] Make sure delete semantics are included:
+  - completeness checks should also apply to delete events so clients can converge on the same visible state.

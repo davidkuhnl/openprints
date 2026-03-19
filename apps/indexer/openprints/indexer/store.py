@@ -12,6 +12,7 @@ class DesignVersionRow:
     event_id: str
     pubkey: str
     design_id: str
+    previous_version_event_id: str | None
     kind: int
     created_at: int
     name: str | None
@@ -49,6 +50,9 @@ class IndexStore(Protocol):
     async def upsert_design_current(self, row: DesignCurrentRow) -> None: ...
 
     async def get_design(self, pubkey: str, design_id: str) -> DesignCurrentRow | None: ...
+    async def list_design_versions(
+        self, pubkey: str, design_id: str, *, limit: int, offset: int
+    ) -> tuple[list[DesignVersionRow], int]: ...
 
     async def ensure_identity_pending(self, pubkey: str, first_seen_at: int) -> None: ...
 
@@ -86,6 +90,15 @@ class LogOnlyIndexStore:
             extra={"pubkey": pubkey, "design_id": design_id},
         )
         return None
+
+    async def list_design_versions(
+        self, pubkey: str, design_id: str, *, limit: int, offset: int
+    ) -> tuple[list[DesignVersionRow], int]:
+        logger.info(
+            "list_design_versions_log_only_store",
+            extra={"pubkey": pubkey, "design_id": design_id, "limit": limit, "offset": offset},
+        )
+        return [], 0
 
     async def ensure_identity_pending(self, pubkey: str, first_seen_at: int) -> None:
         logger.info(

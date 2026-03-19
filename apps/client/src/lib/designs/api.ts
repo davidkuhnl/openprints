@@ -23,6 +23,7 @@ export interface ApiDesignListItem {
   content: string | null;
   creator_identity: ApiCreatorIdentity;
   latest_published_at: number;
+  version_count: number;
   format: string | null;
   tags_json: DesignTags;
 }
@@ -66,6 +67,30 @@ export interface ApiDesignStats {
   versions: number;
 }
 
+export interface ApiDesignVersionItem {
+  event_id: string;
+  pubkey: DesignPubkey;
+  design_id: string;
+  previous_version_event_id: string | null;
+  kind: number;
+  created_at: number;
+  received_at: number;
+  name: string | null;
+  format: string | null;
+  sha256: string | null;
+  url: string | null;
+  content: string | null;
+  tags_json: DesignTags;
+  raw_event_json: string;
+}
+
+export interface ApiDesignVersionList {
+  items: ApiDesignVersionItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export type ApiDesignListItemParseResult =
   | { ok: true; item: ApiDesignListItem }
   | { ok: false; reason: string; rawId: string | null; raw: unknown | null };
@@ -77,6 +102,14 @@ export type ApiDesignDetailParseResult =
 export type ApiDesignStatsParseResult =
   | { ok: true; stats: ApiDesignStats }
   | { ok: false; reason: string };
+
+export type ApiDesignVersionItemParseResult =
+  | { ok: true; item: ApiDesignVersionItem }
+  | { ok: false; reason: string; raw: unknown | null };
+
+export type ApiDesignVersionListParseResult =
+  | { ok: true; list: ApiDesignVersionList }
+  | { ok: false; reason: string; raw: unknown | null };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -182,6 +215,7 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
   const pubkey = asDesignPubkeyOrNull(value.pubkey);
   const name = asTrimmedStringOrNull(value.name);
   const latestPublishedAt = asFiniteNumberOrNull(value.latest_published_at);
+  const versionCount = asIntegerOrNull(value.version_count);
   const tagsJson = parseDesignTagsOrNull(value.tags_json);
   const creatorIdentity = parseApiCreatorIdentity(value.creator_identity);
 
@@ -241,6 +275,16 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
     };
   }
 
+  if (versionCount == null) {
+    return {
+      ok: false,
+      reason:
+        "malformed/invalid/corrupt design payload: missing or invalid version_count",
+      rawId: id,
+      raw: value,
+    };
+  }
+
   return {
     ok: true,
     item: {
@@ -250,6 +294,7 @@ export const parseApiDesignListItem = (value: unknown): ApiDesignListItemParseRe
       content: asStringOrNull(value.content),
       creator_identity: creatorIdentity,
       latest_published_at: latestPublishedAt,
+      version_count: versionCount,
       format: asStringOrNull(value.format),
       tags_json: tagsJson,
     },
@@ -342,6 +387,108 @@ export const parseApiDesignStats = (value: unknown): ApiDesignStatsParseResult =
     stats: {
       designs,
       versions,
+    },
+  };
+};
+
+export const parseApiDesignVersionItem = (
+  value: unknown,
+): ApiDesignVersionItemParseResult => {
+  if (!isRecord(value)) {
+    return {
+      ok: false,
+      reason: "malformed/invalid/corrupt design version payload: expected an object",
+      raw: value,
+    };
+  }
+
+  const eventId = asTrimmedStringOrNull(value.event_id);
+  const pubkey = asDesignPubkeyOrNull(value.pubkey);
+  const designId = asTrimmedStringOrNull(value.design_id);
+  const previousVersionEventId = asTrimmedStringOrNull(value.previous_version_event_id);
+  const kind = asIntegerOrNull(value.kind);
+  const createdAt = asFiniteNumberOrNull(value.created_at);
+  const receivedAt = asFiniteNumberOrNull(value.received_at);
+  const tagsJson = parseDesignTagsOrNull(value.tags_json);
+  const rawEventJson = asStringOrNull(value.raw_event_json);
+
+  if (
+    !eventId ||
+    !pubkey ||
+    !designId ||
+    kind == null ||
+    createdAt == null ||
+    receivedAt == null ||
+    !tagsJson ||
+    rawEventJson == null
+  ) {
+    return {
+      ok: false,
+      reason:
+        "malformed/invalid/corrupt design version payload: missing required event fields",
+      raw: value,
+    };
+  }
+
+  return {
+    ok: true,
+    item: {
+      event_id: eventId,
+      pubkey,
+      design_id: designId,
+      previous_version_event_id: previousVersionEventId,
+      kind,
+      created_at: createdAt,
+      received_at: receivedAt,
+      name: asStringOrNull(value.name),
+      format: asStringOrNull(value.format),
+      sha256: asStringOrNull(value.sha256),
+      url: asStringOrNull(value.url),
+      content: asStringOrNull(value.content),
+      tags_json: tagsJson,
+      raw_event_json: rawEventJson,
+    },
+  };
+};
+
+export const parseApiDesignVersionList = (
+  value: unknown,
+): ApiDesignVersionListParseResult => {
+  if (!isRecord(value)) {
+    return {
+      ok: false,
+      reason:
+        "malformed/invalid/corrupt design version list payload: expected an object",
+      raw: value,
+    };
+  }
+
+  const itemsRaw = Array.isArray(value.items) ? value.items : null;
+  const total = asIntegerOrNull(value.total);
+  const limit = asIntegerOrNull(value.limit);
+  const offset = asIntegerOrNull(value.offset);
+
+  if (!itemsRaw || total == null || limit == null || offset == null) {
+    return {
+      ok: false,
+      reason:
+        "malformed/invalid/corrupt design version list payload: missing items/total/limit/offset",
+      raw: value,
+    };
+  }
+
+  const parsedItems = itemsRaw
+    .map(parseApiDesignVersionItem)
+    .filter((item): item is { ok: true; item: ApiDesignVersionItem } => item.ok)
+    .map((item) => item.item);
+
+  return {
+    ok: true,
+    list: {
+      items: parsedItems,
+      total,
+      limit,
+      offset,
     },
   };
 };

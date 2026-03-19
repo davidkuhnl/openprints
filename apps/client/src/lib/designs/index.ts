@@ -6,6 +6,10 @@ export type {
   ApiDesignDetailParseResult,
   ApiDesignListItem,
   ApiDesignListItemParseResult,
+  ApiDesignVersionItem,
+  ApiDesignVersionItemParseResult,
+  ApiDesignVersionList,
+  ApiDesignVersionListParseResult,
   ApiDesignStats,
   ApiDesignStatsParseResult,
 } from "~/lib/designs/api";
@@ -13,6 +17,8 @@ export {
   parseApiDesignDetail,
   parseApiDesignListItem,
   parseApiDesignListItems,
+  parseApiDesignVersionItem,
+  parseApiDesignVersionList,
   parseApiDesignStats,
 } from "~/lib/designs/api";
 
@@ -23,6 +29,7 @@ export type {
   DesignDetailModel,
   DesignDetailEndorsement,
   DesignDetailZap,
+  ValidDesignVersion,
   InvalidDesignCard,
   InvalidDesignDetail,
   ValidDesignCard,
@@ -33,7 +40,9 @@ export {
   mapApiDesignListItemToCardModel,
   mapApiDesignDetailToDetailModel,
   mapApiDesignParseResultToCardModel,
+  mapApiDesignVersionToVersionModel,
   mapUnknownDesignDetailToDetailModel,
   mapUnknownDesignListToCardModels,
+  mapUnknownDesignVersions,
   mapUnknownDesignStats,
 } from "~/lib/designs/mappers";
