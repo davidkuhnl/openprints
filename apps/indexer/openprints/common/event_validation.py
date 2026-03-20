@@ -100,7 +100,6 @@ def validate_signed_design_event(
     format_values = tag_values(tags, "format")
     url_values = tag_values(tags, "url")
     sha_values = tag_values(tags, "sha256")
-    previous_values = tag_values(tags, "previous")
     previous_version_event_id_values = tag_values(tags, "previous_version_event_id")
 
     if not d_values:
@@ -156,23 +155,6 @@ def validate_signed_design_event(
                 "openprints_schema must appear at most once and include a non-empty string value",
             )
         )
-
-    if previous_values:
-        previous_event_id = previous_values[0].lower()
-        if not _HEX_64_RE.fullmatch(previous_event_id):
-            errors.append(
-                invalid_value(
-                    "event.tags[previous]",
-                    "previous must be exactly 64 lowercase hex chars",
-                )
-            )
-        elif previous_event_id == event_id:
-            errors.append(
-                invalid_value(
-                    "event.tags[previous]",
-                    "previous cannot reference event.id",
-                )
-            )
 
     if previous_version_event_id_values:
         previous_version_event_id = previous_version_event_id_values[0].lower()

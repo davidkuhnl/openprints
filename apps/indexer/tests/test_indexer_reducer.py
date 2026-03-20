@@ -247,7 +247,7 @@ def test_reducer_schema_1_1_initial_event_rejects_previous_tag() -> None:
         [entry[0], entry[1]]
         for entry in event["tags"]
         if isinstance(entry, list) and len(entry) >= 2
-    ] + [["openprints_schema", "1.1"], ["previous", "f" * 64]]
+    ] + [["openprints_schema", "1.1"], ["previous_version_event_id", "f" * 64]]
 
     store = _CapturingStore()
     reducer = ReducerWorker(store=store)
@@ -273,7 +273,7 @@ def test_reducer_schema_1_1_update_event_requires_previous_tag() -> None:
     second_event["tags"] = [
         [entry[0], entry[1]]
         for entry in first_event["tags"]
-        if isinstance(entry, list) and len(entry) >= 2 and entry[0] != "previous"
+        if isinstance(entry, list) and len(entry) >= 2 and entry[0] != "previous_version_event_id"
     ]
 
     store = _CapturingStore()
@@ -301,8 +301,8 @@ def test_reducer_schema_1_1_update_event_accepts_previous_tag() -> None:
     second_event["tags"] = [
         [entry[0], entry[1]]
         for entry in first_event["tags"]
-        if isinstance(entry, list) and len(entry) >= 2 and entry[0] != "previous"
-    ] + [["previous", first_event["id"]]]
+        if isinstance(entry, list) and len(entry) >= 2 and entry[0] != "previous_version_event_id"
+    ] + [["previous_version_event_id", first_event["id"]]]
 
     store = _CapturingStore()
     reducer = ReducerWorker(store=store)

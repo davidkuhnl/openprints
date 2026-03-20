@@ -191,49 +191,33 @@ def _single_tag_value(tags: object, key: str, event_id: str, relay: str) -> str 
 
 
 def _lineage_tag_value(tags: object, event_id: str, relay: str) -> tuple[str | None, bool]:
-    # Prefer schema-1.1 `previous`; keep legacy tag for backward compatibility.
-    raw_previous = _single_tag_value(tags, "previous", event_id, relay)
-    raw_legacy = _single_tag_value(tags, "previous_version_event_id", event_id, relay)
-    has_previous_tag = raw_previous is not None or raw_legacy is not None
-    if not has_previous_tag:
+    raw_value = _single_tag_value(tags, "previous_version_event_id", event_id, relay)
+    if raw_value is None:
         return None, False
 
-    raw_value = raw_previous if raw_previous is not None else raw_legacy
-    tag_key = "previous" if raw_previous is not None else "previous_version_event_id"
-    if raw_previous is not None and raw_legacy is not None and raw_previous != raw_legacy:
-        logger.warning(
-            "conflicting_previous_lineage_tags",
-            extra={
-                "relay": relay,
-                "event_id": event_id,
-                "previous": raw_previous,
-                "previous_version_event_id": raw_legacy,
-            },
-        )
-    assert raw_value is not None
     normalized = raw_value.strip().lower()
     if not _HEX_64_RE.fullmatch(normalized):
         logger.warning(
-            "invalid_previous_tag",
+            "invalid_previous_version_event_id_tag",
             extra={
                 "relay": relay,
                 "event_id": event_id,
-                "tag_key": tag_key,
+                "tag_key": "previous_version_event_id",
                 "value": raw_value,
             },
         )
-        return None, has_previous_tag
+        return None, True
     if normalized == event_id:
         logger.warning(
-            "self_referencing_previous_tag",
+            "self_referencing_previous_version_event_id_tag",
             extra={
                 "relay": relay,
                 "event_id": event_id,
-                "tag_key": tag_key,
+                "tag_key": "previous_version_event_id",
             },
         )
-        return None, has_previous_tag
-    return normalized, has_previous_tag
+        return None, True
+    return normalized, True
 
 
 def _optional_tags_json(tags: object) -> str:

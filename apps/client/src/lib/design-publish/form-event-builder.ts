@@ -107,7 +107,7 @@ export const buildUnsignedEvent = (inputs: Inputs, pubkey: string): BuildResult 
     ["url", normalizedUrl as string],
   ];
   if (previousVersionEventId) {
-    tags.push(["previous", previousVersionEventId]);
+    tags.push(["previous_version_event_id", previousVersionEventId]);
   }
 
   if (sha256) tags.push(["sha256", sha256]);
