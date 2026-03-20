@@ -123,6 +123,15 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
 
   const stepOrder: StepId[] = STEP_ORDER;
   const requiredForSign: StepId[] = ["signer", "file", "format", "name"];
+  const stepEditableFields: Record<Exclude<StepId, "signer">, FieldName[]> = {
+    file: ["url", "sha256"],
+    name: ["name"],
+    format: ["format", "mime"],
+    description: ["description"],
+    "design-images": ["preview"],
+    "lightning-payments": ["lnurl"],
+    "additional-data": ["license", "category", "material", "printer"],
+  };
 
   const stepIndexById = Object.fromEntries(
     stepOrder.map((step, index) => [step, index]),
@@ -218,6 +227,35 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
   };
 
   const initialValues = parseInitialValues(root.getAttribute("data-initial-values"));
+  const normalizeForDiff = (field: FieldName, value: string): string => {
+    if (field === "format" || field === "mime" || field === "sha256") {
+      return normalizeSingleLine(value).toLowerCase();
+    }
+    if (
+      field === "description" ||
+      field === "preview" ||
+      field === "category" ||
+      field === "material" ||
+      field === "printer"
+    ) {
+      return normalizeTextArea(value);
+    }
+    return normalizeSingleLine(value);
+  };
+  const initialFieldValueMap: Record<FieldName, string> = Object.fromEntries(
+    INPUT_FIELD_NAMES.map((field) => [field, ""]),
+  ) as Record<FieldName, string>;
+  if (initialValues) {
+    for (const field of INPUT_FIELD_NAMES) {
+      const initialValue = initialValues[field];
+      if (typeof initialValue === "string") {
+        initialFieldValueMap[field] = initialValue;
+      }
+    }
+  }
+  if (formMode === "edit" && lockedDesignId) {
+    initialFieldValueMap.d = lockedDesignId;
+  }
   let signerPubkey = "";
   let isSigning = false;
   let isPublishing = false;
@@ -522,9 +560,20 @@ export const initDesignPublishForm = (rootOverride?: HTMLElement | null) => {
       if (!nodes) continue;
       const validationState = getValidationState(step, completion);
       const open = step === activeStep;
+      const isEditedStep =
+        formMode === "edit" &&
+        step !== "signer" &&
+        stepEditableFields[step].some(
+          (field) =>
+            normalizeForDiff(field, getFieldValue(field)) !==
+            normalizeForDiff(field, initialFieldValueMap[field]),
+        );
 
       nodes.panel.dataset.validationState = validationState;
       nodes.panel.dataset.viewState = open ? "expanded" : "collapsed";
+      nodes.panel.dataset.formMode = formMode;
+      nodes.panel.dataset.editState =
+        formMode === "edit" && step !== "signer" ? (isEditedStep ? "changed" : "unchanged") : "na";
       nodes.body.classList.toggle("hidden", !open);
       nodes.caretIcon.classList.toggle("rotate-180", open);
       if (nodes.summary) nodes.summary.textContent = getSummary(step);

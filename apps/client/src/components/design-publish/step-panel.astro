@@ -182,6 +182,18 @@ const {
     border-left-color: rgb(16 185 129 / 0.72);
   }
 
+  [data-step-panel][data-form-mode="edit"][data-edit-state="changed"] [data-step-title]::after {
+    content: " · edited";
+    color: rgb(125 211 252 / 0.95);
+    font-weight: 600;
+  }
+
+  [data-step-panel][data-form-mode="edit"][data-edit-state="unchanged"] [data-step-title]::after {
+    content: " · unchanged";
+    color: rgb(var(--offset-color) / 0.52);
+    font-weight: 500;
+  }
+
   [data-step-panel][data-validation-state="invalid"] {
     border-left-color: rgb(251 191 36 / 0.28);
   }
