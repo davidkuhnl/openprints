@@ -1,6 +1,5 @@
 ---
 import AppLayout from "~/layouts/app-layout.astro";
-import TruncateCopy from "~/components/truncate-copy.astro";
 import DesignVersionView from "~/components/design-version-view.astro";
 import DesignVersionViewError from "~/components/design-version-view-error.astro";
 import { loadDesignVersionViewData } from "~/lib/designs/version-page";
@@ -16,9 +15,6 @@ const data = await loadDesignVersionViewData({
 ---
 
 <AppLayout title="OpenPrints – Design detail">
-  <!-- Keep this so the copy script (CopyValue) is included for TruncateCopy instances below -->
-  <TruncateCopy value="" />
-
   <div class="mx-auto flex max-w-5xl flex-col gap-3">
     <a
       href="/app/designs"
