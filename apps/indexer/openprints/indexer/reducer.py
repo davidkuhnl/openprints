@@ -70,8 +70,8 @@ class ReducerWorker:
         previous_event_id, has_previous_tag = _lineage_tag_value(tags, event_id, envelope.relay)
         if schema_version == SCHEMA_VERSION_1_1:
             # 1.1 rules:
-            # - initial event: "previous" must be absent
-            # - update event: "previous" must be present and valid
+            # - initial event: "previous_version_event_id" must be absent
+            # - update event: "previous_version_event_id" must be present and valid
             is_initial = current is None
             if is_initial and has_previous_tag:
                 logger.warning(
