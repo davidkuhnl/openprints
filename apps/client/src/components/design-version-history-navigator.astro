@@ -7,11 +7,10 @@ interface Props {
   designId: string;
   versions: ValidDesignVersion[];
   total: number;
-  error: string | null;
   currentVersionEventId: string | null;
 }
 
-const { designId, versions, total, error, currentVersionEventId } = Astro.props as Props;
+const { designId, versions, total, currentVersionEventId } = Astro.props as Props;
 const versionsCount = total ?? 0;
 const latestHref = `/app/designs/${encodeURIComponent(designId)}`;
 ---
@@ -26,9 +25,7 @@ const latestHref = `/app/designs/${encodeURIComponent(designId)}`;
     </p>
   </header>
 
-  {error ? (
-    <p class="mt-2 text-xs text-offset">{error}</p>
-  ) : versions.length === 0 ? (
+  {versions.length === 0 ? (
     <p class="mt-2 text-xs text-offset">
       No versions were returned by the API for this design yet.
     </p>

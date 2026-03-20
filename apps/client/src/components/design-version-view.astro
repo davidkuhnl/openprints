@@ -8,62 +8,45 @@ import { nounForCount } from "~/lib/plural";
 import DesignAdvancedVersionData from "~/components/design-advanced-version-data.astro";
 import DesignVersionHistoryNavigator from "~/components/design-version-history-navigator.astro";
 import type { ValidDesignDetail, ValidDesignVersion } from "~/lib/designs";
-
-interface HistoricalContext {
-  requestedVersionId: string;
-  versionNumber: number | null;
-  versionTimestamp: number | null;
-  latestHref: string;
-}
+import type { DesignVersionViewContext } from "~/lib/designs/version-page";
 
 interface Props {
-  design: ValidDesignDetail | null;
+  design: ValidDesignDetail;
   versions: ValidDesignVersion[];
   versionsTotal: number;
-  versionsError: string | null;
-  selectedVersion: ValidDesignVersion | null;
-  errorTitle: string | null;
-  errorMessage: string | null;
-  isHistoricalView: boolean;
-  historicalContext: HistoricalContext | null;
+  selectedVersion: ValidDesignVersion;
+  viewContext: DesignVersionViewContext;
 }
 
 const {
   design,
   versions,
   versionsTotal,
-  versionsError,
   selectedVersion,
-  errorTitle,
-  errorMessage,
-  isHistoricalView,
-  historicalContext,
+  viewContext,
 } = Astro.props as Props;
 
 const displayedVersion = selectedVersion;
-const latestDesignHref = design
-  ? `/app/designs/${encodeURIComponent(design.id)}`
-  : historicalContext?.latestHref ?? null;
-const currentVersionTimestamp = displayedVersion?.created_at ?? null;
-const currentVersionName = displayedVersion?.name ?? design?.name ?? "";
-const currentVersionDescription = displayedVersion?.content ?? null;
-const currentVersionFormat = displayedVersion?.format ?? null;
-const currentVersionSha256 = displayedVersion?.sha256 ?? null;
-const currentVersionUrl = displayedVersion?.url ?? null;
-const currentVersionEventId = displayedVersion?.event_id ?? null;
+const currentVersionTimestamp = displayedVersion.created_at;
+const currentVersionName = displayedVersion.name;
+const currentVersionDescription = displayedVersion.content;
+const currentVersionFormat = displayedVersion.format;
+const currentVersionSha256 = displayedVersion.sha256;
+const currentVersionUrl = displayedVersion.url;
+const currentVersionEventId = displayedVersion.event_id;
 const sha256MaxChars = 16;
 
-const firstPublishedAt = design?.first_published_at ?? null;
-const latestPublishedAt = currentVersionTimestamp ?? design?.latest_published_at ?? null;
+const firstPublishedAt = design.first_published_at;
+const publishedAt = currentVersionTimestamp;
 
-const versionsCount = versionsTotal > 0 ? versionsTotal : design?.version_count ?? 0;
+const versionsCount = versionsTotal > 0 ? versionsTotal : design.version_count;
 const versionsLabel = nounForCount(versionsCount, {
   one: "version",
   other: "versions",
 });
 
 let previewImages: string[] = [];
-const previewSource = displayedVersion?.tags_json.preview;
+const previewSource = displayedVersion.tags_json.preview;
 if (Array.isArray(previewSource)) {
   previewImages = previewSource.filter(
     (item: unknown): item is string =>
@@ -71,73 +54,38 @@ if (Array.isArray(previewSource)) {
   );
 }
 
-const signedEventJson = displayedVersion?.raw_event_json ?? null;
-const previousVersionEventId = displayedVersion?.previous_version_event_id ?? null;
+const signedEventJson = displayedVersion.raw_event_json;
+const previousVersionEventId = displayedVersion.previous_version_event_id;
 ---
 
 <article class="flex flex-col gap-2.5 rounded-xl border border-default bg-offset/30 p-4 sm:p-5">
-  {errorMessage && (
-    <>
-      <h1 class="text-lg font-semibold tracking-tight">
-        {errorTitle ?? "Design not found"}
-      </h1>
-      <p class="mt-1.5 text-xs text-offset">{errorMessage}</p>
-      <div class="mt-4 flex flex-wrap items-center gap-3">
-        {isHistoricalView && latestDesignHref && (
+  <div>
+    {viewContext.mode === "historical" && (
+      <section class="mb-3 rounded-lg border border-amber-400/40 bg-amber-400/10 p-2.5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="text-[11px] text-default">
+            Viewing{" "}
+            <span class="font-semibold">
+              {viewContext.versionNumber
+                ? `version ${viewContext.versionNumber}`
+                : "a historical version"}
+            </span>
+            {viewContext.versionTimestamp != null && (
+              <>
+                {" "}
+                from <TimestampDisplay value={viewContext.versionTimestamp} />
+              </>
+            )}
+          </p>
           <a
-            href={latestDesignHref}
-            class="inline-flex items-center gap-1 text-[10px] text-offset underline-offset-2 hover:underline"
+            href={viewContext.latestHref}
+            class="inline-flex items-center gap-1 rounded-md border border-default/70 px-2 py-1 text-[10px] font-medium text-offset transition-colors hover:text-default"
           >
-            <span>←</span>
-            <span>Go to latest version</span>
+            <span>Back to latest version</span>
           </a>
-        )}
-        <a
-          href="/app/designs"
-          class="inline-flex items-center gap-1 text-[10px] text-offset underline-offset-2 hover:underline"
-        >
-          <span>←</span>
-          <span>Back to designs</span>
-        </a>
-      </div>
-    </>
-  )}
-
-  {!errorMessage && !design && (
-    <>
-      <h1 class="text-lg font-semibold tracking-tight">Loading design…</h1>
-      <p class="text-xs text-offset">Fetching design details.</p>
-    </>
-  )}
-
-  {!errorMessage && design && (
-    <div>
-      {isHistoricalView && historicalContext && (
-        <section class="mb-3 rounded-lg border border-amber-400/40 bg-amber-400/10 p-2.5">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <p class="text-[11px] text-default">
-              Viewing{" "}
-              <span class="font-semibold">
-                {historicalContext.versionNumber
-                  ? `version ${historicalContext.versionNumber}`
-                  : "a historical version"}
-              </span>
-              {historicalContext.versionTimestamp != null && (
-                <>
-                  {" "}
-                  from <TimestampDisplay value={historicalContext.versionTimestamp} />
-                </>
-              )}
-            </p>
-            <a
-              href={historicalContext.latestHref}
-              class="inline-flex items-center gap-1 rounded-md border border-default/70 px-2 py-1 text-[10px] font-medium text-offset transition-colors hover:text-default"
-            >
-              <span>Back to latest version</span>
-            </a>
-          </div>
-        </section>
-      )}
+        </div>
+      </section>
+    )}
 
       <header class="space-y-1.5 border-b border-default pb-4">
         <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
@@ -147,7 +95,7 @@ const previousVersionEventId = displayedVersion?.previous_version_event_id ?? nu
           <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">
             {currentVersionName}
           </h1>
-          {!isHistoricalView && (
+          {viewContext.mode === "latest" && (
             <a
               class="hidden shrink-0 rounded-md border border-emerald-400/35 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-default"
               data-owner-edit-cta
@@ -164,17 +112,15 @@ const previousVersionEventId = displayedVersion?.previous_version_event_id ?? nu
         <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-offset">
           <IdentityBadge identity={design.creator_identity} size="full" />
 
-          {firstPublishedAt && (
+          {viewContext.mode === "latest" && (
             <IconPill icon="mdi:calendar-start" title="First published">
               <TimestampDisplay value={firstPublishedAt} agoFormat />
             </IconPill>
           )}
 
-          {latestPublishedAt && (
-            <IconPill icon="mdi:update" title="Latest update">
-              <TimestampDisplay value={latestPublishedAt} agoFormat />
-            </IconPill>
-          )}
+          <IconPill icon="mdi:update" title="This version published at">
+            <TimestampDisplay value={publishedAt} agoFormat />
+          </IconPill>
 
           <IconPill icon="mdi:layers-outline" title="Versions">
             {versionsCount}
@@ -216,45 +162,39 @@ const previousVersionEventId = displayedVersion?.previous_version_event_id ?? nu
             File
           </p>
 
-          {displayedVersion ? (
-            currentVersionUrl ? (
-              <>
-                <p class="mt-1 break-all text-xs text-default">
-                  {currentVersionUrl}
-                </p>
-
-                {currentVersionSha256 && (
-                  <div class="mt-1 flex items-center text-[10px] text-offset">
-                    <span class="inline-flex items-center gap-1">
-                      <Icon
-                        name="mdi:identifier"
-                        class="size-3"
-                        aria-hidden="true"
-                      />
-                      <span class="uppercase tracking-[0.08em]">
-                        SHA-256
-                      </span>
-                    </span>
-
-                    <span class="mx-1 text-offset/40">•</span>
-
-                    <span class="inline-flex items-center font-mono">
-                      <TruncateCopy
-                        value={currentVersionSha256}
-                        maxChars={sha256MaxChars}
-                      />
-                    </span>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p class="mt-1 text-xs text-offset">
-                No file URL available for this version.
+          {currentVersionUrl ? (
+            <>
+              <p class="mt-1 break-all text-xs text-default">
+                {currentVersionUrl}
               </p>
-            )
+
+              {currentVersionSha256 && (
+                <div class="mt-1 flex items-center text-[10px] text-offset">
+                  <span class="inline-flex items-center gap-1">
+                    <Icon
+                      name="mdi:identifier"
+                      class="size-3"
+                      aria-hidden="true"
+                    />
+                    <span class="uppercase tracking-[0.08em]">
+                      SHA-256
+                    </span>
+                  </span>
+
+                  <span class="mx-1 text-offset/40">•</span>
+
+                  <span class="inline-flex items-center font-mono">
+                    <TruncateCopy
+                      value={currentVersionSha256}
+                      maxChars={sha256MaxChars}
+                    />
+                  </span>
+                </div>
+              )}
+            </>
           ) : (
             <p class="mt-1 text-xs text-offset">
-              Version details are unavailable.
+              No file URL available for this version.
             </p>
           )}
         </div>
@@ -277,7 +217,6 @@ const previousVersionEventId = displayedVersion?.previous_version_event_id ?? nu
         designId={design.id}
         versions={versions}
         total={versionsCount}
-        error={versionsError}
         currentVersionEventId={currentVersionEventId}
       />
       <DesignAdvancedVersionData
@@ -286,5 +225,4 @@ const previousVersionEventId = displayedVersion?.previous_version_event_id ?? nu
         signedEventJson={signedEventJson}
       />
     </div>
-  )}
-</article>
+  </article>

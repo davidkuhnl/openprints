@@ -2,6 +2,7 @@
 import AppLayout from "~/layouts/app-layout.astro";
 import TruncateCopy from "~/components/truncate-copy.astro";
 import DesignVersionView from "~/components/design-version-view.astro";
+import DesignVersionViewError from "~/components/design-version-view-error.astro";
 import { loadDesignVersionViewData } from "~/lib/designs/version-page";
 
 export const prerender = false;
@@ -26,17 +27,23 @@ const data = await loadDesignVersionViewData({
       <span>Back to designs</span>
     </a>
 
-    <DesignVersionView
-      design={data.design}
-      versions={data.versions}
-      versionsTotal={data.versionsTotal}
-      versionsError={data.versionsError}
-      selectedVersion={data.selectedVersion}
-      errorTitle={data.errorTitle}
-      errorMessage={data.errorMessage}
-      isHistoricalView={data.isHistoricalView}
-      historicalContext={data.historicalContext}
-    />
+    {
+      data.kind === "error" ? (
+        <DesignVersionViewError
+          errorTitle={data.errorTitle}
+          errorMessage={data.errorMessage}
+          viewContext={data.viewContext}
+        />
+      ) : (
+        <DesignVersionView
+          design={data.design}
+          versions={data.versions}
+          versionsTotal={data.versionsTotal}
+          selectedVersion={data.selectedVersion}
+          viewContext={data.viewContext}
+        />
+      )
+    }
 
   </div>
 </AppLayout>

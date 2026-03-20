@@ -8,26 +8,35 @@ import {
 const DEFAULT_VERSIONS_PAGE_SIZE = 30;
 const LOOKUP_VERSIONS_PAGE_SIZE = 100;
 
-type HistoricalContext =
-  | {
-      requestedVersionId: string;
-      versionNumber: number | null;
-      versionTimestamp: number | null;
-      latestHref: string;
-    }
-  | null;
+export interface DesignVersionViewContext {
+  mode: "latest" | "historical";
+  requestedVersionId: string | null;
+  versionNumber: number | null;
+  versionTimestamp: number | null;
+  latestHref: string;
+}
 
-export interface LoadDesignVersionViewDataResult {
-  design: ValidDesignDetail | null;
+interface LoadDesignVersionViewDataValidBaseResult {
+  kind: "valid";
+  design: ValidDesignDetail;
   versions: ValidDesignVersion[];
   versionsTotal: number;
-  versionsError: string | null;
-  selectedVersion: ValidDesignVersion | null;
-  isHistoricalView: boolean;
-  historicalContext: HistoricalContext;
-  errorTitle: string | null;
-  errorMessage: string | null;
+  selectedVersion: ValidDesignVersion;
+  viewContext: DesignVersionViewContext;
 }
+
+export type LoadDesignVersionViewDataValidResult = LoadDesignVersionViewDataValidBaseResult;
+
+export interface LoadDesignVersionViewDataErrorResult {
+  kind: "error";
+  viewContext: DesignVersionViewContext;
+  errorTitle: string;
+  errorMessage: string;
+}
+
+export type LoadDesignVersionViewDataResult =
+  | LoadDesignVersionViewDataValidResult
+  | LoadDesignVersionViewDataErrorResult;
 
 interface LoadDesignVersionViewDataInput {
   apiBaseUrl: string;
@@ -56,6 +65,24 @@ const normalizeApiBase = (apiBaseUrl: string): string | null => {
 
 const buildDesignLatestHref = (designId: string): string =>
   `/app/designs/${encodeURIComponent(designId)}`;
+
+const buildViewContext = ({
+  designId,
+  requestedVersionId,
+  versionNumber = null,
+  versionTimestamp = null,
+}: {
+  designId: string | null;
+  requestedVersionId: string | null;
+  versionNumber?: number | null;
+  versionTimestamp?: number | null;
+}): DesignVersionViewContext => ({
+  mode: requestedVersionId ? "historical" : "latest",
+  requestedVersionId,
+  versionNumber,
+  versionTimestamp,
+  latestHref: designId ? buildDesignLatestHref(designId) : "/app/designs",
+});
 
 const fetchVersionsPage = async (
   base: string,
@@ -106,17 +133,15 @@ export const loadDesignVersionViewData = async ({
   const base = normalizeApiBase(apiBaseUrl);
   const normalizedDesignId = trimToNull(designId);
   const normalizedRequestedVersionId = trimToNull(requestedVersionId);
-  const isHistoricalView = normalizedRequestedVersionId != null;
+  const baseViewContext = buildViewContext({
+    designId: normalizedDesignId,
+    requestedVersionId: normalizedRequestedVersionId,
+  });
 
   if (!base) {
     return {
-      design: null,
-      versions: [],
-      versionsTotal: 0,
-      versionsError: null,
-      selectedVersion: null,
-      isHistoricalView,
-      historicalContext: null,
+      kind: "error",
+      viewContext: baseViewContext,
       errorTitle: "Design not available",
       errorMessage:
         "API base URL is not configured. Check PUBLIC_OPENPRINTS_API_URL.",
@@ -125,13 +150,8 @@ export const loadDesignVersionViewData = async ({
 
   if (!normalizedDesignId) {
     return {
-      design: null,
-      versions: [],
-      versionsTotal: 0,
-      versionsError: null,
-      selectedVersion: null,
-      isHistoricalView,
-      historicalContext: null,
+      kind: "error",
+      viewContext: baseViewContext,
       errorTitle: "Design not found",
       errorMessage: "Missing design id in the URL.",
     };
@@ -144,13 +164,8 @@ export const loadDesignVersionViewData = async ({
     const res = await fetch(designUrl);
     if (!res.ok) {
       return {
-        design: null,
-        versions: [],
-        versionsTotal: 0,
-        versionsError: null,
-        selectedVersion: null,
-        isHistoricalView,
-        historicalContext: null,
+        kind: "error",
+        viewContext: baseViewContext,
         errorTitle: "Design not found",
         errorMessage: `API responded with ${res.status} ${res.statusText} for this design.`,
       };
@@ -159,13 +174,8 @@ export const loadDesignVersionViewData = async ({
     const mapped = mapUnknownDesignDetailToDetailModel(await res.json());
     if (mapped.kind === "invalid") {
       return {
-        design: null,
-        versions: [],
-        versionsTotal: 0,
-        versionsError: null,
-        selectedVersion: null,
-        isHistoricalView,
-        historicalContext: null,
+        kind: "error",
+        viewContext: baseViewContext,
         errorTitle: "Design unavailable",
         errorMessage: mapped.reason,
       };
@@ -174,16 +184,20 @@ export const loadDesignVersionViewData = async ({
     design = mapped;
   } catch {
     return {
-      design: null,
-      versions: [],
-      versionsTotal: 0,
-      versionsError: null,
-      selectedVersion: null,
-      isHistoricalView,
-      historicalContext: null,
+      kind: "error",
+      viewContext: baseViewContext,
       errorTitle: "Design not found",
       errorMessage:
         "We couldn't load this design due to a network or server error.",
+    };
+  }
+
+  if (!design) {
+    return {
+      kind: "error",
+      viewContext: baseViewContext,
+      errorTitle: "Design unavailable",
+      errorMessage: "This design could not be loaded.",
     };
   }
 
@@ -195,12 +209,11 @@ export const loadDesignVersionViewData = async ({
   );
   const versions = firstPage.items;
   const versionsTotal = firstPage.total;
-  let versionsError = firstPage.error;
 
   let selectedVersion = versions[0] ?? null;
   let selectedVersionIndex = versions.length > 0 ? 0 : null;
 
-  if (isHistoricalView && normalizedRequestedVersionId) {
+  if (normalizedRequestedVersionId) {
     const firstPageMatchIndex = versions.findIndex(
       (item) => item.event_id === normalizedRequestedVersionId,
     );
@@ -224,7 +237,6 @@ export const loadDesignVersionViewData = async ({
           );
 
           if (!page.ok) {
-            versionsError = page.error;
             break;
           }
 
@@ -247,25 +259,28 @@ export const loadDesignVersionViewData = async ({
     }
   }
 
-  if (isHistoricalView && !selectedVersion) {
+  if (normalizedRequestedVersionId && !selectedVersion) {
     return {
-      design,
-      versions,
-      versionsTotal,
-      versionsError,
-      selectedVersion: null,
-      isHistoricalView: true,
-      historicalContext: normalizedRequestedVersionId
-        ? {
-            requestedVersionId: normalizedRequestedVersionId,
-            versionNumber: null,
-            versionTimestamp: null,
-            latestHref: buildDesignLatestHref(normalizedDesignId),
-          }
-        : null,
+      kind: "error",
+      viewContext: buildViewContext({
+        designId: normalizedDesignId,
+        requestedVersionId: normalizedRequestedVersionId,
+      }),
       errorTitle: "Version not found",
       errorMessage:
         "The requested version could not be found for this design.",
+    };
+  }
+
+  if (!selectedVersion) {
+    return {
+      kind: "error",
+      viewContext: buildViewContext({
+        designId: normalizedDesignId,
+        requestedVersionId: normalizedRequestedVersionId,
+      }),
+      errorTitle: "Version unavailable",
+      errorMessage: "No version data is available for this design.",
     };
   }
 
@@ -275,22 +290,16 @@ export const loadDesignVersionViewData = async ({
       : null;
 
   return {
+    kind: "valid",
     design,
     versions,
     versionsTotal,
-    versionsError,
     selectedVersion,
-    isHistoricalView,
-    historicalContext:
-      isHistoricalView && normalizedRequestedVersionId
-        ? {
-            requestedVersionId: normalizedRequestedVersionId,
-            versionNumber,
-            versionTimestamp: selectedVersion?.created_at ?? null,
-            latestHref: buildDesignLatestHref(normalizedDesignId),
-          }
-        : null,
-    errorTitle: null,
-    errorMessage: null,
+    viewContext: buildViewContext({
+      designId: normalizedDesignId,
+      requestedVersionId: normalizedRequestedVersionId,
+      versionNumber,
+      versionTimestamp: selectedVersion.created_at ?? null,
+    }),
   };
 };

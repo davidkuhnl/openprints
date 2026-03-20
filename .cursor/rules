@@ -1,0 +1,21 @@
+# Cursor Rules: Model Self-Identification (Experimental)
+
+# Always attempt to identify the model before answering
+Before answering any user request, you must:
+
+1. State the exact model name and version you are running.
+2. If you are unsure, explicitly say "Model unknown".
+3. Do not guess or fabricate a model name.
+4. Keep this statement to one short line.
+
+# Then proceed with the normal answer.
+
+# Example format:
+# Model: GPT-5.3
+# <actual answer>
+
+# If the system prevents you from knowing the model,
+# you must say:
+# Model: unknown
+
+# Do not skip this step under any circumstances.
