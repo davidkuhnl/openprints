@@ -1,6 +1,7 @@
 import {
+  mapApiDesignVersionToVersionModel,
   mapUnknownDesignDetailToDetailModel,
-  mapUnknownDesignVersions,
+  parseApiDesignVersionList,
   type ValidDesignDetail,
   type ValidDesignVersion,
 } from "~/lib/designs";
@@ -105,7 +106,24 @@ const fetchVersionsPage = async (
       };
     }
 
-    const mapped = mapUnknownDesignVersions(await res.json());
+    const parsed = parseApiDesignVersionList(await res.json());
+    if (!parsed.ok) {
+      return {
+        ok: false,
+        items: [],
+        total: 0,
+        limit,
+        offset,
+        error: `Version history returned an invalid payload (${parsed.reason}).`,
+      };
+    }
+
+    const mapped = {
+      items: parsed.list.items.map(mapApiDesignVersionToVersionModel),
+      total: parsed.list.total,
+      limit: parsed.list.limit,
+      offset: parsed.list.offset,
+    };
     return {
       ok: true,
       items: mapped.items,
@@ -211,8 +229,9 @@ export const loadDesignVersionViewData = async ({
   let versions = firstPage.items;
   const versionsTotal = firstPage.total;
   let versionsOffset = firstPage.offset;
+  let versionLookupError: string | null = firstPage.ok ? null : firstPage.error;
 
-  let selectedVersion = versions[0] ?? null;
+  let selectedVersion: ValidDesignVersion | null = versions[0] ?? null;
   let selectedVersionIndex = versions.length > 0 ? versionsOffset : null;
 
   if (normalizedRequestedVersionId) {
@@ -229,7 +248,7 @@ export const loadDesignVersionViewData = async ({
 
       // Fall back to pagination search if version is not in the default timeline window.
       if (firstPage.ok && versionsTotal > versions.length) {
-        let offset = firstPage.offset + Math.max(1, firstPage.limit);
+        let offset = firstPage.offset + Math.max(1, firstPage.items.length, firstPage.limit);
         while (offset < versionsTotal) {
           const page = await fetchVersionsPage(
             base,
@@ -239,28 +258,43 @@ export const loadDesignVersionViewData = async ({
           );
 
           if (!page.ok) {
+            versionLookupError = page.error ?? "Version history could not be fully loaded.";
             break;
           }
 
+          const pageOffset = Math.max(0, page.offset);
           const pageMatchIndex = page.items.findIndex(
             (item) => item.event_id === normalizedRequestedVersionId,
           );
           if (pageMatchIndex >= 0) {
             versions = page.items;
-            versionsOffset = offset;
+            versionsOffset = pageOffset;
             selectedVersion = page.items[pageMatchIndex] ?? null;
-            selectedVersionIndex = offset + pageMatchIndex;
+            selectedVersionIndex = pageOffset + pageMatchIndex;
             break;
           }
 
           const pageStep = Math.max(1, page.items.length, page.limit);
-          if (page.items.length === 0) {
+          const nextOffset = pageOffset + pageStep;
+          if (page.items.length === 0 || nextOffset <= offset) {
             break;
           }
-          offset += pageStep;
+          offset = nextOffset;
         }
       }
     }
+  }
+
+  if (normalizedRequestedVersionId && versionLookupError && !selectedVersion) {
+    return {
+      kind: "error",
+      viewContext: buildViewContext({
+        designId: normalizedDesignId,
+        requestedVersionId: normalizedRequestedVersionId,
+      }),
+      errorTitle: "Version history unavailable",
+      errorMessage: versionLookupError,
+    };
   }
 
   if (normalizedRequestedVersionId && !selectedVersion) {
@@ -283,8 +317,9 @@ export const loadDesignVersionViewData = async ({
         designId: normalizedDesignId,
         requestedVersionId: normalizedRequestedVersionId,
       }),
-      errorTitle: "Version unavailable",
-      errorMessage: "No version data is available for this design.",
+      errorTitle: versionLookupError ? "Version history unavailable" : "Version unavailable",
+      errorMessage:
+        versionLookupError ?? "No version data is available for this design.",
     };
   }
 

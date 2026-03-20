@@ -36,7 +36,8 @@ const latestHref = `/app/designs/${encodeURIComponent(designId)}`;
       {versions.map((version, index) => {
         const versionNumber = Math.max(1, versionsCount - (versionsOffset + index));
         const isCurrent = currentVersionEventId === version.event_id;
-        const versionHref = index === 0
+        const isLatestEntry = versionsOffset === 0 && index === 0;
+        const versionHref = isLatestEntry
           ? latestHref
           : `/app/designs/${encodeURIComponent(designId)}/version/${encodeURIComponent(version.event_id)}`;
         return (
@@ -56,7 +57,7 @@ const latestHref = `/app/designs/${encodeURIComponent(designId)}`;
                 <span class="inline-flex items-center rounded-md border border-emerald-400/40 bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-medium text-default">
                   current
                 </span>
-              ) : index === 0 ? (
+              ) : isLatestEntry ? (
                 <span class="inline-flex items-center rounded-md border border-default/40 bg-default/20 px-1.5 py-0.5 text-[9px] font-medium text-offset/85">
                   latest
                 </span>
