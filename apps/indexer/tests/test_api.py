@@ -473,6 +473,21 @@ def test_publish_design_returns_400_for_invalid_previous_version_event_id(monkey
     )
 
 
+def test_publish_design_returns_400_for_invalid_previous(monkeypatch) -> None:
+    payload = valid_signed_payload()["event"]
+    payload["tags"] = [
+        *payload["tags"],
+        ["openprints_schema", "1.1"],
+        ["previous", "not-a-valid-event-id"],
+    ]
+    monkeypatch.setattr(designs_route, "get_ready_context", lambda: (None, ["ws://relay-one"]))
+    r = client.post("/designs/publish", json=payload)
+    assert r.status_code == 400
+    data = r.json()
+    assert data["ok"] is False
+    assert any(err["path"] == "event.tags[previous]" for err in data.get("errors", []))
+
+
 def test_publish_design_returns_502_when_all_relays_fail(monkeypatch) -> None:
     payload = valid_signed_payload()["event"]
     monkeypatch.setattr(

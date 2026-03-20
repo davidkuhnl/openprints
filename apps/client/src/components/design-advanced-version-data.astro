@@ -15,6 +15,42 @@ const { eventId, previousVersionEventId, signedEventJson } = Astro.props as Prop
 const textareaId = "design-advanced-event-json";
 const outputName = "design-advanced-event-json";
 const formattedValue = prettyJsonFromString(signedEventJson);
+
+const OPENPRINTS_SCHEMA_TAG = "openprints_schema";
+const LEGACY_SCHEMA_VERSION = "1.0";
+const UNKNOWN_SCHEMA_VERSION = "unknown";
+
+const resolveSchemaVersion = (rawEventJson: string | null): string => {
+  if (!rawEventJson) return LEGACY_SCHEMA_VERSION;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawEventJson);
+  } catch {
+    return UNKNOWN_SCHEMA_VERSION;
+  }
+
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    !("tags" in parsed) ||
+    !Array.isArray(parsed.tags)
+  ) {
+    return LEGACY_SCHEMA_VERSION;
+  }
+
+  const schemaTags = parsed.tags.filter(
+    (tag): tag is string[] =>
+      Array.isArray(tag) && typeof tag[0] === "string" && tag[0] === OPENPRINTS_SCHEMA_TAG,
+  );
+  if (schemaTags.length === 0) return LEGACY_SCHEMA_VERSION;
+  if (schemaTags.length !== 1 || typeof schemaTags[0][1] !== "string") return UNKNOWN_SCHEMA_VERSION;
+
+  const value = schemaTags[0][1].trim();
+  return value.length > 0 ? value : UNKNOWN_SCHEMA_VERSION;
+};
+
+const schemaVersion = resolveSchemaVersion(signedEventJson);
 ---
 
 <section class="mt-5 border-t border-default/60 pt-4">
@@ -75,6 +111,13 @@ const formattedValue = prettyJsonFromString(signedEventJson);
             Data source
           </p>
           <p class="text-[13px] leading-5 text-default/85">Signed Nostr event</p>
+        </div>
+
+        <div class="min-w-0 space-y-1.5">
+          <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-offset/70">
+            OpenPrints schema
+          </p>
+          <p class="text-[13px] leading-5 text-default/85">{schemaVersion}</p>
         </div>
       </div>
 

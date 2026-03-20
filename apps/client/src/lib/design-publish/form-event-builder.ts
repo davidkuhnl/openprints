@@ -12,6 +12,8 @@ import {
 } from "~/lib/design-publish/form-utils";
 import { parsePubkey } from "~/lib/pubkey";
 
+const OPENPRINTS_SCHEMA_VERSION = "1.1";
+
 export const buildUnsignedEvent = (inputs: Inputs, pubkey: string): BuildResult => {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -99,12 +101,13 @@ export const buildUnsignedEvent = (inputs: Inputs, pubkey: string): BuildResult 
 
   const tags: NostrTag[] = [
     ["d", d],
+    ["openprints_schema", OPENPRINTS_SCHEMA_VERSION],
     ["name", name],
     ["format", format],
     ["url", normalizedUrl as string],
   ];
   if (previousVersionEventId) {
-    tags.push(["previous_version_event_id", previousVersionEventId]);
+    tags.push(["previous", previousVersionEventId]);
   }
 
   if (sha256) tags.push(["sha256", sha256]);

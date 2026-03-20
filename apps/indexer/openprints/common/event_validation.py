@@ -5,6 +5,11 @@ from __future__ import annotations
 import re
 from typing import cast
 
+from openprints.common.design_event_schema import (
+    SCHEMA_TAG_KEY,
+    UNKNOWN_SCHEMA_VERSION,
+    resolve_design_event_schema_version,
+)
 from openprints.common.design_id import is_valid_openprints_design_id
 from openprints.common.errors import (
     invalid_type,
@@ -95,6 +100,7 @@ def validate_signed_design_event(
     format_values = tag_values(tags, "format")
     url_values = tag_values(tags, "url")
     sha_values = tag_values(tags, "sha256")
+    previous_values = tag_values(tags, "previous")
     previous_version_event_id_values = tag_values(tags, "previous_version_event_id")
 
     if not d_values:
@@ -141,6 +147,32 @@ def validate_signed_design_event(
         errors.append(
             invalid_value("event.tags[sha256]", "sha256 must be exactly 64 lowercase hex chars")
         )
+
+    schema_version = resolve_design_event_schema_version(signed_event)
+    if schema_version == UNKNOWN_SCHEMA_VERSION:
+        errors.append(
+            invalid_value(
+                f"event.tags[{SCHEMA_TAG_KEY}]",
+                "openprints_schema must appear at most once and include a non-empty string value",
+            )
+        )
+
+    if previous_values:
+        previous_event_id = previous_values[0].lower()
+        if not _HEX_64_RE.fullmatch(previous_event_id):
+            errors.append(
+                invalid_value(
+                    "event.tags[previous]",
+                    "previous must be exactly 64 lowercase hex chars",
+                )
+            )
+        elif previous_event_id == event_id:
+            errors.append(
+                invalid_value(
+                    "event.tags[previous]",
+                    "previous cannot reference event.id",
+                )
+            )
 
     if previous_version_event_id_values:
         previous_version_event_id = previous_version_event_id_values[0].lower()

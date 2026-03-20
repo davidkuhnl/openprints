@@ -238,3 +238,77 @@ def test_reducer_persists_previous_version_event_id_from_tag() -> None:
     assert len(store.versions) == 2
     assert store.versions[0].previous_version_event_id is None
     assert store.versions[1].previous_version_event_id == first_event["id"]
+
+
+def test_reducer_schema_1_1_initial_event_rejects_previous_tag() -> None:
+    payload = valid_signed_payload()
+    event = dict(payload["event"])
+    event["tags"] = [
+        [entry[0], entry[1]]
+        for entry in event["tags"]
+        if isinstance(entry, list) and len(entry) >= 2
+    ] + [["openprints_schema", "1.1"], ["previous", "f" * 64]]
+
+    store = _CapturingStore()
+    reducer = ReducerWorker(store=store)
+    asyncio.run(reducer.reduce_one(_envelope_for(event, received_at=100)))
+
+    assert reducer.stats.reduced == 0
+    assert len(store.versions) == 0
+    assert len(store.current_rows) == 0
+
+
+def test_reducer_schema_1_1_update_event_requires_previous_tag() -> None:
+    payload = valid_signed_payload()
+    first_event = dict(payload["event"])
+    first_event["tags"] = [
+        [entry[0], entry[1]]
+        for entry in first_event["tags"]
+        if isinstance(entry, list) and len(entry) >= 2
+    ] + [["openprints_schema", "1.1"]]
+
+    second_event = dict(payload["event"])
+    second_event["id"] = "e" * 64
+    second_event["created_at"] = first_event["created_at"] + 10
+    second_event["tags"] = [
+        [entry[0], entry[1]]
+        for entry in first_event["tags"]
+        if isinstance(entry, list) and len(entry) >= 2 and entry[0] != "previous"
+    ]
+
+    store = _CapturingStore()
+    reducer = ReducerWorker(store=store)
+    asyncio.run(reducer.reduce_one(_envelope_for(first_event, received_at=100)))
+    asyncio.run(reducer.reduce_one(_envelope_for(second_event, received_at=110)))
+
+    assert reducer.stats.reduced == 1
+    assert len(store.versions) == 1
+    assert len(store.current_rows) == 1
+
+
+def test_reducer_schema_1_1_update_event_accepts_previous_tag() -> None:
+    payload = valid_signed_payload()
+    first_event = dict(payload["event"])
+    first_event["tags"] = [
+        [entry[0], entry[1]]
+        for entry in first_event["tags"]
+        if isinstance(entry, list) and len(entry) >= 2
+    ] + [["openprints_schema", "1.1"]]
+
+    second_event = dict(payload["event"])
+    second_event["id"] = "d" * 64
+    second_event["created_at"] = first_event["created_at"] + 10
+    second_event["tags"] = [
+        [entry[0], entry[1]]
+        for entry in first_event["tags"]
+        if isinstance(entry, list) and len(entry) >= 2 and entry[0] != "previous"
+    ] + [["previous", first_event["id"]]]
+
+    store = _CapturingStore()
+    reducer = ReducerWorker(store=store)
+    asyncio.run(reducer.reduce_one(_envelope_for(first_event, received_at=100)))
+    asyncio.run(reducer.reduce_one(_envelope_for(second_event, received_at=110)))
+
+    assert reducer.stats.reduced == 2
+    assert len(store.versions) == 2
+    assert store.versions[-1].previous_version_event_id == first_event["id"]
