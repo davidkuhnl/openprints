@@ -95,6 +95,7 @@ def validate_signed_design_event(
     format_values = tag_values(tags, "format")
     url_values = tag_values(tags, "url")
     sha_values = tag_values(tags, "sha256")
+    previous_version_event_id_values = tag_values(tags, "previous_version_event_id")
 
     if not d_values:
         errors.append(missing_required_tag("d"))
@@ -140,6 +141,23 @@ def validate_signed_design_event(
         errors.append(
             invalid_value("event.tags[sha256]", "sha256 must be exactly 64 lowercase hex chars")
         )
+
+    if previous_version_event_id_values:
+        previous_version_event_id = previous_version_event_id_values[0].lower()
+        if not _HEX_64_RE.fullmatch(previous_version_event_id):
+            errors.append(
+                invalid_value(
+                    "event.tags[previous_version_event_id]",
+                    "previous_version_event_id must be exactly 64 lowercase hex chars",
+                )
+            )
+        elif previous_version_event_id == event_id:
+            errors.append(
+                invalid_value(
+                    "event.tags[previous_version_event_id]",
+                    "previous_version_event_id cannot reference event.id",
+                )
+            )
 
     if _CONTROL_OR_BIDI_RE.search(signed_event["content"]):
         errors.append(

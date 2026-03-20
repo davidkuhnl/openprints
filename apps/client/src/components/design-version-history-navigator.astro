@@ -1,0 +1,75 @@
+---
+import TimestampDisplay from "~/components/timestamp-display.astro";
+import TruncateCopy from "~/components/truncate-copy.astro";
+import type { ValidDesignVersion } from "~/lib/designs";
+
+interface Props {
+  designId: string;
+  versions: ValidDesignVersion[];
+  total: number;
+  offset: number;
+  currentVersionEventId: string;
+}
+
+const { designId, versions, total, offset, currentVersionEventId } = Astro.props as Props;
+const versionsCount = total ?? 0;
+const versionsOffset = Math.max(0, offset ?? 0);
+const latestHref = `/app/designs/${encodeURIComponent(designId)}`;
+---
+
+<section class="mt-4 border-t border-default/70 pt-4">
+  <header>
+    <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-offset">
+      Version history
+    </p>
+    <p class="mt-1 text-[11px] leading-relaxed text-offset/80">
+      Lightweight timeline for navigating design versions.
+    </p>
+  </header>
+
+  {versions.length === 0 ? (
+    <p class="mt-2 text-xs text-offset">
+      No versions were returned by the API for this design yet.
+    </p>
+  ) : (
+    <ol class="mt-2 divide-y divide-default/50">
+      {versions.map((version, index) => {
+        const versionNumber = Math.max(1, versionsCount - (versionsOffset + index));
+        const isCurrent = currentVersionEventId === version.event_id;
+        const isLatestEntry = versionsOffset === 0 && index === 0;
+        const versionHref = isLatestEntry
+          ? latestHref
+          : `/app/designs/${encodeURIComponent(designId)}/version/${encodeURIComponent(version.event_id)}`;
+        return (
+          <li class="flex flex-wrap items-center justify-between gap-2 py-2 text-[11px]">
+            <div class="flex min-w-0 items-center gap-2">
+              {isCurrent ? (
+                <span class="font-medium text-default">Version {versionNumber}</span>
+              ) : (
+                <a href={versionHref} class="font-medium text-default underline-offset-2 hover:underline">
+                  Version {versionNumber}
+                </a>
+              )}
+              <span class="text-offset">
+                <TimestampDisplay value={version.created_at} />
+              </span>
+              {isCurrent ? (
+                <span class="inline-flex items-center rounded-md border border-emerald-400/40 bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-medium text-default">
+                  current
+                </span>
+              ) : isLatestEntry ? (
+                <span class="inline-flex items-center rounded-md border border-default/40 bg-default/20 px-1.5 py-0.5 text-[9px] font-medium text-offset/85">
+                  latest
+                </span>
+              ) : null}
+            </div>
+            <span class="font-mono text-[10px] text-offset/80">
+              <TruncateCopy value={version.event_id} maxChars={12} />
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  )}
+</section>
+

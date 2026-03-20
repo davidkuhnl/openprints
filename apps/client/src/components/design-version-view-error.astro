@@ -1,0 +1,34 @@
+---
+import type { DesignVersionViewContext } from "~/lib/designs/version-page";
+
+interface Props {
+  errorTitle: string;
+  errorMessage: string;
+  viewContext: DesignVersionViewContext;
+}
+
+const { errorTitle, errorMessage, viewContext } = Astro.props as Props;
+---
+
+<article class="flex flex-col gap-2.5 rounded-xl border border-default bg-offset/30 p-4 sm:p-5">
+  <h1 class="text-lg font-semibold tracking-tight">{errorTitle}</h1>
+  <p class="mt-1.5 text-xs text-offset">{errorMessage}</p>
+  <div class="mt-4 flex flex-wrap items-center gap-3">
+    {viewContext.mode === "historical" && (
+      <a
+        href={viewContext.latestHref}
+        class="inline-flex items-center gap-1 text-[10px] text-offset underline-offset-2 hover:underline"
+      >
+        <span>←</span>
+        <span>Go to latest version</span>
+      </a>
+    )}
+    <a
+      href="/app/designs"
+      class="inline-flex items-center gap-1 text-[10px] text-offset underline-offset-2 hover:underline"
+    >
+      <span>←</span>
+      <span>Back to designs</span>
+    </a>
+  </div>
+</article>

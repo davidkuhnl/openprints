@@ -35,15 +35,16 @@ const previewImages = Array.isArray(previewSource)
           {name}
         </a>
       </h2>
-      <span
+      <a
         class="hidden shrink-0 rounded-md border border-emerald-400/35 bg-emerald-400/10 px-2 py-1 text-[10px] font-semibold text-default"
         data-owner-edit-cta
         data-owner-pubkey={ownerPubkey}
         aria-hidden="true"
-        title="Design edit flow is coming in the next phase."
+        href={`/app/designs/${encodeURIComponent(design.id)}/edit`}
+        title="Edit this design"
       >
-        Edit soon
-      </span>
+        Edit
+      </a>
     </div>
 
     <div class="mt-1 mb-1.5 flex flex-wrap items-center gap-3 text-[11px] text-offset">
@@ -55,6 +56,15 @@ const previewImages = Array.isArray(previewSource)
           aria-hidden="true"
         />
         <TimestampDisplay value={design.latest_published_at} agoFormat />
+      </span>
+
+      <span class="inline-flex items-center gap-1">
+        <Icon
+          name="mdi:layers-outline"
+          class="size-3 text-offset"
+          aria-hidden="true"
+        />
+        {design.version_count} {design.version_count === 1 ? "version" : "versions"}
       </span>
 
       {design.format && (

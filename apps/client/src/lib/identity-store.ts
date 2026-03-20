@@ -1,4 +1,5 @@
 import { parsePubkey, type Pubkey } from "~/lib/pubkey";
+import { nip19 } from "nostr-tools";
 
 type NostrSignerLike = {
   getPublicKey?: () => Promise<string>;
@@ -8,6 +9,7 @@ type NostrSignerLike = {
 export type IdentityRecord = {
   id?: string | null;
   pubkey?: Pubkey | null;
+  npub?: string | null;
   status?: string | null;
   display_name_resolved?: string | null;
   display_name?: string | null;
@@ -38,6 +40,8 @@ export type IdentitySnapshot = {
   source: CacheSource;
   refreshing: boolean;
   updatedAt: number | null;
+  resolvedDisplayLabel: string | null;
+  resolvedNpub: string | null;
 };
 
 type CurrentIdentitySubscriber = (snapshot: IdentitySnapshot) => void;
@@ -91,6 +95,30 @@ const getSigner = (): NostrSignerLike | null => {
   return w.nostr ?? null;
 };
 
+const truncateHexPubkey = (pubkey: Pubkey): string => `${pubkey.slice(0, 10)}...${pubkey.slice(-6)}`;
+const truncateNpub = (npub: string): string =>
+  npub.length > 18 ? `${npub.slice(0, 10)}...${npub.slice(-6)}` : npub;
+
+const resolveNpub = (pubkey: Pubkey, identity: IdentityRecord | null): string | null => {
+  const identityNpub = identity?.npub?.trim();
+  if (identityNpub) return identityNpub;
+  try {
+    return nip19.npubEncode(pubkey);
+  } catch {
+    return null;
+  }
+};
+
+const resolveDisplayLabel = (pubkey: Pubkey, identity: IdentityRecord | null, npub: string | null) => {
+  const resolved =
+    identity?.display_name_resolved?.trim() ||
+    identity?.display_name?.trim() ||
+    identity?.name?.trim();
+  if (resolved) return resolved;
+  if (npub) return truncateNpub(npub);
+  return truncateHexPubkey(pubkey);
+};
+
 const isMemoryFresh = (entry: MemoryIdentityEntry | undefined): boolean => {
   if (!entry) return false;
   return Date.now() - entry.fetchedAt < MEMORY_TTL_MS;
@@ -111,18 +139,25 @@ const getSnapshotForPubkey = (pubkey: Pubkey | null): IdentitySnapshot => {
       source: "none",
       refreshing: activeRefreshing,
       updatedAt: null,
+      resolvedDisplayLabel: null,
+      resolvedNpub: null,
     };
   }
 
   const memoryEntry = memoryByPubkey.get(pubkey);
+  const identity = memoryEntry?.notFound ? null : (memoryEntry?.identity ?? null);
+  const resolvedNpub = resolveNpub(pubkey, identity);
+  const resolvedDisplayLabel = resolveDisplayLabel(pubkey, identity, resolvedNpub);
   return {
     pubkey,
-    identity: memoryEntry?.notFound ? null : (memoryEntry?.identity ?? null),
+    identity,
     authoritative: activeAuthoritative && activePubkey === pubkey,
     signerStatus,
     source: memoryEntry?.source ?? "none",
     refreshing: activeRefreshing,
     updatedAt: memoryEntry?.fetchedAt ?? null,
+    resolvedDisplayLabel,
+    resolvedNpub,
   };
 };
 

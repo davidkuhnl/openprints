@@ -4,15 +4,37 @@ import NostrSignerDetected from "~/components/nostr-signer-detected.astro";
 import DesignPublishStepPanel from "~/components/design-publish/step-panel.astro";
 import EventJsonPanel from "~/components/event-json-panel.astro";
 import DesignPublishInfoPanel from "~/components/design-publish/info-panel.astro";
+import type { DesignPublishFormMode, Inputs } from "~/lib/design-publish/form-types";
 
 const apiBaseUrl = import.meta.env.PUBLIC_OPENPRINTS_API_URL ?? "";
 const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
+
+interface Props {
+  mode?: DesignPublishFormMode;
+  lockedDesignId?: string | null;
+  initialValues?: Partial<Inputs> | null;
+  signButtonLabel?: string;
+  publishButtonLabel?: string;
+}
+
+const {
+  mode = "create",
+  lockedDesignId = null,
+  initialValues = null,
+  signButtonLabel = "Sign",
+  publishButtonLabel = "Publish",
+} = Astro.props as Props;
+
+const serializedInitialValues = initialValues ? JSON.stringify(initialValues) : "";
 ---
 
 <section
   class="space-y-3 px-4 pb-4 pt-3 sm:px-5 sm:pb-5 sm:pt-4"
   data-design-publish-form
   data-api-base={apiBase}
+  data-form-mode={mode}
+  data-locked-design-id={lockedDesignId ?? ""}
+  data-initial-values={serializedInitialValues}
   aria-live="polite"
 >
 
@@ -174,6 +196,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           <label for="design-lnurl" class="text-xs font-medium text-default">LNURL pay address <span class="text-offset/70">(optional)</span></label>
           <input id="design-lnurl" name="lnurl" type="text" autocomplete="off" placeholder="lnurlp://creator.example.com/pay" class="w-full rounded-md border border-default bg-white/0 px-3 py-2 text-xs text-default placeholder:text-offset/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60" data-field="lnurl" />
           <input type="hidden" name="d" data-field="d" />
+          <input type="hidden" name="previousVersionEventId" data-field="previousVersionEventId" />
         </div>
         <DesignPublishInfoPanel
           icon="mdi:lightning-bolt"
@@ -218,7 +241,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       data-action="sign"
     >
       <Icon name="mdi:pen" class="size-4" />
-      Sign
+      {signButtonLabel}
     </button>
 
     <button
@@ -228,7 +251,7 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       disabled
     >
       <Icon name="mdi:send" class="size-4" />
-      Publish
+      {publishButtonLabel}
     </button>
 
   </div>

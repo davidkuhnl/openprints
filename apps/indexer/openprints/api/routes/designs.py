@@ -11,11 +11,13 @@ from openprints.api.schemas import (
     DesignItemPayload,
     DesignListResponse,
     DesignStatsResponse,
+    DesignVersionItemPayload,
+    DesignVersionListResponse,
     PublishDesignResponse,
     PublishRelayResult,
     SignedDesignEvent,
 )
-from openprints.api.serializers.designs import design_row_to_item
+from openprints.api.serializers.designs import design_row_to_item, design_version_row_to_item
 from openprints.api.serializers.identity import build_identity_payload
 from openprints.api.services.relay_publish import publish_event_to_relays
 from openprints.common.design_id import api_id_decode
@@ -123,6 +125,35 @@ async def get_design(design_api_id: str) -> DesignItemPayload:
         raise HTTPException(status_code=404, detail="Design not found.")
     identity = (await store.get_identities_by_pubkeys([row.pubkey])).get(row.pubkey)
     return design_row_to_item(row, build_identity_payload(row.pubkey, identity))
+
+
+@router.get("/{design_api_id}/versions", response_model=DesignVersionListResponse)
+async def list_design_versions(
+    design_api_id: str,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+) -> DesignVersionListResponse:
+    """List all indexed versions for a design, newest first."""
+    pair = api_id_decode(design_api_id)
+    if pair is None:
+        raise HTTPException(status_code=400, detail="Invalid design id format.")
+
+    store = get_store()
+    if store is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Database not configured; run indexer with database_path first.",
+        )
+
+    pubkey, design_id = pair
+    versions, total = await store.list_design_versions(
+        pubkey,
+        design_id,
+        limit=limit,
+        offset=offset,
+    )
+    items: list[DesignVersionItemPayload] = [design_version_row_to_item(row) for row in versions]
+    return DesignVersionListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.post(

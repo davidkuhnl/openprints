@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass
 
 from openprints.common.design_id import is_valid_openprints_design_id
@@ -11,6 +12,7 @@ from .store import DesignCurrentRow, DesignVersionRow, IndexStore, LogOnlyIndexS
 from .types import IngestEnvelope
 
 logger = logging.getLogger(__name__)
+_HEX_64_RE = re.compile(r"^[a-f0-9]{64}$")
 
 
 @dataclass
@@ -51,6 +53,7 @@ class ReducerWorker:
             event_id=event_id,
             pubkey=pubkey,
             design_id=design_id,
+            previous_version_event_id=_lineage_tag_value(tags, event_id, envelope.relay),
             kind=kind,
             created_at=created_at,
             name=_single_tag_value(tags, "name", event_id, envelope.relay),
@@ -149,6 +152,35 @@ def _single_tag_value(tags: object, key: str, event_id: str, relay: str) -> str 
                 },
             )
     return values[0]
+
+
+def _lineage_tag_value(tags: object, event_id: str, relay: str) -> str | None:
+    raw_value = _single_tag_value(tags, "previous_version_event_id", event_id, relay)
+    if raw_value is None:
+        return None
+    normalized = raw_value.strip().lower()
+    if not _HEX_64_RE.fullmatch(normalized):
+        logger.warning(
+            "invalid_previous_version_event_id_tag",
+            extra={
+                "relay": relay,
+                "event_id": event_id,
+                "tag_key": "previous_version_event_id",
+                "value": raw_value,
+            },
+        )
+        return None
+    if normalized == event_id:
+        logger.warning(
+            "self_referencing_previous_version_event_id_tag",
+            extra={
+                "relay": relay,
+                "event_id": event_id,
+                "tag_key": "previous_version_event_id",
+            },
+        )
+        return None
+    return normalized
 
 
 def _optional_tags_json(tags: object) -> str:

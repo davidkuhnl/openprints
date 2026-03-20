@@ -216,3 +216,25 @@ def test_reducer_keeps_older_event_when_created_at_tie_break() -> None:
     current = store.current_rows[-1]
     assert current.latest_event_id == "b" * 64
     assert current.version_count == 2
+
+
+def test_reducer_persists_previous_version_event_id_from_tag() -> None:
+    payload = valid_signed_payload()
+    first_event = dict(payload["event"])
+    second_event = dict(payload["event"])
+    second_event["id"] = "f" * 64
+    second_event["created_at"] = first_event["created_at"] + 10
+    second_event["tags"] = [
+        [entry[0], entry[1]]
+        for entry in first_event["tags"]
+        if isinstance(entry, list) and len(entry) >= 2
+    ] + [["previous_version_event_id", first_event["id"]]]
+
+    store = _CapturingStore()
+    reducer = ReducerWorker(store=store)
+    asyncio.run(reducer.reduce_one(_envelope_for(first_event, received_at=100)))
+    asyncio.run(reducer.reduce_one(_envelope_for(second_event, received_at=110)))
+
+    assert len(store.versions) == 2
+    assert store.versions[0].previous_version_event_id is None
+    assert store.versions[1].previous_version_event_id == first_event["id"]

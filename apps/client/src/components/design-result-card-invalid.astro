@@ -2,6 +2,7 @@
 import { Icon } from "astro-icon/components";
 import type { InvalidDesignCard } from "~/lib/designs";
 import EventJsonPanel from "~/components/event-json-panel.astro";
+import { prettyJsonFromValue } from "~/lib/json";
 
 interface Props {
   design: InvalidDesignCard;
@@ -10,7 +11,7 @@ interface Props {
 const { design } = Astro.props;
 
 const prettyRaw =
-  design.raw_payload != null ? JSON.stringify(design.raw_payload, null, 2) : null;
+  design.raw_payload != null ? prettyJsonFromValue(design.raw_payload) : null;
 ---
 
 <article class="design-result-card overflow-hidden rounded-xl border border-amber-400/40 bg-offset/20">

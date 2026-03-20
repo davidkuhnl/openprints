@@ -92,6 +92,7 @@ def test_db_stats_success_with_designs(tmp_path: Path, capsys: pytest.CaptureFix
         event_id="e" * 64,
         pubkey="p" * 64,
         design_id="openprints:11111111-1111-4111-8111-111111111111",
+        previous_version_event_id=None,
         kind=33301,
         created_at=1730000000,
         name="My Design",

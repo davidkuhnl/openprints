@@ -70,6 +70,34 @@ class DesignListResponse(BaseModel):
     offset: int
 
 
+class DesignVersionItemPayload(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    event_id: str
+    pubkey: str
+    design_id: str
+    previous_version_event_id: str | None = None
+    kind: int
+    created_at: int
+    received_at: int
+    name: str | None = None
+    format: str | None = None
+    sha256: str | None = None
+    url: str | None = None
+    content: str | None = None
+    tags_json: str | dict[str, object]
+    raw_event_json: str
+
+
+class DesignVersionListResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[DesignVersionItemPayload]
+    total: int
+    limit: int
+    offset: int
+
+
 class DesignStatsResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

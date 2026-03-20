@@ -113,14 +113,11 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
 </style>
 
 <script>
-  import { nip19 } from "nostr-tools";
   import {
     startIdentityStore,
     subscribeToCurrentIdentity,
-    type IdentityRecord,
     type IdentitySnapshot,
   } from "~/lib/identity-store";
-  import type { Pubkey } from "~/lib/pubkey";
 
   type StatusMode = "checking" | "ready" | "offline";
 
@@ -135,7 +132,6 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     statusMode: StatusMode;
     signedDot: SignedDotState;
     showHint: boolean;
-    copyValue?: string;
   };
 
   type SignerViewChangeDetail = {
@@ -159,15 +155,8 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
     const hintRow = root.querySelector<HTMLElement>("[data-panel-hint-row]");
     const reloadBtn = root.querySelector<HTMLElement>("[data-panel-reload]");
 
-    let fullNpub = "";
-
     const updatePillLabel = (text: string) => {
       if (pillLabelEl) pillLabelEl.textContent = text || "—";
-    };
-
-    const truncateNpub = (npub: string) => {
-      if (!npub || npub.length <= 18) return npub;
-      return `${npub.slice(0, 10)}...${npub.slice(-6)}`;
     };
 
     const setText = (el: Element | null, text: string) => {
@@ -227,27 +216,11 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
       }
     };
 
-    const getShortNpub = (pubkey: Pubkey): string => {
-      if (!pubkey) {
-        return "—";
-      }
-      try {
-        const npub = nip19.npubEncode(pubkey);
-        fullNpub = npub;
-        return truncateNpub(npub);
-      } catch {
-        fullNpub = pubkey;
-        return truncateNpub(pubkey);
-      }
-    };
-
-    const getDisplayName = (identity: IdentityRecord | null): string =>
-      identity?.display_name_resolved ||
-      identity?.display_name ||
-      identity?.name ||
-      "";
-
-    const dispatchLnurlMetadata = (pubkey: Pubkey, identity: IdentityRecord | null) => {
+    const dispatchLnurlMetadata = (
+      pubkey: IdentitySnapshot["pubkey"],
+      identity: IdentitySnapshot["identity"],
+    ) => {
+      if (!pubkey) return;
       const lnurl = identity?.lnurl ?? identity?.lud16 ?? identity?.lud06 ?? null;
       document.dispatchEvent(
         new CustomEvent("openprints-identity-metadata", {
@@ -272,26 +245,24 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
         return;
       }
 
-      const shortNpub = getShortNpub(snapshot.pubkey);
+      const signerLabel = snapshot.resolvedDisplayLabel ?? "—";
       if (!snapshot.authoritative) {
         applyView({
           title: "Signer detected.",
           message:
             "Using cached identity as a hint while we confirm the active signer account.",
-          identityText: shortNpub,
-          chipLabel: shortNpub,
+          identityText: signerLabel,
+          chipLabel: signerLabel,
           statusLabel: "Checking signer pubkey",
           statusMode: "checking",
           signedDot: "blinking",
           showHint: true,
-          copyValue: fullNpub,
         });
         return;
       }
 
       const identity = snapshot.identity;
       dispatchLnurlMetadata(snapshot.pubkey, identity);
-      const displayName = getDisplayName(identity);
       const identityStatus = (identity?.status ?? "").toLowerCase();
       const identityConfirmed = identityStatus !== "failed";
 
@@ -300,13 +271,12 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           title: "Nice to meet you.",
           message:
             "We haven't seen this identity in OpenPrints yet, but you can still use it to sign and publish your design.",
-          identityText: shortNpub,
-          chipLabel: shortNpub,
+          identityText: signerLabel,
+          chipLabel: signerLabel,
           statusLabel: "New identity",
           statusMode: "ready",
           signedDot: "hidden",
           showHint: true,
-          copyValue: fullNpub,
         });
         return;
       }
@@ -316,46 +286,27 @@ const apiBase = apiBaseUrl ? apiBaseUrl.replace(/\/$/, "") : "";
           title: "Signer ready.",
           message:
             "This identity is known to OpenPrints, but we have not seen its profile on relays yet. You can still continue publishing.",
-          identityText: displayName || shortNpub,
-          chipLabel: displayName || shortNpub,
+          identityText: signerLabel,
+          chipLabel: signerLabel,
           statusLabel: "Identity not yet seen on relays",
           statusMode: "ready",
           signedDot: "hidden",
           showHint: true,
-          copyValue: fullNpub,
-        });
-        return;
-      }
-
-      if (displayName) {
-        applyView({
-          title: `Welcome back, ${displayName}.`,
-          message: "You're ready to publish with this identity.",
-          identityText: displayName,
-          chipLabel: displayName,
-          statusLabel: snapshot.refreshing
-            ? "Refreshing profile data"
-            : "OpenPrints identity confirmed",
-          statusMode: "ready",
-          signedDot: "solid",
-          showHint: true,
-          copyValue: fullNpub,
         });
         return;
       }
 
       applyView({
-        title: "Signer ready.",
+        title: `Welcome back, ${signerLabel}.`,
         message: "You're ready to publish with this identity.",
-        identityText: shortNpub,
-        chipLabel: shortNpub,
+        identityText: signerLabel,
+        chipLabel: signerLabel,
         statusLabel: snapshot.refreshing
           ? "Refreshing profile data"
           : "OpenPrints identity confirmed",
         statusMode: "ready",
         signedDot: "solid",
         showHint: true,
-        copyValue: fullNpub,
       });
     };
 

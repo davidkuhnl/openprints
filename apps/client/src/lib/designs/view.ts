@@ -12,6 +12,7 @@ export interface ValidDesignCard {
   content: string | null;
   creator_identity: CreatorIdentityCard;
   latest_published_at: number;
+  version_count: number;
   format: string | null;
   tags_json: DesignTags;
 }
@@ -68,3 +69,21 @@ export interface InvalidDesignDetail {
 }
 
 export type DesignDetailModel = ValidDesignDetail | InvalidDesignDetail;
+
+export interface ValidDesignVersion {
+  kind: "valid";
+  event_id: string;
+  pubkey: DesignPubkey;
+  design_id: string;
+  previous_version_event_id: string | null;
+  event_kind: number;
+  created_at: number;
+  received_at: number;
+  name: string | null;
+  format: string | null;
+  sha256: string | null;
+  url: string | null;
+  content: string | null;
+  tags_json: DesignTags;
+  raw_event_json: string;
+}

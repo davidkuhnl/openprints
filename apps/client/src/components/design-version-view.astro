@@ -1,0 +1,231 @@
+---
+import TruncateCopy from "~/components/truncate-copy.astro";
+import TimestampDisplay from "~/components/timestamp-display.astro";
+import IconPill from "~/components/icon-pill.astro";
+import IdentityBadge from "~/components/identity-badge.astro";
+import { Icon } from "astro-icon/components";
+import { nounForCount } from "~/lib/plural";
+import DesignAdvancedVersionData from "~/components/design-advanced-version-data.astro";
+import DesignVersionHistoryNavigator from "~/components/design-version-history-navigator.astro";
+import type { ValidDesignDetail, ValidDesignVersion } from "~/lib/designs";
+import type { DesignVersionViewContext } from "~/lib/designs/version-page";
+
+interface Props {
+  design: ValidDesignDetail;
+  versions: ValidDesignVersion[];
+  versionsTotal: number;
+  versionsOffset: number;
+  selectedVersion: ValidDesignVersion;
+  viewContext: DesignVersionViewContext;
+}
+
+const {
+  design,
+  versions,
+  versionsTotal,
+  versionsOffset,
+  selectedVersion,
+  viewContext,
+} = Astro.props as Props;
+
+const displayedVersion = selectedVersion;
+const currentVersionTimestamp = displayedVersion.created_at;
+const currentVersionName = displayedVersion.name;
+const currentVersionDescription = displayedVersion.content;
+const currentVersionFormat = displayedVersion.format;
+const currentVersionSha256 = displayedVersion.sha256;
+const currentVersionUrl = displayedVersion.url;
+const currentVersionEventId = displayedVersion.event_id;
+const sha256MaxChars = 16;
+
+const firstPublishedAt = design.first_published_at;
+const publishedAt = currentVersionTimestamp;
+
+const versionsCount = versionsTotal > 0 ? versionsTotal : design.version_count;
+const versionsLabel = nounForCount(versionsCount, {
+  one: "version",
+  other: "versions",
+});
+
+let previewImages: string[] = [];
+const previewSource = displayedVersion.tags_json.preview;
+if (Array.isArray(previewSource)) {
+  previewImages = previewSource.filter(
+    (item: unknown): item is string =>
+      typeof item === "string" && item.trim().length > 0,
+  );
+}
+
+const signedEventJson = displayedVersion.raw_event_json;
+const previousVersionEventId = displayedVersion.previous_version_event_id;
+---
+
+<article class="flex flex-col gap-2.5 rounded-xl border border-default bg-offset/30 p-4 sm:p-5">
+  <div>
+    {viewContext.mode === "historical" && (
+      <section class="mb-3 rounded-lg border border-amber-400/40 bg-amber-400/10 p-2.5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="text-[11px] text-default">
+            Viewing{" "}
+            <span class="font-semibold">
+              {viewContext.versionNumber
+                ? `version ${viewContext.versionNumber}`
+                : "a historical version"}
+            </span>
+            {viewContext.versionTimestamp != null && (
+              <>
+                {" "}
+                from <TimestampDisplay value={viewContext.versionTimestamp} />
+              </>
+            )}
+          </p>
+          <a
+            href={viewContext.latestHref}
+            class="inline-flex items-center gap-1 rounded-md border border-default/70 px-2 py-1 text-[10px] font-medium text-offset transition-colors hover:text-default"
+          >
+            <span>Back to latest version</span>
+          </a>
+        </div>
+      </section>
+    )}
+
+      <header class="space-y-1.5 border-b border-default pb-4">
+        <p class="text-[11px] font-medium uppercase tracking-[0.18em] text-offset">
+          Design version
+        </p>
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <h1 class="text-xl font-semibold tracking-tight sm:text-2xl">
+            {currentVersionName}
+          </h1>
+          {viewContext.mode === "latest" && (
+            <a
+              class="hidden shrink-0 rounded-md border border-emerald-400/35 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-default"
+              data-owner-edit-cta
+              data-owner-pubkey={design.pubkey}
+              aria-hidden="true"
+              href={`/app/designs/${encodeURIComponent(design.id)}/edit`}
+              title="Edit this design"
+            >
+              Edit design
+            </a>
+          )}
+        </div>
+
+        <div class="flex flex-wrap items-center gap-1.5 text-[10px] text-offset">
+          <IdentityBadge identity={design.creator_identity} size="full" />
+
+          {viewContext.mode === "latest" && (
+            <IconPill icon="mdi:calendar-start" title="First published">
+              <TimestampDisplay value={firstPublishedAt} agoFormat />
+            </IconPill>
+          )}
+
+          <IconPill icon="mdi:update" title="This version published at">
+            <TimestampDisplay value={publishedAt} agoFormat />
+          </IconPill>
+
+          <IconPill icon="mdi:layers-outline" title="Versions">
+            {versionsCount}
+            {" "}
+            {versionsLabel}
+          </IconPill>
+
+          {currentVersionFormat && (
+            <IconPill icon="mdi:file-outline" title="Format">
+              {currentVersionFormat}
+            </IconPill>
+          )}
+        </div>
+      </header>
+
+      {currentVersionDescription && (
+        <div class="mt-2 space-y-3">
+          <p class="text-xs leading-relaxed text-offset">
+            {currentVersionDescription}
+          </p>
+          {previewImages.length > 0 && (
+            <div class="flex flex-wrap gap-1.5">
+              {previewImages.map((src) => (
+                <img
+                  src={src}
+                  loading="lazy"
+                  alt={`Preview of ${currentVersionName}`}
+                  class="h-24 w-24 shrink-0 rounded-md border border-default/40 bg-default/20 object-cover"
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <section class="mt-3 rounded-lg border border-default bg-default/40 p-3 sm:flex sm:items-center sm:justify-between sm:gap-4">
+        <div class="min-w-0 text-xs">
+          <p class="text-[10px] font-medium uppercase tracking-[0.14em] text-offset">
+            File
+          </p>
+
+          {currentVersionUrl ? (
+            <>
+              <p class="mt-1 break-all text-xs text-default">
+                {currentVersionUrl}
+              </p>
+
+              {currentVersionSha256 && (
+                <div class="mt-1 flex items-center text-[10px] text-offset">
+                  <span class="inline-flex items-center gap-1">
+                    <Icon
+                      name="mdi:identifier"
+                      class="size-3"
+                      aria-hidden="true"
+                    />
+                    <span class="uppercase tracking-[0.08em]">
+                      SHA-256
+                    </span>
+                  </span>
+
+                  <span class="mx-1 text-offset/40">•</span>
+
+                  <span class="inline-flex items-center font-mono">
+                    <TruncateCopy
+                      value={currentVersionSha256}
+                      maxChars={sha256MaxChars}
+                    />
+                  </span>
+                </div>
+              )}
+            </>
+          ) : (
+            <p class="mt-1 text-xs text-offset">
+              No file URL available for this version.
+            </p>
+          )}
+        </div>
+
+        {currentVersionUrl && (
+          <div class="mt-3 shrink-0 sm:mt-0">
+            <a
+              href={currentVersionUrl}
+              class="inline-flex items-center gap-1.5 rounded-md border border-default px-3 py-1.5 text-[11px] font-medium text-default transition-colors hover:text-emerald-400"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Download file
+            </a>
+          </div>
+        )}
+      </section>
+
+      <DesignVersionHistoryNavigator
+        designId={design.id}
+        versions={versions}
+        total={versionsCount}
+        offset={versionsOffset}
+        currentVersionEventId={currentVersionEventId}
+      />
+      <DesignAdvancedVersionData
+        eventId={currentVersionEventId}
+        previousVersionEventId={previousVersionEventId}
+        signedEventJson={signedEventJson}
+      />
+    </div>
+  </article>

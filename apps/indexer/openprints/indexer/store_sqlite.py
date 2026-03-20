@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS design_versions (
     event_id TEXT PRIMARY KEY,
     pubkey TEXT NOT NULL,
     design_id TEXT NOT NULL,
+    previous_version_event_id TEXT,
     kind INTEGER NOT NULL,
     created_at INTEGER NOT NULL,
     name TEXT,
@@ -105,6 +106,7 @@ class SQLiteIndexStore:
         self._conn.row_factory = aiosqlite.Row
         await self._conn.execute("PRAGMA foreign_keys = ON")
         await self._conn.executescript(_SCHEMA)
+        await self._ensure_design_versions_schema()
         await self._ensure_identity_schema()
         await self._conn.commit()
         logger.info("sqlite_store_opened", extra={"path": str(self._path)})
@@ -131,20 +133,32 @@ class SQLiteIndexStore:
         if "shape" not in existing_columns:
             await conn.execute("ALTER TABLE identities ADD COLUMN shape TEXT")
 
+    async def _ensure_design_versions_schema(self) -> None:
+        """Apply lightweight additive schema changes for design_versions."""
+        conn = self._conn_required()
+        async with conn.execute("PRAGMA table_info(design_versions)") as cur:
+            rows = await cur.fetchall()
+        existing_columns = {str(row["name"]) for row in rows}
+        if "previous_version_event_id" not in existing_columns:
+            await conn.execute(
+                "ALTER TABLE design_versions ADD COLUMN previous_version_event_id TEXT"
+            )
+
     async def append_design_version(self, row: DesignVersionRow) -> bool:
         """Insert design version once; return False when event_id already exists."""
         conn = self._conn_required()
         cursor = await conn.execute(
             """
             INSERT OR IGNORE INTO design_versions (
-                event_id, pubkey, design_id, kind, created_at,
+                event_id, pubkey, design_id, previous_version_event_id, kind, created_at,
                 name, format, sha256, url, content, raw_event_json, received_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 row.event_id,
                 row.pubkey,
                 row.design_id,
+                row.previous_version_event_id,
                 row.kind,
                 row.created_at,
                 row.name,
@@ -406,6 +420,53 @@ class SQLiteIndexStore:
             content=r["content"],
             tags_json=r["tags_json"],
         )
+
+    async def list_design_versions(
+        self, pubkey: str, design_id: str, *, limit: int, offset: int
+    ) -> tuple[list[DesignVersionRow], int]:
+        """List versions for a specific (pubkey, design_id), newest first."""
+        conn = self._conn_required()
+        async with conn.execute(
+            """
+            SELECT COUNT(*) FROM design_versions
+            WHERE pubkey = ? AND design_id = ?
+            """,
+            (pubkey, design_id),
+        ) as cur:
+            (total,) = await cur.fetchone()
+
+        async with conn.execute(
+            """
+            SELECT event_id, pubkey, design_id, kind, created_at, name, format, sha256, url,
+                   content, raw_event_json, received_at, previous_version_event_id
+            FROM design_versions
+            WHERE pubkey = ? AND design_id = ?
+            ORDER BY created_at DESC, event_id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (pubkey, design_id, limit, offset),
+        ) as cur:
+            rows = await cur.fetchall()
+
+        versions = [
+            DesignVersionRow(
+                event_id=r["event_id"],
+                pubkey=r["pubkey"],
+                design_id=r["design_id"],
+                previous_version_event_id=r["previous_version_event_id"],
+                kind=r["kind"],
+                created_at=r["created_at"],
+                name=r["name"],
+                format=r["format"],
+                sha256=r["sha256"],
+                url=r["url"],
+                content=r["content"],
+                raw_event_json=r["raw_event_json"],
+                received_at=r["received_at"],
+            )
+            for r in rows
+        ]
+        return versions, total
 
     async def get_counts(
         self,

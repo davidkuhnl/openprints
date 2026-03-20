@@ -12,6 +12,8 @@ export type StepId =
   | "lightning-payments"
   | "design-images";
 
+export type DesignPublishFormMode = "create" | "edit";
+
 export type UnsignedNostrEvent = {
   kind: number;
   created_at: number;
@@ -31,6 +33,7 @@ export type BuildResult =
 
 export type Inputs = {
   d: string;
+  previousVersionEventId: string;
   name: string;
   format: string;
   url: string;
@@ -98,6 +101,7 @@ export const STEP_ORDER: StepId[] = [
 
 export const INPUT_FIELD_NAMES: FieldName[] = [
   "d",
+  "previousVersionEventId",
   "name",
   "format",
   "url",
