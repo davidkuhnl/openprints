@@ -7,11 +7,13 @@ interface Props {
   designId: string;
   versions: ValidDesignVersion[];
   total: number;
-  currentVersionEventId: string | null;
+  offset: number;
+  currentVersionEventId: string;
 }
 
-const { designId, versions, total, currentVersionEventId } = Astro.props as Props;
+const { designId, versions, total, offset, currentVersionEventId } = Astro.props as Props;
 const versionsCount = total ?? 0;
+const versionsOffset = Math.max(0, offset ?? 0);
 const latestHref = `/app/designs/${encodeURIComponent(designId)}`;
 ---
 
@@ -32,7 +34,7 @@ const latestHref = `/app/designs/${encodeURIComponent(designId)}`;
   ) : (
     <ol class="mt-2 divide-y divide-default/50">
       {versions.map((version, index) => {
-        const versionNumber = Math.max(1, versionsCount - index);
+        const versionNumber = Math.max(1, versionsCount - (versionsOffset + index));
         const isCurrent = currentVersionEventId === version.event_id;
         const versionHref = index === 0
           ? latestHref

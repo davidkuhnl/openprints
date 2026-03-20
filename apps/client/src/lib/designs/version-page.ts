@@ -21,6 +21,7 @@ interface LoadDesignVersionViewDataValidBaseResult {
   design: ValidDesignDetail;
   versions: ValidDesignVersion[];
   versionsTotal: number;
+  versionsOffset: number;
   selectedVersion: ValidDesignVersion;
   viewContext: DesignVersionViewContext;
 }
@@ -207,11 +208,12 @@ export const loadDesignVersionViewData = async ({
     DEFAULT_VERSIONS_PAGE_SIZE,
     0,
   );
-  const versions = firstPage.items;
+  let versions = firstPage.items;
   const versionsTotal = firstPage.total;
+  let versionsOffset = firstPage.offset;
 
   let selectedVersion = versions[0] ?? null;
-  let selectedVersionIndex = versions.length > 0 ? 0 : null;
+  let selectedVersionIndex = versions.length > 0 ? versionsOffset : null;
 
   if (normalizedRequestedVersionId) {
     const firstPageMatchIndex = versions.findIndex(
@@ -220,7 +222,7 @@ export const loadDesignVersionViewData = async ({
 
     if (firstPageMatchIndex >= 0) {
       selectedVersion = versions[firstPageMatchIndex] ?? null;
-      selectedVersionIndex = firstPageMatchIndex;
+      selectedVersionIndex = versionsOffset + firstPageMatchIndex;
     } else {
       selectedVersion = null;
       selectedVersionIndex = null;
@@ -244,6 +246,8 @@ export const loadDesignVersionViewData = async ({
             (item) => item.event_id === normalizedRequestedVersionId,
           );
           if (pageMatchIndex >= 0) {
+            versions = page.items;
+            versionsOffset = offset;
             selectedVersion = page.items[pageMatchIndex] ?? null;
             selectedVersionIndex = offset + pageMatchIndex;
             break;
@@ -294,6 +298,7 @@ export const loadDesignVersionViewData = async ({
     design,
     versions,
     versionsTotal,
+    versionsOffset,
     selectedVersion,
     viewContext: buildViewContext({
       designId: normalizedDesignId,

@@ -14,6 +14,7 @@ interface Props {
   design: ValidDesignDetail;
   versions: ValidDesignVersion[];
   versionsTotal: number;
+  versionsOffset: number;
   selectedVersion: ValidDesignVersion;
   viewContext: DesignVersionViewContext;
 }
@@ -22,6 +23,7 @@ const {
   design,
   versions,
   versionsTotal,
+  versionsOffset,
   selectedVersion,
   viewContext,
 } = Astro.props as Props;
@@ -217,6 +219,7 @@ const previousVersionEventId = displayedVersion.previous_version_event_id;
         designId={design.id}
         versions={versions}
         total={versionsCount}
+        offset={versionsOffset}
         currentVersionEventId={currentVersionEventId}
       />
       <DesignAdvancedVersionData
