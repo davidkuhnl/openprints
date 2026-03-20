@@ -54,6 +54,7 @@ def _build_design_draft_payload(args: Namespace) -> tuple[dict | None, bool, lis
                 "created_at": int(time.time()),
                 "tags": [
                     ["d", design_id_value],
+                    ["openprints_schema", "1.1"],
                     ["name", args.name],
                     ["format", args.format],
                     ["sha256", sha256_value],

@@ -53,6 +53,7 @@ def test_build_to_stdout_emits_json_payload(capsys) -> None:
     assert payload["meta"]["state"] == "draft"
     assert payload["meta"]["event_type"] == "design"
     assert payload["event"]["kind"] == 33301
+    assert _tag_value(payload, "openprints_schema") == "1.1"
     assert _tag_value(payload, "sha256") == FIXTURE_SHA256
     assert "build: wrote payload JSON to stdout." in captured.err
 
@@ -70,6 +71,7 @@ def test_build_to_file_writes_json_payload(tmp_path: Path, capsys) -> None:
     assert payload["meta"]["state"] == "draft"
     assert payload["meta"]["event_type"] == "design"
     assert payload["event"]["kind"] == 33301
+    assert _tag_value(payload, "openprints_schema") == "1.1"
     assert _tag_value(payload, "sha256") == FIXTURE_SHA256
     assert f"build: wrote payload JSON to {output_file}." in captured.out
 

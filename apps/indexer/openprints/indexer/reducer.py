@@ -5,6 +5,11 @@ import logging
 import re
 from dataclasses import dataclass
 
+from openprints.common.design_event_schema import (
+    SCHEMA_VERSION_1_1,
+    UNKNOWN_SCHEMA_VERSION,
+    resolve_design_event_schema_version,
+)
 from openprints.common.design_id import is_valid_openprints_design_id
 from openprints.common.event_utils import tag_values
 
@@ -49,11 +54,43 @@ class ReducerWorker:
         if not isinstance(kind, int) or not isinstance(created_at, int):
             raise RuntimeError("Reducer invariant violated: kind and created_at must be integers")
 
+        schema_version = resolve_design_event_schema_version(event)
+        if schema_version == UNKNOWN_SCHEMA_VERSION:
+            logger.warning(
+                "invalid_design_event_schema_version",
+                extra={
+                    "relay": envelope.relay,
+                    "event_id": event_id,
+                    "schema_version": schema_version,
+                },
+            )
+            return
+
+        current = await self._store.get_design(pubkey, design_id)
+        previous_event_id, has_previous_tag = _lineage_tag_value(tags, event_id, envelope.relay)
+        if schema_version == SCHEMA_VERSION_1_1:
+            # 1.1 rules:
+            # - initial event: "previous_version_event_id" must be absent
+            # - update event: "previous_version_event_id" must be present and valid
+            is_initial = current is None
+            if is_initial and has_previous_tag:
+                logger.warning(
+                    "invalid_schema_1_1_initial_has_previous",
+                    extra={"relay": envelope.relay, "event_id": event_id, "design_id": design_id},
+                )
+                return
+            if not is_initial and previous_event_id is None:
+                logger.warning(
+                    "invalid_schema_1_1_update_missing_previous",
+                    extra={"relay": envelope.relay, "event_id": event_id, "design_id": design_id},
+                )
+                return
+
         version_row = DesignVersionRow(
             event_id=event_id,
             pubkey=pubkey,
             design_id=design_id,
-            previous_version_event_id=_lineage_tag_value(tags, event_id, envelope.relay),
+            previous_version_event_id=previous_event_id,
             kind=kind,
             created_at=created_at,
             name=_single_tag_value(tags, "name", event_id, envelope.relay),
@@ -69,7 +106,6 @@ class ReducerWorker:
             self.stats.duplicates += 1
             return
 
-        current = await self._store.get_design(pubkey, design_id)
         if current is None:
             next_current = DesignCurrentRow(
                 pubkey=pubkey,
@@ -154,10 +190,11 @@ def _single_tag_value(tags: object, key: str, event_id: str, relay: str) -> str 
     return values[0]
 
 
-def _lineage_tag_value(tags: object, event_id: str, relay: str) -> str | None:
+def _lineage_tag_value(tags: object, event_id: str, relay: str) -> tuple[str | None, bool]:
     raw_value = _single_tag_value(tags, "previous_version_event_id", event_id, relay)
     if raw_value is None:
-        return None
+        return None, False
+
     normalized = raw_value.strip().lower()
     if not _HEX_64_RE.fullmatch(normalized):
         logger.warning(
@@ -169,7 +206,7 @@ def _lineage_tag_value(tags: object, event_id: str, relay: str) -> str | None:
                 "value": raw_value,
             },
         )
-        return None
+        return None, True
     if normalized == event_id:
         logger.warning(
             "self_referencing_previous_version_event_id_tag",
@@ -179,8 +216,8 @@ def _lineage_tag_value(tags: object, event_id: str, relay: str) -> str | None:
                 "tag_key": "previous_version_event_id",
             },
         )
-        return None
-    return normalized
+        return None, True
+    return normalized, True
 
 
 def _optional_tags_json(tags: object) -> str:
