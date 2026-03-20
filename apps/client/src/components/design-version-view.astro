@@ -40,13 +40,17 @@ const {
   historicalContext,
 } = Astro.props as Props;
 
-const currentVersionTimestamp = selectedVersion?.created_at ?? design?.latest_published_at ?? null;
-const currentVersionName = selectedVersion?.name ?? design?.name ?? "";
-const currentVersionDescription = selectedVersion?.content ?? design?.content ?? "";
-const currentVersionFormat = selectedVersion?.format ?? design?.format ?? "–";
-const currentVersionSha256 = selectedVersion?.sha256 ?? design?.sha256 ?? "–";
-const currentVersionUrl = selectedVersion?.url ?? design?.url ?? "";
-const currentVersionEventId = selectedVersion?.event_id ?? design?.latest_event_id ?? null;
+const displayedVersion = selectedVersion;
+const latestDesignHref = design
+  ? `/app/designs/${encodeURIComponent(design.id)}`
+  : historicalContext?.latestHref ?? null;
+const currentVersionTimestamp = displayedVersion?.created_at ?? null;
+const currentVersionName = displayedVersion?.name ?? design?.name ?? "";
+const currentVersionDescription = displayedVersion?.content ?? null;
+const currentVersionFormat = displayedVersion?.format ?? null;
+const currentVersionSha256 = displayedVersion?.sha256 ?? null;
+const currentVersionUrl = displayedVersion?.url ?? null;
+const currentVersionEventId = displayedVersion?.event_id ?? null;
 const sha256MaxChars = 16;
 
 const firstPublishedAt = design?.first_published_at ?? null;
@@ -59,7 +63,7 @@ const versionsLabel = nounForCount(versionsCount, {
 });
 
 let previewImages: string[] = [];
-const previewSource = selectedVersion?.tags_json.preview ?? design?.tags_json.preview;
+const previewSource = displayedVersion?.tags_json.preview;
 if (Array.isArray(previewSource)) {
   previewImages = previewSource.filter(
     (item: unknown): item is string =>
@@ -67,8 +71,8 @@ if (Array.isArray(previewSource)) {
   );
 }
 
-const signedEventJson = selectedVersion?.raw_event_json ?? null;
-const previousVersionEventId = selectedVersion?.previous_version_event_id ?? null;
+const signedEventJson = displayedVersion?.raw_event_json ?? null;
+const previousVersionEventId = displayedVersion?.previous_version_event_id ?? null;
 ---
 
 <article class="flex flex-col gap-2.5 rounded-xl border border-default bg-offset/30 p-4 sm:p-5">
@@ -78,12 +82,22 @@ const previousVersionEventId = selectedVersion?.previous_version_event_id ?? nul
         {errorTitle ?? "Design not found"}
       </h1>
       <p class="mt-1.5 text-xs text-offset">{errorMessage}</p>
-      <div class="mt-4">
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        {isHistoricalView && latestDesignHref && (
+          <a
+            href={latestDesignHref}
+            class="inline-flex items-center gap-1 text-[10px] text-offset underline-offset-2 hover:underline"
+          >
+            <span>←</span>
+            <span>Go to latest version</span>
+          </a>
+        )}
         <a
           href="/app/designs"
-          class="text-[10px] text-offset underline-offset-2 hover:underline"
+          class="inline-flex items-center gap-1 text-[10px] text-offset underline-offset-2 hover:underline"
         >
-          ← Back to designs
+          <span>←</span>
+          <span>Back to designs</span>
         </a>
       </div>
     </>
@@ -168,7 +182,7 @@ const previousVersionEventId = selectedVersion?.previous_version_event_id ?? nul
             {versionsLabel}
           </IconPill>
 
-          {currentVersionFormat && currentVersionFormat !== "–" && (
+          {currentVersionFormat && (
             <IconPill icon="mdi:file-outline" title="Format">
               {currentVersionFormat}
             </IconPill>
@@ -202,39 +216,45 @@ const previousVersionEventId = selectedVersion?.previous_version_event_id ?? nul
             File
           </p>
 
-          {currentVersionUrl ? (
-            <>
-              <p class="mt-1 break-all text-xs text-default">
-                {currentVersionUrl}
-              </p>
+          {displayedVersion ? (
+            currentVersionUrl ? (
+              <>
+                <p class="mt-1 break-all text-xs text-default">
+                  {currentVersionUrl}
+                </p>
 
-              {currentVersionSha256 !== "–" && (
-                <div class="mt-1 flex items-center text-[10px] text-offset">
-                  <span class="inline-flex items-center gap-1">
-                    <Icon
-                      name="mdi:identifier"
-                      class="size-3"
-                      aria-hidden="true"
-                    />
-                    <span class="uppercase tracking-[0.08em]">
-                      SHA-256
+                {currentVersionSha256 && (
+                  <div class="mt-1 flex items-center text-[10px] text-offset">
+                    <span class="inline-flex items-center gap-1">
+                      <Icon
+                        name="mdi:identifier"
+                        class="size-3"
+                        aria-hidden="true"
+                      />
+                      <span class="uppercase tracking-[0.08em]">
+                        SHA-256
+                      </span>
                     </span>
-                  </span>
 
-                  <span class="mx-1 text-offset/40">•</span>
+                    <span class="mx-1 text-offset/40">•</span>
 
-                  <span class="inline-flex items-center font-mono">
-                    <TruncateCopy
-                      value={currentVersionSha256}
-                      maxChars={sha256MaxChars}
-                    />
-                  </span>
-                </div>
-              )}
-            </>
+                    <span class="inline-flex items-center font-mono">
+                      <TruncateCopy
+                        value={currentVersionSha256}
+                        maxChars={sha256MaxChars}
+                      />
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p class="mt-1 text-xs text-offset">
+                No file URL available for this version.
+              </p>
+            )
           ) : (
             <p class="mt-1 text-xs text-offset">
-              No file URL available for this version.
+              Version details are unavailable.
             </p>
           )}
         </div>

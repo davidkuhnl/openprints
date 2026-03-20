@@ -255,7 +255,14 @@ export const loadDesignVersionViewData = async ({
       versionsError,
       selectedVersion: null,
       isHistoricalView: true,
-      historicalContext: null,
+      historicalContext: normalizedRequestedVersionId
+        ? {
+            requestedVersionId: normalizedRequestedVersionId,
+            versionNumber: null,
+            versionTimestamp: null,
+            latestHref: buildDesignLatestHref(normalizedDesignId),
+          }
+        : null,
       errorTitle: "Version not found",
       errorMessage:
         "The requested version could not be found for this design.",
